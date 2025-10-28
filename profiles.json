@@ -1,0 +1,34 @@
+{
+  "profiles": [
+    {
+      "id": 1,
+      "spsNummer": "SPS-001",
+      "lieferant": "OKE",
+      "lieferantNummer": "OKE-001",
+      "hoehe": 20,
+      "material": "Aluminium",
+      "projekt": "Van.Ea",
+      "skizze": "Standard-Profil 20mm hoch"
+    },
+    {
+      "id": 2,
+      "spsNummer": "SPS-002",
+      "lieferant": "OKE",
+      "lieferantNummer": "OKE-002",
+      "hoehe": 25,
+      "material": "Stahl",
+      "projekt": "Porsche",
+      "skizze": "Profil mit Bohne 5mm"
+    },
+    {
+      "id": 3,
+      "spsNummer": "SPS-003",
+      "lieferant": "OKE",
+      "lieferantNummer": "OKE-003",
+      "hoehe": 30,
+      "material": "Kunststoff",
+      "projekt": "VW",
+      "skizze": "Profil mit Kerben"
+    }
+  ]
+}

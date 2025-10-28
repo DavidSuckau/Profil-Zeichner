@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProfilZeichner</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Explorer Panel -->
+        <!-- Hauptbereich -->
+        <div class="main-content">
+            <!-- Menüleiste -->
+            <div class="menu-bar">
+            <!-- Logo -->
+            <div class="logo">
+                <img src="Logo.png" alt="Profil Zeichner" class="logo-image">
+            </div>
+            
+            <div class="menu-section">
+                <label for="width-input">Breite:</label>
+                <input type="number" id="width-input" placeholder="Breite eingeben" min="1" value="100">
+                <span class="unit">mm</span>
+            </div>
+            <div class="menu-section">
+                <label for="height-input">Höhe:</label>
+                <input type="number" id="height-input" placeholder="Höhe eingeben" min="1" value="20">
+                <span class="unit">mm</span>
+            </div>
+            <div class="menu-section">
+                <button id="draw-button" class="icon-button draw-button" title="Profil zeichnen - Rechteck mit angegebenen Maßen erstellen">✓</button>
+            </div>
+            <div class="menu-section">
+                <button id="clear-button" class="icon-button clear-button" title="Alles löschen - Zeichnung zurücksetzen">✕</button>
+            </div>
+            <div class="menu-section">
+                <button id="undo-button" class="icon-button" style="background: #6c757d;" title="Rückgängig - Letzte Aktion rückgängig machen">↶</button>
+            </div>
+            <div class="menu-section">
+                <button id="redo-button" class="icon-button" style="background: #6c757d;" title="Wiederholen - Letzte Aktion wiederholen">↷</button>
+            </div>
+            
+            <div class="menu-section zoom-info">
+                <label for="zoom-slider" style="margin-right: 8px;">Zoom:</label>
+                <input type="range" id="zoom-slider" min="10" max="500" value="100" step="5" style="width: 150px;">
+                <span id="zoom-level" style="margin-left: 8px; min-width: 50px; display: inline-block;">100%</span>
+            </div>
+        </div>
+
+        <!-- Canvas Container -->
+        <div class="canvas-container">
+            <canvas id="main-canvas"></canvas>
+            
+            <!-- Canvas Overlay Buttons -->
+            <div class="canvas-overlay">
+                <button id="bohne-button" class="icon-button profile-button" title="Bohne hinzufügen - Ein rundes Element oben am Profil">●</button>
+                <button id="cutout-button" class="icon-button profile-button" title="Cut out - Profileck abtrennen">└</button>
+                <button id="kerbe-button" class="icon-button profile-button" title="Kerbe hinzufügen - Ein dreieckiger Einschnitt">◢</button>
+                <button id="nahtlinie-button" class="icon-button profile-button" title="Nahtlinie einzeichnen - Gestrichelte Linie">━</button>
+                <button id="loch-button" class="icon-button profile-button" title="Loch hinzufügen - Ein rundes oder ovales Loch">○</button>
+                <button id="ausschnitt-button" class="icon-button profile-button" title="Ausschnitt erstellen - Ein rechteckiger Ausschnitt">▢</button>
+                <button id="crimping-button" class="icon-button profile-button" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
+                <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
+                <button id="format-button" class="icon-button profile-button" title="Format wählen - A3 oder A4 Format">📄</button>
+                <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">📝</button>
+                <button id="title-block-button" class="icon-button profile-button" title="Beschriftungsfeld - DIN ISO 7200 Titelblock">📋</button>
+                <button id="background-button" class="icon-button profile-button" title="Hintergrund wechseln - Leer, Kariert, Schiefer, Carbon, Tafel">🎨</button>
+                <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">🗃️</button>
+                <button id="ai-photo-button" class="icon-button profile-button" title="KI Foto-Erkennung - Profil aus Foto erstellen">🤖📸</button>
+            </div>
+            
+            <!-- Untere Button-Leiste -->
+            <div class="bottom-buttons">
+                <button id="auto-zoom-button" class="format-button" title="Automatisch zoomen - Gesamte Zeichnung anzeigen">🔍</button>
+                <button id="pan-button" class="format-button" title="Alles verschieben - Per Mausklick und Drag">✋</button>
+                <button id="pdf-button" class="format-button" title="Als PDF exportieren - Speichern als PDF-Datei">📄</button>
+            </div>
+        </div>
+        </div>
+    </div>
+
+    <!-- Bohne Modal -->
+    <div id="bohne-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Bohne hinzufügen</h3>
+                <button id="bohne-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="bohne-height">Höhe der Bohne:</label>
+                    <input type="number" id="bohne-height" placeholder="Höhe eingeben" min="1" value="10">
+                    <span class="unit">mm</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="bohne-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="bohne-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cut out Modal -->
+    <div id="cutout-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Cut out hinzufügen</h3>
+                <button id="cutout-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="cutout-width">Breite:</label>
+                    <input type="number" id="cutout-width" placeholder="Breite eingeben" min="1" value="20">
+                    <span class="unit">mm</span>
+                </div>
+                <div class="input-group">
+                    <label for="cutout-height">Höhe:</label>
+                    <input type="number" id="cutout-height" placeholder="Höhe eingeben" min="1" value="10">
+                    <span class="unit">mm</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="cutout-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="cutout-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kerbe Modal -->
+    <div id="kerbe-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Kerben hinzufügen</h3>
+                <button id="kerbe-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="kerbe-settings">
+                    <div class="input-group">
+                        <label for="kerbe-type">Kerben-Typ:</label>
+                        <select id="kerbe-type">
+                            <option value="triangle">Dreieck (Standard)</option>
+                            <option value="marker">Strich-Markierung</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="kerbe-depth">Tiefe/Höhe:</label>
+                        <input type="number" id="kerbe-depth" placeholder="Tiefe/Höhe eingeben" min="1" step="0.1" value="4">
+                        <span class="unit">mm</span>
+                    </div>
+                    <div class="input-group" id="kerbe-width-group" style="display: block;">
+                        <label for="kerbe-width">Breite:</label>
+                        <input type="number" id="kerbe-width" placeholder="Breite eingeben" min="1" step="0.1" value="6">
+                        <span class="unit">mm</span>
+                    </div>
+                </div>
+                
+                <div class="kerbe-table-container">
+                    <table id="kerbe-table" class="kerbe-table">
+                        <thead>
+                            <tr>
+                                <th>Abstand (mm)</th>
+                                <th>Position</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="kerbe-tbody">
+                            <!-- Kerben werden hier dynamisch hinzugefügt -->
+                        </tbody>
+                    </table>
+                    <button id="add-kerbe-btn" class="add-kerbe-btn">+ Kerbe hinzufügen</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="kerbe-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="kerbe-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Nahtlinie Modal -->
+    <div id="nahtlinie-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Nahtlinie hinzufügen</h3>
+                <button id="nahtlinie-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="nahtlinie-distance">Abstand von unten:</label>
+                    <input type="number" id="nahtlinie-distance" placeholder="Abstand eingeben" min="1" step="0.1" value="8">
+                    <span class="unit">mm</span>
+                </div>
+                <div class="input-group">
+                    <label for="nahtlinie-type">Linientyp:</label>
+                    <select id="nahtlinie-type">
+                        <option value="dashed">Gestrichelt</option>
+                        <option value="holes">Mit Löchern (1mm)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="nahtlinie-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="nahtlinie-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Loch Modal -->
+    <div id="loch-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Löcher hinzufügen</h3>
+                <button id="loch-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="loch-settings">
+                    <div class="input-group">
+                        <label for="loch-width">Breite:</label>
+                        <input type="number" id="loch-width" placeholder="Breite eingeben" min="1" step="0.1" value="5">
+                        <span class="unit">mm</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="loch-height">Höhe:</label>
+                        <input type="number" id="loch-height" placeholder="Höhe eingeben" min="1" step="0.1" value="5">
+                        <span class="unit">mm</span>
+                    </div>
+                    <div class="input-group">
+                        <label for="loch-position">Position von unten:</label>
+                        <input type="number" id="loch-position" placeholder="Abstand von unten" min="0" step="0.1" value="10">
+                        <span class="unit">mm</span>
+                    </div>
+                </div>
+                
+                <div class="loch-table-container">
+                    <table id="loch-table" class="loch-table">
+                        <thead>
+                            <tr>
+                                <th>Abstand von links (mm)</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loch-tbody">
+                        </tbody>
+                    </table>
+                    <button id="add-loch-btn" class="add-loch-btn">Loch hinzufügen</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="loch-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="loch-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Format Modal -->
+    <div id="format-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Format wählen</h3>
+                <button id="format-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="format-options">
+                    <div class="format-option">
+                        <input type="radio" id="format-a4" name="format" value="a4" checked>
+                        <label for="format-a4">A4 (210 × 297 mm)</label>
+                    </div>
+                    <div class="format-option">
+                        <input type="radio" id="format-a3" name="format" value="a3">
+                        <label for="format-a3">A3 (297 × 420 mm)</label>
+                    </div>
+                </div>
+                <div class="format-actions">
+                    <button id="format-apply" class="btn-confirm">Anwenden</button>
+                    <button id="format-export-pdf" class="btn-confirm">PDF exportieren</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="format-cancel" class="btn-cancel">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Text Modal -->
+    <div id="text-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Text hinzufügen</h3>
+                <button id="text-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="text-content">Text:</label>
+                    <input type="text" id="text-content" placeholder="Text eingeben" maxlength="50">
+                </div>
+                <div class="input-group">
+                    <label for="text-size">Schriftgröße:</label>
+                    <input type="number" id="text-size" placeholder="Schriftgröße" min="8" max="48" value="16">
+                    <span class="unit">px</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="text-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="text-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Beschriftungsfeld Modal -->
+    <div id="title-block-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Beschriftungsfeld bearbeiten</h3>
+                <button id="title-block-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label for="title-block-title">Titel:</label>
+                    <input type="text" id="title-block-title" placeholder="Titel eingeben" maxlength="20">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-drawing-number">Zeichnungsnummer:</label>
+                    <input type="text" id="title-block-drawing-number" placeholder="Zeichnungsnummer" maxlength="15">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-date">Datum:</label>
+                    <input type="text" id="title-block-date" placeholder="Datum" maxlength="15">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-scale">Maßstab:</label>
+                    <input type="text" id="title-block-scale" placeholder="Maßstab" maxlength="10">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-material">Material:</label>
+                    <input type="text" id="title-block-material" placeholder="Material" maxlength="15">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-designer">Zeichner:</label>
+                    <input type="text" id="title-block-designer" placeholder="Zeichner" maxlength="15">
+                </div>
+                <div class="input-group">
+                    <label for="title-block-company">Firma:</label>
+                    <input type="text" id="title-block-company" placeholder="Firma" maxlength="20">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="title-block-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="title-block-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ausschnitt Modal -->
+    <div id="ausschnitt-modal" class="modal">
+        <div class="modal-content" style="width: 700px;">
+            <div class="modal-header">
+                <h3>Ausschnitt hinzufügen</h3>
+                <button id="ausschnitt-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                    Fügen Sie Ausschnitte hinzu, die das Profil durchschneiden. Position = Abstand vom linken Rand, 
+                    Länge = Breite des Ausschnitts, Höhe = Tiefe des Ausschnitts.
+                </p>
+                <div class="table-container">
+                    <table id="ausschnitt-table">
+                        <thead>
+                            <tr>
+                                <th>Position (mm)</th>
+                                <th>Länge (mm)</th>
+                                <th>Höhe (mm)</th>
+                                <th>Position</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ausschnitt-tbody">
+                            <tr>
+                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
+                                <td>
+                                    <select class="ausschnitt-position-select">
+                                        <option value="oben">Oben</option>
+                                        <option value="unten">Unten</option>
+                                    </select>
+                                </td>
+                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
+                                <td>
+                                    <select class="ausschnitt-position-select">
+                                        <option value="oben">Oben</option>
+                                        <option value="unten">Unten</option>
+                                    </select>
+                                </td>
+                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
+                                <td>
+                                    <select class="ausschnitt-position-select">
+                                        <option value="oben">Oben</option>
+                                        <option value="unten">Unten</option>
+                                    </select>
+                                </td>
+                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
+                                <td>
+                                    <select class="ausschnitt-position-select">
+                                        <option value="oben">Oben</option>
+                                        <option value="unten">Unten</option>
+                                    </select>
+                                </td>
+                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button id="add-ausschnitt-row" class="btn-add-row-small">+</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="ausschnitt-cancel" class="btn-cancel">Abbrechen</button>
+                <button id="ausschnitt-confirm" class="btn-confirm">Bestätigen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profil-Datenbank Modal -->
+    <div id="database-modal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 1200px;">
+            <div class="modal-header">
+                <h3>Profil-Datenbank</h3>
+                <div class="modal-controls">
+                    <button id="database-modal-minimize" class="modal-minimize" title="Minimieren">−</button>
+                    <button id="database-modal-maximize" class="modal-maximize" title="Maximieren">□</button>
+                    <button id="database-modal-close" class="modal-close" title="Schließen">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <!-- Obere Button-Leiste -->
+                <div class="database-toolbar">
+                    <div class="database-toolbar-left">
+                        <input type="text" id="database-search" placeholder="SPS Nummer oder Lieferant suchen..." class="database-search-input">
+                        <button id="add-profile-btn" class="btn-confirm">+ Neues Profil</button>
+                        <button id="load-profile-btn" class="btn-confirm" style="background: #007bff;">Profil laden</button>
+                    </div>
+                    <div class="database-toolbar-right">
+                        <button id="open-database-btn" class="btn-confirm" style="background: #28a745;">📂 Öffnen</button>
+                        <button id="save-database-btn" class="btn-confirm" style="background: #17a2b8;">💾 Speichern</button>
+                        <button id="clear-last-database-btn" class="btn-cancel" style="background: #dc3545;">🗑️ Löschen</button>
+                    </div>
+                </div>
+                
+                <!-- Datei-Info -->
+                <div class="database-file-info">
+                    <span id="database-file-info">Keine Datei geladen</span>
+                </div>
+                
+                <input type="file" id="database-file-input" accept=".json" style="display: none;">
+                <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+                    <table id="database-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>SPS Nummer</th>
+                                <th>Lieferant</th>
+                                <th>Lieferant Nummer</th>
+                                <th>Höhe (mm)</th>
+                                <th>Material</th>
+                                <th>Projekt</th>
+                                <th>Skizze</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="database-tbody">
+                            <!-- Wird dynamisch gefüllt -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="database-save" class="btn-confirm">Speichern</button>
+                <button id="database-cancel" class="btn-cancel">Schließen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- KI Foto-Erkennung Modal -->
+    <div id="ai-photo-modal" class="modal">
+        <div class="modal-content" style="width: 600px;">
+            <div class="modal-header">
+                <h3>🤖 KI Foto-Erkennung</h3>
+                <button id="ai-photo-modal-close" class="modal-close" title="Schließen">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <p style="color: #666; margin-bottom: 15px;">
+                        Laden Sie ein Foto Ihres Profils hoch. Die KI erkennt automatisch Kerben, Löcher und andere Details.
+                    </p>
+                    
+                    <!-- Foto-Upload Bereich -->
+                    <div id="photo-upload-area" class="photo-upload-area">
+                        <div class="photo-upload-placeholder">
+                            <div class="photo-upload-icon">📸</div>
+                            <div class="photo-upload-text">Foto hier ablegen oder klicken zum Auswählen</div>
+                            <div class="photo-upload-hint">Unterstützte Formate: JPG, PNG, WEBP</div>
+                        </div>
+                        <input type="file" id="photo-file-input" accept="image/*" style="display: none;">
+                    </div>
+                    
+                    <!-- Foto-Vorschau -->
+                    <div id="photo-preview" class="photo-preview" style="display: none;">
+                        <img id="photo-preview-img" src="" alt="Foto-Vorschau">
+                        <button id="remove-photo-btn" class="btn-cancel" style="position: absolute; top: 10px; right: 10px;">✕</button>
+                    </div>
+                </div>
+                
+                <!-- Gesamtlänge Eingabe -->
+                <div style="margin-bottom: 20px;">
+                    <label for="total-length-input" style="display: block; margin-bottom: 8px; font-weight: bold;">
+                        Gesamtlänge des Profils (mm):
+                    </label>
+                    <input type="number" id="total-length-input" placeholder="z.B. 100" min="1" step="0.1" 
+                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;">
+                </div>
+                
+                <!-- KI-Analyse Status -->
+                <div id="ai-analysis-status" class="ai-analysis-status" style="display: none;">
+                    <div class="ai-loading">
+                        <div class="ai-spinner"></div>
+                        <span>KI analysiert das Foto...</span>
+                    </div>
+                </div>
+                
+                <!-- KI-Ergebnisse -->
+                <div id="ai-results" class="ai-results" style="display: none;">
+                    <h4>🎯 KI-Analyse Ergebnisse:</h4>
+                    <div id="ai-detected-elements"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="ai-photo-analyze" class="btn-confirm" disabled>🔍 KI-Analyse starten</button>
+                <button id="ai-photo-apply" class="btn-confirm" disabled>✅ Zeichnung erstellen</button>
+                <button id="ai-photo-cancel" class="btn-cancel">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
