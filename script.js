@@ -26,22 +26,15 @@ class ProfilZeichner {
         this.ausschnittButton = document.getElementById('ausschnitt-button');
         this.crimpingButton = document.getElementById('crimping-button');
         this.bemaßungButton = document.getElementById('bemaßung-button');
-        this.formatButton = document.getElementById('format-button');
         this.textButton = document.getElementById('text-button');
-        this.titleBlockButton = document.getElementById('title-block-button');
         this.backgroundButton = document.getElementById('background-button');
         this.databaseButton = document.getElementById('database-button');
-        this.aiPhotoButton = document.getElementById('ai-photo-button');
         
         // Untere Button-Leiste
         this.autoZoomButton = document.getElementById('auto-zoom-button');
         this.panButton = document.getElementById('pan-button');
         this.pdfButton = document.getElementById('pdf-button');
         
-        // Null-Prüfung für Format-Button
-        if (!this.formatButton) {
-            console.error('Format-Button nicht gefunden!');
-        }
         
         // Modal-Elemente
         this.bohneModal = document.getElementById('bohne-modal');
@@ -97,34 +90,6 @@ class ProfilZeichner {
         this.textCancelButton = document.getElementById('text-cancel');
         this.textConfirmButton = document.getElementById('text-confirm');
         this.textModalClose = document.getElementById('text-modal-close');
-        
-        // Beschriftungsfeld Modal Elemente
-        this.titleBlockModal = document.getElementById('title-block-modal');
-        this.titleBlockTitleInput = document.getElementById('title-block-title');
-        this.titleBlockDrawingNumberInput = document.getElementById('title-block-drawing-number');
-        this.titleBlockDateInput = document.getElementById('title-block-date');
-        this.titleBlockScaleInput = document.getElementById('title-block-scale');
-        this.titleBlockMaterialInput = document.getElementById('title-block-material');
-        this.titleBlockDesignerInput = document.getElementById('title-block-designer');
-        this.titleBlockCompanyInput = document.getElementById('title-block-company');
-        this.titleBlockCancelButton = document.getElementById('title-block-cancel');
-        this.titleBlockConfirmButton = document.getElementById('title-block-confirm');
-        this.titleBlockModalClose = document.getElementById('title-block-modal-close');
-        
-        // Format Modal Elemente
-        this.formatModal = document.getElementById('format-modal');
-        this.formatA4Radio = document.getElementById('format-a4');
-        this.formatA3Radio = document.getElementById('format-a3');
-        this.formatApplyButton = document.getElementById('format-apply');
-        this.formatExportPdfButton = document.getElementById('format-export-pdf');
-        this.formatCancelButton = document.getElementById('format-cancel');
-        this.formatModalClose = document.getElementById('format-modal-close');
-        
-        // Null-Prüfung für Format-Modal-Elemente
-        if (!this.formatModal) {
-            console.error('Format-Modal nicht gefunden!');
-        }
-        
         // Modal Close Buttons
         this.bohneModalClose = document.getElementById('bohne-modal-close');
         this.cutoutModalClose = document.getElementById('cutout-modal-close');
@@ -163,11 +128,8 @@ class ProfilZeichner {
         // Text-Drag-and-Drop
         this.draggedText = null;
         this.textDragOffset = { x: 0, y: 0 };
-        
-        // Beschriftungsfeld-Drag-and-Drop
-        this.draggedTitleBlock = null;
-        this.titleBlockDragOffset = { x: 0, y: 0 };
-        this.titleBlock = null; // Verschiebbares Beschriftungsfeld
+        this.hoveredText = null; // Aktueller Text über dem die Maus schwebt
+        this.selectedTextForEdit = null; // Text der bearbeitet wird
         
         // Pan-Modus
         this.panMode = false;
@@ -208,6 +170,7 @@ class ProfilZeichner {
     
     setupEventListeners() {
         // Canvas Event Listeners
+        this.canvas.addEventListener('dblclick', (e) => this.handleCanvasDoubleClick(e));
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
         this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
@@ -241,10 +204,8 @@ class ProfilZeichner {
         this.lochButton.addEventListener('click', () => this.openLochModal());
         this.ausschnittButton.addEventListener('click', () => this.openAusschnittModal());
         this.textButton.addEventListener('click', () => this.openTextModal());
-        this.titleBlockButton.addEventListener('click', () => this.openTitleBlockModal());
         this.backgroundButton.addEventListener('click', () => this.toggleBackground());
         this.databaseButton.addEventListener('click', () => this.openDatabaseModal());
-        this.aiPhotoButton.addEventListener('click', () => this.openAiPhotoModal());
         
         // Untere Button-Leiste Event Listeners
         if (this.autoZoomButton) {
@@ -260,12 +221,6 @@ class ProfilZeichner {
         this.bemaßungButton.addEventListener('click', () => {
             this.toggleDimensions();
         });
-        
-        if (this.formatButton) {
-            this.formatButton.addEventListener('click', () => {
-                this.openFormatModal();
-            });
-        }
         
         // Enter-Taste für Eingabefelder
         this.widthInput.addEventListener('keypress', (e) => {
@@ -330,18 +285,9 @@ class ProfilZeichner {
         this.textConfirmButton.addEventListener('click', () => this.confirmText());
         this.textModalClose.addEventListener('click', () => this.closeTextModal());
         
-        // Beschriftungsfeld Modal Event Listeners
-        this.titleBlockCancelButton.addEventListener('click', () => this.closeTitleBlockModal());
-        this.titleBlockConfirmButton.addEventListener('click', () => this.confirmTitleBlock());
-        this.titleBlockModalClose.addEventListener('click', () => this.closeTitleBlockModal());
-        
-        // Beschriftungsfeld wird nicht mehr automatisch gezeichnet bei Bemaßungen
-        // Es wird nur noch als verschiebbares Element angezeigt, wenn es hinzugefügt wurde
-        
         // Format Modal Event Listeners
         if (this.formatApplyButton) {
             this.formatApplyButton.addEventListener('click', () => {
-                this.applyFormat();
             });
         }
         
@@ -351,51 +297,14 @@ class ProfilZeichner {
             });
         }
         
-        if (this.formatCancelButton) {
-            this.formatCancelButton.addEventListener('click', () => {
-                this.closeFormatModal();
-            });
-        }
-        
-        if (this.formatModalClose) {
-            this.formatModalClose.addEventListener('click', () => {
-                this.closeFormatModal();
-            });
-        }
-        
-        if (this.formatModal) {
-            this.formatModal.addEventListener('click', (e) => {
-                if (e.target === this.formatModal) {
-                    this.closeFormatModal();
-                }
-            });
-        }
-        
         // Drag-and-Drop für Modals
         this.setupModalDragAndDrop();
     }
     
-    handleCanvasClick(e) {
+    handleCanvasDoubleClick(e) {
         const rect = this.canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
-        
-        // Prüfe ob auf Beschriftungsfeld geklickt wurde
-        if (this.titleBlock) {
-            // Berechne die tatsächliche Position auf dem Canvas
-            const blockWidth = 100 * this.mmToPx * this.zoom;
-            const blockHeight = 40 * this.mmToPx * this.zoom;
-            const blockX = this.titleBlock.x * this.zoom + this.offsetX;
-            const blockY = this.titleBlock.y * this.zoom + this.offsetY;
-            
-            if (mouseX >= blockX && mouseX <= blockX + blockWidth &&
-                mouseY >= blockY && mouseY <= blockY + blockHeight) {
-                this.draggedTitleBlock = this.titleBlock;
-                this.titleBlockDragOffset.x = mouseX - blockX;
-                this.titleBlockDragOffset.y = mouseY - blockY;
-                return;
-            }
-        }
         
         // Prüfe ob auf Text geklickt wurde
         for (let i = this.texts.length - 1; i >= 0; i--) {
@@ -403,14 +312,29 @@ class ProfilZeichner {
             const textWidth = this.ctx.measureText(text.content).width;
             const textHeight = parseInt(text.size);
             
-            if (mouseX >= text.x && mouseX <= text.x + textWidth &&
-                mouseY >= text.y - textHeight && mouseY <= text.y) {
-                // Text wurde geklickt - starte Drag-and-Drop
-                this.draggedText = text;
-                this.textDragOffset.x = mouseX - text.x;
-                this.textDragOffset.y = mouseY - text.y;
+            // Berechne die Bildschirmposition des Textes (mit Zoom und Offset)
+            const screenX = text.x * this.zoom + this.offsetX;
+            const screenY = text.y * this.zoom + this.offsetY;
+            
+            // Erweiterte Hitbox (+10 Pixel)
+            if (mouseX >= screenX - 10 && mouseX <= screenX + textWidth + 10 &&
+                mouseY >= screenY - textHeight - 10 && mouseY <= screenY + 10) {
+                // Text wurde doppelgeklickt - öffne Modal zum Bearbeiten
+                this.selectedTextForEdit = text;
+                this.textContentInput.value = text.content;
+                this.textSizeInput.value = text.size;
+                this.openTextModal();
                 return;
             }
+        }
+    }
+    
+    handleCanvasClick(e) {
+        // Einfacher Klick - verhindere, wenn Text gerade gedraggt wurde
+        // (um Konflikt zwischen click und mousedown zu vermeiden)
+        if (this.draggedText) {
+            e.preventDefault();
+            e.stopPropagation();
         }
     }
     
@@ -430,7 +354,7 @@ class ProfilZeichner {
     }
     
     handleMouseDown(e) {
-        if (this.draggedText || this.draggedTitleBlock) {
+        if (this.draggedText) {
             // Element wird bereits gedraggt
             return;
         }
@@ -450,57 +374,43 @@ class ProfilZeichner {
             return;
         }
         
-        // Prüfe ob auf Beschriftungsfeld geklickt wurde
-        if (this.titleBlock) {
-            const blockWidth = 100 * this.mmToPx;
-            const blockHeight = 40 * this.mmToPx;
-            
-            if (mouseX >= this.titleBlock.x && mouseX <= this.titleBlock.x + blockWidth &&
-                mouseY >= this.titleBlock.y && mouseY <= this.titleBlock.y + blockHeight) {
-                this.draggedTitleBlock = this.titleBlock;
-                this.titleBlockDragOffset.x = mouseX - this.titleBlock.x;
-                this.titleBlockDragOffset.y = mouseY - this.titleBlock.y;
-                return;
-            }
-        }
         
-        // Prüfe ob auf Text geklickt wurde
+        // Prüfe ob auf Text geklickt wurde (mit erweiterter Hitbox)
         for (let i = this.texts.length - 1; i >= 0; i--) {
             const text = this.texts[i];
             const textWidth = this.ctx.measureText(text.content).width;
             const textHeight = parseInt(text.size);
             
-            if (mouseX >= text.x && mouseX <= text.x + textWidth &&
-                mouseY >= text.y - textHeight && mouseY <= text.y) {
+            // Berechne die Bildschirmposition des Textes (mit Zoom und Offset)
+            const screenX = text.x * this.zoom + this.offsetX;
+            const screenY = text.y * this.zoom + this.offsetY;
+            
+            // Erweiterte Hitbox (+10 Pixel in alle Richtungen) für einfacheres Greifen
+            if (mouseX >= screenX - 10 && mouseX <= screenX + textWidth + 10 &&
+                mouseY >= screenY - textHeight - 10 && mouseY <= screenY + 10) {
                 this.draggedText = text;
-                this.textDragOffset.x = mouseX - text.x;
-                this.textDragOffset.y = mouseY - text.y;
-                break;
+                this.textDragOffset.x = mouseX - screenX;
+                this.textDragOffset.y = mouseY - screenY;
+                e.preventDefault(); // Verhindere weitere Events
+                this.canvas.style.cursor = 'grabbing'; // Zeige Greif-Cursor
+                this.draw(); // Sofort aktualisieren
+                return; // Sofort beenden
             }
         }
     }
     
     handleMouseMove(e) {
-        if (this.draggedTitleBlock) {
+        if (this.draggedText) {
             const rect = this.canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             
             // Berechne die neue Position in Weltkoordinaten
-            const newX = (mouseX - this.titleBlockDragOffset.x - this.offsetX) / this.zoom;
-            const newY = (mouseY - this.titleBlockDragOffset.y - this.offsetY) / this.zoom;
+            const newX = (mouseX - this.textDragOffset.x - this.offsetX) / this.zoom;
+            const newY = (mouseY - this.textDragOffset.y - this.offsetY) / this.zoom;
             
-            this.titleBlock.x = newX;
-            this.titleBlock.y = newY;
-            
-            this.draw();
-        } else if (this.draggedText) {
-            const rect = this.canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            
-            this.draggedText.x = mouseX - this.textDragOffset.x;
-            this.draggedText.y = mouseY - this.textDragOffset.y;
+            this.draggedText.x = newX;
+            this.draggedText.y = newY;
             
             this.draw();
         } else if (this.isPanning) {
@@ -512,19 +422,54 @@ class ProfilZeichner {
             const deltaX = mouseX - this.panStartX;
             const deltaY = mouseY - this.panStartY;
             
-            // Aktualisiere die Offset-Werte
+            // Update Offset
             this.offsetX = this.panStartOffsetX + deltaX;
             this.offsetY = this.panStartOffsetY + deltaY;
             
             this.draw();
+        } else {
+            // Hover-Tracking für Texte
+            const rect = this.canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            let foundHover = false;
+            for (let i = this.texts.length - 1; i >= 0; i--) {
+                const text = this.texts[i];
+                const textWidth = this.ctx.measureText(text.content).width;
+                const textHeight = parseInt(text.size);
+                
+                // Berechne die Bildschirmposition des Textes (mit Zoom und Offset)
+                const screenX = text.x * this.zoom + this.offsetX;
+                const screenY = text.y * this.zoom + this.offsetY;
+                
+                // Erweiterte Hitbox (+10 Pixel in alle Richtungen)
+                if (mouseX >= screenX - 10 && mouseX <= screenX + textWidth + 10 &&
+                    mouseY >= screenY - textHeight - 10 && mouseY <= screenY + 10) {
+                    if (this.hoveredText !== text) {
+                        this.hoveredText = text;
+                        this.draw();
+                    }
+                    foundHover = true;
+                    break;
+                }
+            }
+            
+            if (!foundHover && this.hoveredText) {
+                this.hoveredText = null;
+                this.draw();
+            }
         }
     }
     
     handleMouseUp(e) {
-        this.draggedTitleBlock = null;
-        this.titleBlockDragOffset = { x: 0, y: 0 };
-        this.draggedText = null;
-        this.textDragOffset = { x: 0, y: 0 };
+        if (this.draggedText) {
+            this.draggedText = null;
+            this.textDragOffset = { x: 0, y: 0 };
+            this.canvas.style.cursor = 'default'; // Cursor zurücksetzen
+            this.saveState(); // Speichere Position nach dem Verschieben
+            this.draw();
+        }
         
         if (this.isPanning) {
             this.isPanning = false;
@@ -624,8 +569,6 @@ class ProfilZeichner {
             ausschnitte: JSON.parse(JSON.stringify(this.ausschnitte)),
             nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
             texts: JSON.parse(JSON.stringify(this.texts)),
-            titleBlock: this.titleBlock ? { ...this.titleBlock } : null,
-            titleBlockData: this.titleBlockData ? { ...this.titleBlockData } : null,
             canvasBackground: this.canvasBackground,
             showDimensions: this.showDimensions,
             showFormatBorder: this.showFormatBorder,
@@ -661,8 +604,6 @@ class ProfilZeichner {
         this.ausschnitte = JSON.parse(JSON.stringify(state.ausschnitte));
         this.nahtlinie = state.nahtlinie ? { ...state.nahtlinie } : null;
         this.texts = JSON.parse(JSON.stringify(state.texts));
-        this.titleBlock = state.titleBlock ? { ...state.titleBlock } : null;
-        this.titleBlockData = state.titleBlockData ? { ...state.titleBlockData } : null;
         this.canvasBackground = state.canvasBackground || 'leer';
         this.showDimensions = state.showDimensions;
         this.showFormatBorder = state.showFormatBorder;
@@ -750,9 +691,6 @@ class ProfilZeichner {
             // Zeichne Ausschnitte
             this.drawAusschnitte();
             
-            // Zeichne Texte
-            this.drawTexts();
-            
             // Zeichne Profil-Skizze (falls geladen)
             this.drawSkizze();
             
@@ -761,14 +699,12 @@ class ProfilZeichner {
                 this.drawDimensions();
             }
             
-            // Zeichne Beschriftungsfeld (nur wenn es existiert)
-            if (this.titleBlock) {
-                this.drawDraggableTitleBlock();
-            }
-            
             // Zeichne Detail-Indikatoren
             this.drawDetailIndicators();
         }
+        
+        // Zeichne Texte am Ende (immer im Vordergrund)
+        this.drawTexts();
         
         this.ctx.restore();
         
@@ -1135,11 +1071,33 @@ class ProfilZeichner {
     
     drawTexts() {
         this.texts.forEach(text => {
+            const textWidth = this.ctx.measureText(text.content).width;
+            const textHeight = parseInt(text.size);
+            
+            // Prüfe ob Text gehovert wird
+            const isHovered = text === this.hoveredText;
+            
+            // Unsichtbarer Hintergrund für bessere Trefferchance (erweitert)
+            if (isHovered) {
+                this.ctx.fillStyle = 'rgba(255, 255, 0, 0.2)'; // Gelber Hintergrund beim Hover
+            } else {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0)'; // Unsichtbar, aber vorhanden für Hitbox
+            }
+            this.ctx.fillRect(text.x - 10, text.y - textHeight - 10, textWidth + 20, textHeight + 20);
+            
+            // Text zeichnen
             this.ctx.fillStyle = '#333';
             this.ctx.font = `${text.size}px Arial`;
             this.ctx.textAlign = 'left';
             this.ctx.textBaseline = 'bottom';
             this.ctx.fillText(text.content, text.x, text.y);
+            
+            // Rahmen beim Hover
+            if (isHovered) {
+                this.ctx.strokeStyle = '#ffaa00'; // Orange-gelber Rahmen
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(text.x - 10, text.y - textHeight - 10, textWidth + 20, textHeight + 20);
+            }
         });
     }
     
@@ -1346,46 +1304,57 @@ class ProfilZeichner {
         let rightDimensionX = rect.x + rect.width + (20 * this.mmToPx); // Startposition rechts vom Profil
         const rightDimensionSpacing = 7 * this.mmToPx; // 7mm Abstand zwischen Bemaßungen
         
-        // Nahtlinie bemaßen (rechts vom Profil)
-        if (this.nahtlinie && this.nahtlinie.distance > 0) {
-            const nahtlinieY = rect.y + rect.height - (this.nahtlinie.distance * this.mmToPx);
-            
-            this.drawVerticalDimensionFromZero(
-                nahtlinieY, // Start bei Nahtlinie
-                rightDimensionX,
-                rect.y + rect.height, // Ende unten beim Profil
-                rightDimensionX,
-                `${this.nahtlinie.distance}mm` // Abstand von unten anzeigen
-            );
-            
-            rightDimensionX += rightDimensionSpacing; // Nächste Position
-        }
-        
-        // Bohne-Höhe bemaßen (rechts vom Profil) - nur wenn Bohne vorhanden
+        // Höhenbemaßungen als Kettenbemaßung (nebeneinander)
         if (this.bohnen.length > 0) {
             const bohne = this.bohnen[0];
             const bohneHeight = bohne.height * this.mmToPx;
-            const topY = rect.y - bohneHeight;
             
+            // Teil 1: Bohne-Höhe (von Bohne-Oberkante bis Profil-Oberkante)
+            const bohneTopY = rect.y - bohneHeight;
             this.drawVerticalDimensionFromZero(
-                topY, // Start oben bei der Bohne
+                bohneTopY, // Start oben bei der Bohne
                 rightDimensionX,
                 rect.y, // Ende oben beim Profil
                 rightDimensionX,
                 `${bohne.height}mm` // Bohne-Höhe anzeigen
             );
             
-            rightDimensionX += rightDimensionSpacing; // Nächste Position
+            rightDimensionX += rightDimensionSpacing; // Nächste Bemaßung
+            
+            // Teil 2: Profil-Höhe (von Profil-Oberkante bis Profil-Unterkante)
+            this.drawVerticalDimensionFromZero(
+                rect.y, // Start oben beim Profil
+                rightDimensionX,
+                rect.y + rect.height, // Ende unten beim Profil
+                rightDimensionX,
+                `${(rect.height / this.mmToPx).toFixed(1)}mm` // Profil-Höhe anzeigen
+            );
+        } else {
+            // Nur Gesamthöhe (wenn keine Bohne)
+            this.drawVerticalDimensionFromZero(
+                rect.y, // Start oben beim Profil
+                rightDimensionX,
+                rect.y + rect.height, // Ende unten beim Profil
+                rightDimensionX,
+                `${(rect.height / this.mmToPx).toFixed(1)}mm` // Gesamthöhe anzeigen
+            );
         }
         
-        // Gesamthöhe bemaßen (rechts vom Profil)
-        this.drawVerticalDimensionFromZero(
-            rect.y, // Start oben beim Profil
-            rightDimensionX,
-            rect.y + rect.height, // Ende unten beim Profil
-            rightDimensionX,
-            `${(rect.height / this.mmToPx).toFixed(1)}mm` // Gesamthöhe anzeigen
-        );
+        rightDimensionX += rightDimensionSpacing; // Nächste Position für weitere Bemaßungen
+        
+        // Nahtlinie bemaßen (innerhalb des Profils, 30mm von links)
+        if (this.nahtlinie && this.nahtlinie.distance > 0) {
+            const nahtlinieY = rect.y + rect.height - (this.nahtlinie.distance * this.mmToPx);
+            const insideX = rect.x + 30 * this.mmToPx; // Innerhalb des Profils, 30mm von links
+            
+            this.drawVerticalDimensionFromZero(
+                nahtlinieY, // Start bei Nahtlinie
+                insideX, // Position 30mm von links innerhalb des Profils
+                rect.y + rect.height, // Ende unten beim Profil
+                insideX,
+                `${this.nahtlinie.distance}mm` // Abstand von unten anzeigen
+            );
+        }
         
         // Gesamtbreite bemaßen (ganz unten, ganz außen)
         const totalWidthY = corner4Y + currentYOffset + (elementsUnten.length * dimensionOffset) + (this.nahtlinie && this.nahtlinie.distance > 0 ? dimensionOffset : 0);
@@ -1405,78 +1374,6 @@ class ProfilZeichner {
         this.drawDetailDrawings(rect, startY);
     }
     
-    drawDraggableTitleBlock() {
-        // Beschriftungsfeld nach DIN ISO 7200 als verschiebbares Element
-        const blockWidth = 100 * this.mmToPx; // 100mm Breite
-        const blockHeight = 40 * this.mmToPx; // 40mm Höhe
-        
-        // Position aus dem titleBlock Objekt
-        const blockX = (this.titleBlock.x - this.offsetX) / this.zoom;
-        const blockY = (this.titleBlock.y - this.offsetY) / this.zoom;
-        
-        // Rahmen zeichnen
-        this.ctx.strokeStyle = '#000';
-        this.ctx.lineWidth = 1;
-        this.ctx.beginPath();
-        this.ctx.rect(blockX, blockY, blockWidth, blockHeight);
-        this.ctx.stroke();
-        
-        // Innere Linien für Felder
-        const cellHeight = blockHeight / 4; // 4 Zeilen
-        const cellWidth = blockWidth / 3; // 3 Spalten
-        
-        // Horizontale Linien
-        for (let i = 1; i < 4; i++) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(blockX, blockY + i * cellHeight);
-            this.ctx.lineTo(blockX + blockWidth, blockY + i * cellHeight);
-            this.ctx.stroke();
-        }
-        
-        // Vertikale Linien
-        for (let i = 1; i < 3; i++) {
-            this.ctx.beginPath();
-            this.ctx.moveTo(blockX + i * cellWidth, blockY);
-            this.ctx.lineTo(blockX + i * cellWidth, blockY + blockHeight);
-            this.ctx.stroke();
-        }
-        
-        // Text in den Feldern
-        this.ctx.fillStyle = '#000';
-        this.ctx.font = `${8}px Arial`;
-        this.ctx.textAlign = 'center';
-        this.ctx.textBaseline = 'middle';
-        
-        // Titel-Block Daten (Standardwerte)
-        const titleData = this.titleBlockData || {
-            title: 'Profil',
-            drawingNumber: '001',
-            date: new Date().toLocaleDateString('de-DE'),
-            scale: '1:1',
-            material: 'Stahl',
-            designer: 'CAD',
-            company: 'Firma'
-        };
-        
-        // Zeile 1: Titel
-        this.ctx.fillText(titleData.title, blockX + cellWidth/2, blockY + cellHeight/2);
-        
-        // Zeile 2: Zeichnungsnummer
-        this.ctx.fillText(titleData.drawingNumber, blockX + cellWidth/2, blockY + cellHeight + cellHeight/2);
-        
-        // Zeile 3: Datum
-        this.ctx.fillText(titleData.date, blockX + cellWidth/2, blockY + 2*cellHeight + cellHeight/2);
-        
-        // Zeile 4: Maßstab
-        this.ctx.fillText(titleData.scale, blockX + cellWidth/2, blockY + 3*cellHeight + cellHeight/2);
-        
-        // Spalte 2: Material
-        this.ctx.fillText(titleData.material, blockX + cellWidth + cellWidth/2, blockY + cellHeight/2);
-        
-        // Spalte 3: Zeichner/Firma
-        this.ctx.fillText(titleData.designer, blockX + 2*cellWidth + cellWidth/2, blockY + cellHeight/2);
-        this.ctx.fillText(titleData.company, blockX + 2*cellWidth + cellWidth/2, blockY + cellHeight + cellHeight/2);
-    }
     
     drawHorizontalDimensionFromZero(startX, y, endX, dimensionY, text) {
         const arrowSize = 6;
@@ -1486,39 +1383,40 @@ class ProfilZeichner {
         const rect = this.currentRect;
         const dimDistance = Math.abs(y - (rect ? (rect.y + rect.height) : y)); // Abstand von der unteren Kante
         
-        let elementTopY = y;
+        let elementTopY = rect ? (rect.y + rect.height) : y; // Standard: Obere Kante des Profils
         
         if (rect) {
-            // Gestrichelte Linie soll nur so weit gehen wie die Bemaßungslinie vom Profil entfernt ist
+            // Gestrichelte Linie geht bis zum Profil
             if (y > rect.y + rect.height) {
-                // Bemaßung ist unterhalb des Profils
-                elementTopY = rect.y + rect.height + dimDistance; // Geht um den gleichen Abstand weiter
+                // Bemaßung ist unterhalb des Profils - Linie geht nach oben zum Profil
+                elementTopY = rect.y + rect.height; // Bis zur unteren Profilkante
             } else {
-                // Bemaßung ist oberhalb des Profils
-                elementTopY = rect.y - dimDistance; // Geht um den gleichen Abstand weiter
+                // Bemaßung ist oberhalb des Profils - Linie geht nach unten zum Profil
+                elementTopY = rect.y; // Bis zur oberen Profilkante
             }
         }
         
-        // Gestrichelte Hilfslinie am Anfang (senkrecht nach oben/zum Profilrand) - BLAU
-        this.ctx.setLineDash([5, 5]);
-        this.ctx.strokeStyle = '#0066cc'; // Blau
-        this.ctx.lineWidth = lineWidth;
-        this.ctx.beginPath();
-        this.ctx.moveTo(startX, y);
-        this.ctx.lineTo(startX, elementTopY);
-        this.ctx.stroke();
-        this.ctx.setLineDash([]); // Zurück zu durchgezogen
-        this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
-        
-        // Gestrichelte Hilfslinie am Ende (senkrecht nach oben/zum Profilrand) - BLAU
-        this.ctx.setLineDash([5, 5]);
-        this.ctx.strokeStyle = '#0066cc'; // Blau
-        this.ctx.beginPath();
-        this.ctx.moveTo(endX, y);
-        this.ctx.lineTo(endX, elementTopY);
-        this.ctx.stroke();
-        this.ctx.setLineDash([]); // Zurück zu durchgezogen
-        this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
+        // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
+        if (rect) {
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.strokeStyle = '#0066cc'; // Blau
+            this.ctx.lineWidth = lineWidth;
+            
+            // Gestrichelte Linie am Anfang (zum Element)
+            this.ctx.beginPath();
+            this.ctx.moveTo(startX, y);
+            this.ctx.lineTo(startX, elementTopY);
+            this.ctx.stroke();
+            
+            // Gestrichelte Linie am Ende (zum Element)
+            this.ctx.beginPath();
+            this.ctx.moveTo(endX, y);
+            this.ctx.lineTo(endX, elementTopY);
+            this.ctx.stroke();
+            
+            this.ctx.setLineDash([]); // Zurück zu durchgezogen
+            this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
+        }
         
         // Hauptbemaßungslinie mit dünnerer Linie
         this.ctx.lineWidth = lineWidth;
@@ -1526,33 +1424,6 @@ class ProfilZeichner {
         this.ctx.moveTo(startX, y);
         this.ctx.lineTo(endX, y);
         this.ctx.stroke();
-        
-        // Zusätzliche ganz dünne senkrechte gestrichelte Linien am Anfang und Ende
-        const thinLineWidth = 0.3; // Ganz dünn
-        this.ctx.lineWidth = thinLineWidth;
-        this.ctx.setLineDash([3, 3]); // Feiner gestrichelt
-        
-        // Bestimme Richtung (nach oben oder nach unten)
-        let dirY = dimDistance; // Standard nach oben wenn unterhalb
-        if (rect && y < rect.y + rect.height) {
-            // Bemaßung ist oberhalb, Linien gehen nach unten
-            dirY = -dimDistance;
-        }
-        
-        // Dünne senkrechte gestrichelte Linie am Anfang
-        this.ctx.beginPath();
-        this.ctx.moveTo(startX, y);
-        this.ctx.lineTo(startX, y + dirY);
-        this.ctx.stroke();
-        
-        // Dünne senkrechte gestrichelte Linie am Ende
-        this.ctx.beginPath();
-        this.ctx.moveTo(endX, y);
-        this.ctx.lineTo(endX, y + dirY);
-        this.ctx.stroke();
-        
-        this.ctx.setLineDash([]); // Zurück zu durchgezogen
-        this.ctx.lineWidth = lineWidth; // Zurück zur normalen Linie
         
         // Pfeil am Anfang
         this.ctx.beginPath();
@@ -1583,28 +1454,39 @@ class ProfilZeichner {
         const rect = this.currentRect;
         const dimDistance = Math.abs(y - (rect ? (rect.y + rect.height) : y));
         
-        let elementTopY = y;
+        let elementTopY = rect ? (rect.y + rect.height) : y; // Standard: Obere Kante des Profils
         
         if (rect) {
             if (y > rect.y + rect.height) {
-                // Bemaßung ist unterhalb des Profils
-                elementTopY = rect.y + rect.height + dimDistance;
+                // Bemaßung ist unterhalb des Profils - Linie geht nach oben zum Profil
+                elementTopY = rect.y + rect.height; // Bis zur unteren Profilkante
             } else {
-                // Bemaßung ist oberhalb des Profils
-                elementTopY = rect.y - dimDistance;
+                // Bemaßung ist oberhalb des Profils - Linie geht nach unten zum Profil
+                elementTopY = rect.y; // Bis zur oberen Profilkante
             }
         }
         
-        // Gestrichelte Hilfslinie auf der linken Seite - BLAU
-        this.ctx.setLineDash([5, 5]);
-        this.ctx.strokeStyle = '#0066cc';
-        this.ctx.lineWidth = lineWidth;
-        this.ctx.beginPath();
-        this.ctx.moveTo(startX, y);
-        this.ctx.lineTo(startX, elementTopY);
-        this.ctx.stroke();
-        this.ctx.setLineDash([]);
-        this.ctx.strokeStyle = '#333';
+        // Gestrichelte Hilfslinien zum Element - BLAU
+        if (rect) {
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.strokeStyle = '#0066cc';
+            this.ctx.lineWidth = lineWidth;
+            
+            // Gestrichelte Linie am Anfang (links)
+            this.ctx.beginPath();
+            this.ctx.moveTo(startX, y);
+            this.ctx.lineTo(startX, elementTopY);
+            this.ctx.stroke();
+            
+            // Gestrichelte Linie am Ende (rechts)
+            this.ctx.beginPath();
+            this.ctx.moveTo(endX, y);
+            this.ctx.lineTo(endX, elementTopY);
+            this.ctx.stroke();
+            
+            this.ctx.setLineDash([]);
+            this.ctx.strokeStyle = '#333';
+        }
         
         // Hauptbemaßungslinie
         this.ctx.lineWidth = lineWidth;
@@ -1612,32 +1494,6 @@ class ProfilZeichner {
         this.ctx.moveTo(startX, y);
         this.ctx.lineTo(endX, y);
         this.ctx.stroke();
-        
-        // Zusätzliche ganz dünne senkrechte gestrichelte Linie am Anfang
-        const thinLineWidth = 0.3;
-        this.ctx.lineWidth = thinLineWidth;
-        this.ctx.setLineDash([3, 3]);
-        
-        // Bestimme Richtung
-        let dirY = dimDistance;
-        if (rect && y < rect.y + rect.height) {
-            dirY = -dimDistance;
-        }
-        
-        // Dünne senkrechte gestrichelte Linie am Anfang
-        this.ctx.beginPath();
-        this.ctx.moveTo(startX, y);
-        this.ctx.lineTo(startX, y + dirY);
-        this.ctx.stroke();
-        
-        // Dünne senkrechte gestrichelte Linie am Ende
-        this.ctx.beginPath();
-        this.ctx.moveTo(endX, y);
-        this.ctx.lineTo(endX, y + dirY);
-        this.ctx.stroke();
-        
-        this.ctx.setLineDash([]);
-        this.ctx.lineWidth = lineWidth;
         
         // Nur Pfeil am Anfang (links)
         this.ctx.beginPath();
@@ -1655,36 +1511,7 @@ class ProfilZeichner {
         const arrowSize = 6;
         const lineWidth = 0.5; // Dünnere Linie
         
-        // Gestrichelte Hilfslinie am Anfang (waagerecht nach links zum Element) - BLAU
-        const rect = this.currentRect;
-        const dimDistance = Math.abs(x - rect.x - rect.width); // Abstand von der rechten Kante
-        
-        let elementLeftX = x;
-        
-        if (rect) {
-            // Gestrichelte Linie soll nur so weit gehen wie die Bemaßungslinie vom Profil entfernt ist
-            elementLeftX = rect.x + rect.width + dimDistance;
-        }
-        
-        this.ctx.setLineDash([5, 5]);
-        this.ctx.strokeStyle = '#0066cc'; // Blau
-        this.ctx.lineWidth = lineWidth;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, startY);
-        this.ctx.lineTo(elementLeftX, startY);
-        this.ctx.stroke();
-        this.ctx.setLineDash([]); // Zurück zu durchgezogen
-        this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
-        
-        // Gestrichelte Hilfslinie am Ende (waagerecht nach links zum Element) - BLAU
-        this.ctx.setLineDash([5, 5]);
-        this.ctx.strokeStyle = '#0066cc'; // Blau
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, endY);
-        this.ctx.lineTo(elementLeftX, endY);
-        this.ctx.stroke();
-        this.ctx.setLineDash([]); // Zurück zu durchgezogen
-        this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
+        // Gestrichelte Hilfslinien wurden entfernt (TODO: richtig implementieren)
         
         // Hauptbemaßungslinie mit dünnerer Linie
         this.ctx.lineWidth = lineWidth;
@@ -1796,26 +1623,67 @@ class ProfilZeichner {
         // Kerbe Detailzeichnung
         if (this.kerben.length > 0) {
             const kerbe = this.kerben[0]; // Erste Kerbe als Beispiel
+            const type = kerbe.type || 'triangle'; // Standard: Dreieck
             const kerbeWidth = kerbe.width * this.mmToPx * scale;
             const kerbeDepth = kerbe.depth * this.mmToPx * scale;
+            const labelOffset = 40 * this.mmToPx; // Abstand für Bemaßungen rechts
             
-            // Kerbe zeichnen (Dreieck, Spitze in der Mitte) - zentriert auf startY
-            this.ctx.beginPath();
-            this.ctx.moveTo(currentX, startY + kerbeDepth/2); // Links, zentriert
-            this.ctx.lineTo(currentX + kerbeWidth/2, startY - kerbeDepth/2); // Spitze nach oben
-            this.ctx.lineTo(currentX + kerbeWidth, startY + kerbeDepth/2); // Rechts, zentriert
-            this.ctx.closePath();
-            this.ctx.fillStyle = 'white';
-            this.ctx.fill();
-            this.ctx.strokeStyle = '#555'; // Dunkelgrau
-            this.ctx.stroke();
+            if (type === 'marker') {
+                // Strichmarkierung zeichnen - Einfacher Strich
+                this.ctx.strokeStyle = '#555';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.moveTo(currentX, startY - kerbeDepth/2); // Oben
+                this.ctx.lineTo(currentX, startY + kerbeDepth/2); // Unten
+                this.ctx.stroke();
+                
+                // Bemaßung für Strich - direkt daneben mit Pfeilinien
+                this.drawDetailDimensionLine(
+                    currentX, // Start
+                    currentX, // Ende
+                    startY - kerbeDepth/2, // Y1 oben
+                    startY + kerbeDepth/2, // Y2 unten
+                    startY // Label position
+                );
+                // Text für Höhe
+                this.ctx.fillStyle = '#555';
+                this.ctx.fillText(`${kerbe.depth}mm`, currentX + 15, startY + kerbeDepth/2 + 15);
+            } else {
+                // Dreieck-Kerbe zeichnen - zentriert auf startY
+                this.ctx.beginPath();
+                this.ctx.moveTo(currentX, startY + kerbeDepth/2); // Links, zentriert
+                this.ctx.lineTo(currentX + kerbeWidth/2, startY - kerbeDepth/2); // Spitze nach oben
+                this.ctx.lineTo(currentX + kerbeWidth, startY + kerbeDepth/2); // Rechts, zentriert
+                this.ctx.closePath();
+                this.ctx.fillStyle = 'white';
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#555';
+                this.ctx.stroke();
+                
+                // Bemaßung für Breite - direkt daneben mit Pfeillinien
+                this.drawDetailDimensionLine(
+                    currentX, // Start links
+                    currentX + kerbeWidth, // Ende rechts
+                    startY + kerbeDepth/2 + 15, // Y Position unterhalb
+                    startY + kerbeDepth/2 + 15, // Y Position unterhalb
+                    startY + kerbeDepth/2 + 15 // Label position
+                );
+                this.ctx.fillStyle = '#555';
+                this.ctx.fillText(`${kerbe.width}mm`, currentX + kerbeWidth/2, startY + kerbeDepth/2 + 25);
+                
+                // Bemaßung für Tiefe - seitlich mit Pfeillinien
+                this.drawDetailDimensionLine(
+                    currentX + kerbeWidth + 15, // Start rechts
+                    currentX + kerbeWidth + 15, // Ende rechts
+                    startY - kerbeDepth/2, // Y1 oben
+                    startY + kerbeDepth/2, // Y2 unten
+                    startY // Label position
+                );
+                this.ctx.fillStyle = '#555';
+                this.ctx.fillText(`${kerbe.depth}mm`, currentX + kerbeWidth + 25, startY);
+            }
             
-            // Maße für Kerbe - daneben und darunter, auf einer Höhe
-            this.ctx.fillStyle = '#555'; // Dunkelgrau
-            this.ctx.fillText(`${kerbe.width}mm`, currentX + kerbeWidth + 20, startY); // Rechts daneben
-            this.ctx.fillText(`${kerbe.depth}mm`, currentX + kerbeWidth/2, startY + 20); // Darunter
-            
-            currentX += kerbeWidth + detailSpacing;
+            currentX += Math.max(kerbeWidth, 10) + detailSpacing; // Minimum Breite für Strich
         }
         
         // Loch Detailzeichnung
@@ -1832,11 +1700,79 @@ class ProfilZeichner {
             this.ctx.fill();
             this.ctx.stroke();
             
-            // Maße für Loch - daneben und darunter, auf einer Höhe
-            this.ctx.fillStyle = '#555'; // Dunkelgrau
-            this.ctx.fillText(`${loch.width}mm`, currentX + lochWidth + 20, startY); // Rechts daneben
-            this.ctx.fillText(`${loch.height}mm`, currentX + lochWidth/2, startY + 20); // Darunter
+            // Bemaßung für Loch - Breite mit Pfeillinien
+            this.drawDetailDimensionLine(
+                currentX, // Start links
+                currentX + lochWidth, // Ende rechts
+                startY + lochHeight/2 + 15, // Y Position unterhalb
+                startY + lochHeight/2 + 15, // Y Position unterhalb
+                startY + lochHeight/2 + 15 // Label position
+            );
+            this.ctx.fillStyle = '#555';
+            this.ctx.fillText(`${loch.width}mm`, currentX + lochWidth/2, startY + lochHeight/2 + 25);
+            
+            // Bemaßung für Loch - Höhe mit Pfeillinien
+            this.drawDetailDimensionLine(
+                currentX + lochWidth + 15, // Start rechts
+                currentX + lochWidth + 15, // Ende rechts
+                startY - lochHeight/2, // Y1 oben
+                startY + lochHeight/2, // Y2 unten
+                startY // Label position
+            );
+            this.ctx.fillStyle = '#555';
+            this.ctx.fillText(`${loch.height}mm`, currentX + lochWidth + 25, startY);
         }
+    }
+    
+    // Bemaßungslinien für Detailzeichnungen
+    drawDetailDimensionLine(startX, endX, y1, y2, labelY) {
+        const arrowSize = 4;
+        const lineWidth = 0.5;
+        
+        this.ctx.strokeStyle = '#555';
+        this.ctx.fillStyle = '#555';
+        this.ctx.lineWidth = lineWidth;
+        
+        // Hauptlinie
+        this.ctx.beginPath();
+        if (y1 === y2) {
+            // Horizontale Bemaßung
+            this.ctx.moveTo(startX, y1);
+            this.ctx.lineTo(endX, y1);
+        } else {
+            // Vertikale Bemaßung
+            this.ctx.moveTo(startX, y1);
+            this.ctx.lineTo(startX, y2);
+        }
+        this.ctx.stroke();
+        
+        // Pfeil am Start
+        this.ctx.beginPath();
+        if (y1 === y2) {
+            this.ctx.moveTo(startX, y1);
+            this.ctx.lineTo(startX + arrowSize, y1 - arrowSize/2);
+            this.ctx.lineTo(startX + arrowSize, y1 + arrowSize/2);
+        } else {
+            this.ctx.moveTo(startX, y1);
+            this.ctx.lineTo(startX - arrowSize/2, y1 - arrowSize);
+            this.ctx.lineTo(startX + arrowSize/2, y1 - arrowSize);
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        // Pfeil am Ende
+        this.ctx.beginPath();
+        if (y1 === y2) {
+            this.ctx.moveTo(endX, y1);
+            this.ctx.lineTo(endX - arrowSize, y1 - arrowSize/2);
+            this.ctx.lineTo(endX - arrowSize, y1 + arrowSize/2);
+        } else {
+            this.ctx.moveTo(startX, y2);
+            this.ctx.lineTo(startX - arrowSize/2, y2 + arrowSize);
+            this.ctx.lineTo(startX + arrowSize/2, y2 + arrowSize);
+        }
+        this.ctx.closePath();
+        this.ctx.fill();
     }
     
     drawFormatBorder() {
@@ -2119,74 +2055,79 @@ class ProfilZeichner {
             return;
         }
         
-        // Bestimme das Format (A4 oder A3)
-        let format = 'A4'; // Standard
-        if (this.selectedFormat && this.showFormatBorder) {
-            format = this.selectedFormat;
-        }
-        
-        // Format-Dimensionen in mm
-        const formatDimensions = {
-            'A4': { width: 297, height: 210 }, // Querformat
-            'A3': { width: 297, height: 420 }
-        };
-        
-        const formatData = formatDimensions[format];
-        if (!formatData) {
-            alert('Unbekanntes Format!');
-            return;
-        }
-        
         // Speichere aktuelle Einstellungen
         const originalZoom = this.zoom;
         const originalOffsetX = this.offsetX;
         const originalOffsetY = this.offsetY;
-        const originalShowFormatBorder = this.showFormatBorder;
         
-        // Setze Format-Ansicht für PDF
-        this.selectedFormat = format;
-        this.showFormatBorder = true;
+        // Setze Zoom für bessere Qualität
+        this.zoom = 1.5;
+        this.offsetX = this.canvasWidth / 2;
+        this.offsetY = this.canvasHeight / 2;
         
-        // Skaliere für das gewählte Format
-        this.scaleForFormat(format);
+        // Zeichne neu mit besserer Qualität
+        this.draw();
         
-        // Erstelle temporäres Canvas für PDF
+        // A4 Format-Dimensionen in mm (Querformat)
+        const a4Width = 297; // mm
+        const a4Height = 210; // mm
+        const scaleFactor = 2; // Bessere Qualität durch höhere Auflösung
+        
+        // Erstelle temporäres Canvas mit höherer Auflösung
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
         
-        // Setze Canvas-Größe
-        tempCanvas.width = this.canvasWidth;
-        tempCanvas.height = this.canvasHeight;
+        // Canvas-Größe in hoher Auflösung (für bessere Qualität)
+        tempCanvas.width = this.canvasWidth * scaleFactor;
+        tempCanvas.height = this.canvasHeight * scaleFactor;
         
-        // Zeichne den aktuellen Canvas-Inhalt
+        // Scale context für bessere Qualität
+        tempCtx.scale(scaleFactor, scaleFactor);
+        
+        // Zeichne den aktuellen Canvas-Inhalt auf das temporäre Canvas
         tempCtx.drawImage(this.canvas, 0, 0);
         
-        // Erstelle PDF mit jsPDF
+        // Erstelle PDF mit jsPDF - A4 Querformat
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF({
-            orientation: format === 'A3' ? 'portrait' : 'landscape',
+            orientation: 'landscape',
             unit: 'mm',
-            format: format.toLowerCase()
+            format: 'a4'
         });
         
-        // Konvertiere Canvas zu Bild
-        const imgData = tempCanvas.toDataURL('image/png');
+        // Konvertiere Canvas zu Bild mit hoher Qualität
+        const imgData = tempCanvas.toDataURL('image/png', 1.0);
+        
+        // Berechne die Skalierung für A4 - Canvas sollte auf A4 passen
+        const canvasWidthMm = this.canvasWidth / this.mmToPx;
+        const canvasHeightMm = this.canvasHeight / this.mmToPx;
+        
+        // Scale to fit A4
+        const scaleX = a4Width / canvasWidthMm;
+        const scaleY = a4Height / canvasHeightMm;
+        const scale = Math.min(scaleX, scaleY) * 0.95; // 95% um Rand zu lassen
+        
+        const scaledWidth = canvasWidthMm * scale;
+        const scaledHeight = canvasHeightMm * scale;
+        
+        // Zentriere auf A4
+        const xOffset = (a4Width - scaledWidth) / 2;
+        const yOffset = (a4Height - scaledHeight) / 2;
         
         // Füge Bild zum PDF hinzu
-        pdf.addImage(imgData, 'PNG', 0, 0, formatData.width, formatData.height);
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, scaledWidth, scaledHeight);
         
         // Speichere PDF
-        const fileName = `ProfilZeichner_${format}_${new Date().toISOString().slice(0,10)}.pdf`;
+        const fileName = `ProfilZeichner_A4_${new Date().toISOString().slice(0,10)}.pdf`;
         pdf.save(fileName);
         
         // Stelle ursprüngliche Einstellungen wieder her
         this.zoom = originalZoom;
         this.offsetX = originalOffsetX;
         this.offsetY = originalOffsetY;
-        this.showFormatBorder = originalShowFormatBorder;
         this.draw();
         
-        alert(`PDF wurde als ${format}-Format exportiert!`);
+        alert('PDF wurde als A4-Format exportiert!');
     }
     
     toggleBackground() {
@@ -2215,77 +2156,6 @@ class ProfilZeichner {
     }
     
     // Beschriftungsfeld Modal
-    openTitleBlockModal() {
-        // Lade aktuelle Werte oder setze Standardwerte
-        const currentData = this.titleBlockData || {
-            title: 'Profil',
-            drawingNumber: '001',
-            date: new Date().toLocaleDateString('de-DE'),
-            scale: '1:1',
-            material: 'Stahl',
-            designer: 'CAD',
-            company: 'Firma'
-        };
-        
-        // Fülle die Eingabefelder
-        this.titleBlockTitleInput.value = currentData.title;
-        this.titleBlockDrawingNumberInput.value = currentData.drawingNumber;
-        this.titleBlockDateInput.value = currentData.date;
-        this.titleBlockScaleInput.value = currentData.scale;
-        this.titleBlockMaterialInput.value = currentData.material;
-        this.titleBlockDesignerInput.value = currentData.designer;
-        this.titleBlockCompanyInput.value = currentData.company;
-        
-        this.titleBlockModal.style.display = 'block';
-    }
-    
-    closeTitleBlockModal() {
-        this.titleBlockModal.style.display = 'none';
-    }
-    
-    confirmTitleBlock() {
-        this.saveState(); // Speichere Zustand vor dem Hinzufügen
-        
-        this.titleBlockData = {
-            title: this.titleBlockTitleInput.value || 'Profil',
-            drawingNumber: this.titleBlockDrawingNumberInput.value || '001',
-            date: this.titleBlockDateInput.value || new Date().toLocaleDateString('de-DE'),
-            scale: this.titleBlockScaleInput.value || '1:1',
-            material: this.titleBlockMaterialInput.value || 'Stahl',
-            designer: this.titleBlockDesignerInput.value || 'CAD',
-            company: this.titleBlockCompanyInput.value || 'Firma'
-        };
-        
-        // Erstelle oder aktualisiere das verschiebbare Beschriftungsfeld
-        if (!this.titleBlock) {
-            // Erste Position: unten rechts
-            const blockWidth = 100 * this.mmToPx;
-            const blockHeight = 40 * this.mmToPx;
-            const initialX = this.canvasWidth - blockWidth - 50;
-            const initialY = this.canvasHeight - blockHeight - 50;
-            
-            this.titleBlock = {
-                x: initialX,
-                y: initialY
-            };
-        }
-        
-        this.closeTitleBlockModal();
-        this.draw();
-    }
-    
-    // Format-Funktionen
-    openFormatModal() {
-        if (this.formatModal) {
-            this.formatModal.style.display = 'block';
-        }
-    }
-    
-    closeFormatModal() {
-        if (this.formatModal) {
-            this.formatModal.style.display = 'none';
-        }
-    }
     
     applyFormat() {
         const selectedFormat = document.querySelector('input[name="format"]:checked');
@@ -2293,7 +2163,6 @@ class ProfilZeichner {
             this.selectedFormat = selectedFormat.value;
             this.showFormatBorder = true;
             this.draw();
-            this.closeFormatModal();
         }
     }
     
@@ -2844,6 +2713,9 @@ class ProfilZeichner {
     
     closeTextModal() {
         this.textModal.style.display = 'none';
+        this.selectedTextForEdit = null; // Zurücksetzen beim Schließen
+        this.textContentInput.value = '';
+        this.textSizeInput.value = '12';
     }
     
     confirmText() {
@@ -2860,15 +2732,23 @@ class ProfilZeichner {
             return;
         }
         
-        this.saveState(); // Speichere Zustand vor dem Hinzufügen
+        this.saveState(); // Speichere Zustand vor dem Ändern/Hinzufügen
         
-        // Füge Text zur Canvas hinzu (zentriert)
-        this.texts.push({
-            content: content,
-            size: size,
-            x: this.canvasWidth / 2,
-            y: this.canvasHeight / 2
-        });
+        // Prüfe ob Text bearbeitet wird oder neu erstellt wird
+        if (this.selectedTextForEdit) {
+            // Text bearbeiten
+            this.selectedTextForEdit.content = content;
+            this.selectedTextForEdit.size = size;
+            this.selectedTextForEdit = null;
+        } else {
+            // Neuen Text erstellen (zentriert)
+            this.texts.push({
+                content: content,
+                size: size,
+                x: this.canvasWidth / 2,
+                y: this.canvasHeight / 2
+            });
+        }
         
         this.closeTextModal();
         this.draw();
@@ -2917,21 +2797,7 @@ class ProfilZeichner {
         this.databaseModalMinimize = document.getElementById('database-modal-minimize');
         this.databaseModalMaximize = document.getElementById('database-modal-maximize');
         
-        // KI Foto-Erkennung Modal
-        this.aiPhotoModal = document.getElementById('ai-photo-modal');
-        this.aiPhotoModalClose = document.getElementById('ai-photo-modal-close');
-        this.aiPhotoCancelButton = document.getElementById('ai-photo-cancel');
-        this.aiPhotoAnalyzeButton = document.getElementById('ai-photo-analyze');
-        this.aiPhotoApplyButton = document.getElementById('ai-photo-apply');
-        this.photoUploadArea = document.getElementById('photo-upload-area');
-        this.photoFileInput = document.getElementById('photo-file-input');
-        this.photoPreview = document.getElementById('photo-preview');
-        this.photoPreviewImg = document.getElementById('photo-preview-img');
-        this.removePhotoBtn = document.getElementById('remove-photo-btn');
-        this.totalLengthInput = document.getElementById('total-length-input');
-        this.aiAnalysisStatus = document.getElementById('ai-analysis-status');
-        this.aiResults = document.getElementById('ai-results');
-        this.aiDetectedElements = document.getElementById('ai-detected-elements');
+        // KI Foto-Erkennung wurde entfernt
         this.databaseCancelButton = document.getElementById('database-cancel');
         this.databaseSaveButton = document.getElementById('database-save');
         this.databaseSearchInput = document.getElementById('database-search');
@@ -2972,9 +2838,6 @@ class ProfilZeichner {
         
         // Initialisiere Spaltenbreite-Anpassung
         this.initColumnResize();
-        
-        // Initialisiere KI Foto-Erkennung
-        this.initAiPhotoRecognition();
     }
     
     openDatabaseModal() {
@@ -3774,7 +3637,8 @@ class ProfilZeichner {
         document.removeEventListener('mouseup', this.handleModalDragEnd);
     }
     
-    // KI Foto-Erkennung Funktionen
+    // KI Foto-Erkennung Funktionen wurden entfernt
+    /*
     initAiPhotoRecognition() {
         // Event Listeners für KI Modal
         this.aiPhotoModalClose.addEventListener('click', () => this.closeAiPhotoModal());
@@ -4006,6 +3870,7 @@ class ProfilZeichner {
         
         alert(`KI-Analyse erfolgreich! ${this.aiDetectedData.elements.length} Elemente wurden erkannt und hinzugefügt.`);
     }
+    */
 }
 
 // Globale Funktionen für HTML onclick
@@ -4023,3 +3888,4 @@ profilZeichner.initDatabase();
 
 // Globale Variable für onclick-Handler
 window.profilZeichner = profilZeichner;
+
