@@ -62,8 +62,7 @@
                 <button id="ausschnitt-button" class="icon-button profile-button" title="Ausschnitt erstellen - Ein rechteckiger Ausschnitt">▢</button>
                 <button id="crimping-button" class="icon-button profile-button" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
                 <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
-                <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">📝</button>
-                <button id="background-button" class="icon-button profile-button" title="Hintergrund wechseln - Leer, Kariert, Schiefer, Carbon, Tafel">🎨</button>
+                <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">T</button>
                 <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">🗃️</button>
             </div>
             
@@ -87,13 +86,14 @@
             <div class="modal-body">
                 <div class="input-group">
                     <label for="bohne-height">Höhe der Bohne:</label>
-                    <input type="number" id="bohne-height" placeholder="Höhe eingeben" min="1" value="10">
+                    <input type="number" id="bohne-height" placeholder="Höhe eingeben" min="1" value="4">
                     <span class="unit">mm</span>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="bohne-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="bohne-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="bohne-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="bohne-remove" class="btn-remove" title="Entfernen">🗑️</button>
+                <button id="bohne-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -118,8 +118,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="cutout-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="cutout-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="cutout-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="cutout-remove" class="btn-remove" title="Entfernen">🗑️</button>
+                <button id="cutout-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -134,10 +135,10 @@
             <div class="modal-body">
                 <div class="kerbe-settings">
                     <div class="input-group">
-                        <label for="kerbe-type">Kerben-Typ:</label>
+                        <label for="kerbe-type">Standard-Typ (für neue Kerben):</label>
                         <select id="kerbe-type">
-                            <option value="triangle">Dreieck (Standard)</option>
-                            <option value="marker">Strich-Markierung</option>
+                            <option value="triangle">Dreieck</option>
+                            <option value="marker">Strichmarkierung</option>
                         </select>
                     </div>
                     <div class="input-group">
@@ -156,6 +157,7 @@
                     <table id="kerbe-table" class="kerbe-table">
                         <thead>
                             <tr>
+                                <th>Typ</th>
                                 <th>Abstand (mm)</th>
                                 <th>Position</th>
                                 <th>Aktion</th>
@@ -169,8 +171,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="kerbe-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="kerbe-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="kerbe-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="kerbe-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -197,8 +199,9 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="nahtlinie-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="nahtlinie-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="nahtlinie-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="nahtlinie-remove" class="btn-remove" title="Entfernen">🗑️</button>
+                <button id="nahtlinie-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -215,18 +218,24 @@
                 <div class="loch-settings">
                     <div class="input-group">
                         <label for="loch-width">Breite:</label>
-                        <input type="number" id="loch-width" placeholder="Breite eingeben" min="1" step="0.1" value="5">
+                        <input type="number" id="loch-width" placeholder="Breite eingeben" min="1" step="0.1" value="8">
                         <span class="unit">mm</span>
                     </div>
                     <div class="input-group">
                         <label for="loch-height">Höhe:</label>
-                        <input type="number" id="loch-height" placeholder="Höhe eingeben" min="1" step="0.1" value="5">
+                        <input type="number" id="loch-height" placeholder="Höhe eingeben" min="1" step="0.1" value="4">
                         <span class="unit">mm</span>
                     </div>
                     <div class="input-group">
-                        <label for="loch-position">Position von unten:</label>
-                        <input type="number" id="loch-position" placeholder="Abstand von unten" min="0" step="0.1" value="10">
+                        <label for="loch-position">Position von oben:</label>
+                        <input type="number" id="loch-position" placeholder="Abstand von oben" min="0" step="0.1" value="2">
                         <span class="unit">mm</span>
+                    </div>
+                    <div class="input-group" id="loch-kerben-checkbox-group" style="display: none;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="loch-use-kerben-positions" style="width: auto;">
+                            <span>Positionen von Kerben übernehmen</span>
+                        </label>
                     </div>
                 </div>
                 
@@ -245,8 +254,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="loch-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="loch-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="loch-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="loch-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -270,8 +279,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="text-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="text-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="text-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="text-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -354,8 +363,60 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="ausschnitt-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="ausschnitt-confirm" class="btn-confirm">Bestätigen</button>
+                <button id="ausschnitt-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="ausschnitt-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Crimping Modal -->
+    <div id="crimping-modal" class="modal">
+        <div class="modal-content" style="width: 700px;">
+            <div class="modal-header">
+                <h3>Crimping hinzufügen</h3>
+                <button id="crimping-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                    Fügen Sie Crimping-Bereiche hinzu, die in der Bohne platziert werden. Position = Abstand vom linken Rand der Bohne, 
+                    Länge = Breite des Crimping-Bereichs. Die Höhe entspricht automatisch der Höhe der Bohne.
+                </p>
+                <div id="crimping-no-bohne-warning" style="display: none; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-bottom: 15px; color: #856404;">
+                    ⚠️ Es ist keine Bohne vorhanden. Bitte erstellen Sie zuerst eine Bohne, bevor Sie Crimping hinzufügen können.
+                </div>
+                <div class="table-container">
+                    <table id="crimping-table">
+                        <thead>
+                            <tr>
+                                <th>Position (mm)</th>
+                                <th>Länge (mm)</th>
+                                <th>Aktion</th>
+                            </tr>
+                        </thead>
+                        <tbody id="crimping-tbody">
+                            <tr>
+                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
+                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
+                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+                            </tr>
+                            <tr>
+                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
+                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
+                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <button id="add-crimping-row" class="btn-add-row-small">+</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="crimping-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="crimping-confirm" class="btn-confirm" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
@@ -414,12 +475,16 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="database-save" class="btn-confirm">Speichern</button>
-                <button id="database-cancel" class="btn-cancel">Schließen</button>
+                <button id="database-save" class="btn-confirm" title="Speichern">💾</button>
+                <button id="database-cancel" class="btn-cancel" title="Schließen">✕</button>
             </div>
         </div>
     </div>
 
+    <!-- Versionshinweis (wird automatisch aktualisiert) -->
+    <div id="version-info" style="position: fixed; bottom: 10px; left: 10px; font-size: 12px; color: #666; z-index: 1000; background: rgba(255, 255, 255, 0.8); padding: 5px 10px; border-radius: 4px;">
+        Version 1.1.1
+    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
