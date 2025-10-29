@@ -493,6 +493,11 @@ button:active {
 
 .kerbe-table-container {
     margin: 20px 0;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
 }
 
 .kerbe-table {
@@ -577,6 +582,11 @@ button:active {
 /* Loch Table Styles */
 .loch-table-container {
     margin: 20px 0;
+    max-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
 }
 
 .loch-table {
@@ -682,6 +692,8 @@ button:active {
     position: relative;
     top: 50%;
     transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
 }
 
 /* Kerbe Modal speziell größer */
@@ -719,6 +731,7 @@ button:active {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-shrink: 0; /* Header bleibt immer sichtbar */
     cursor: move;
     user-select: none;
     border-bottom: 1px solid #e0e0e0;
@@ -860,6 +873,7 @@ button:active {
     left: 0 !important;
     right: 0 !important;
     bottom: 0 !important;
+    transform: none !important; /* Wichtig: transform zurücksetzen */
     z-index: 2 !important;
 }
 
@@ -879,6 +893,16 @@ button:active {
     flex-shrink: 0 !important;
     padding: 15px 20px !important;
     border-top: 1px solid #e0e0e0 !important;
+}
+
+/* Tabellen-Container in Modals scrollbar machen */
+.modal-body .table-container {
+    max-height: 350px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    margin: 15px 0;
 }
 
 .modal.maximized .table-container {
@@ -1044,6 +1068,11 @@ button:active {
 
 .modal-body {
     padding: 30px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0; /* Wichtig für Flexbox-Scrolling */
+    max-height: calc(90vh - 140px); /* Header + Footer ca. 140px */
 }
 
 .input-group {
@@ -1082,16 +1111,24 @@ button:active {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
+    flex-shrink: 0; /* Footer bleibt immer sichtbar */
+    border-top: 1px solid #e0e0e0;
 }
 
-.btn-cancel, .btn-confirm {
-    padding: 12px 24px;
+.btn-cancel, .btn-confirm, .btn-remove {
+    padding: 8px 12px;
     border: none;
-    border-radius: 8px;
-    font-size: 14px;
+    border-radius: 6px;
+    font-size: 18px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
+    min-width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 5px;
 }
 
 .btn-cancel {
@@ -1101,6 +1138,7 @@ button:active {
 
 .btn-cancel:hover {
     background: #5a6268;
+    transform: scale(1.05);
 }
 
 .btn-confirm {
@@ -1110,6 +1148,17 @@ button:active {
 
 .btn-confirm:hover {
     background: #218838;
+    transform: scale(1.05);
+}
+
+.btn-remove {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-remove:hover {
+    background: #c82333;
+    transform: scale(1.05);
 }
 
 .btn-add-row-small {
@@ -1151,13 +1200,9 @@ button:active {
         padding: 15px;
         max-height: calc(96vh - 120px);
         overflow-y: auto;
+        flex: 1;
+        min-height: 0;
     }
-    
-.modal-body {
-    padding: 20px;
-    overflow-y: auto;
-    max-height: calc(90vh - 140px);
-}
     
     .modal-footer {
         padding: 15px 20px;
