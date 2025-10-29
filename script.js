@@ -1,6 +1,8 @@
 // ProfilZeichner Klasse
 class ProfilZeichner {
     constructor() {
+        // Versionsnummer - wird automatisch verwaltet
+        this.version = '1.1.1';
         this.init();
     }
     
@@ -27,7 +29,6 @@ class ProfilZeichner {
         this.crimpingButton = document.getElementById('crimping-button');
         this.bemaßungButton = document.getElementById('bemaßung-button');
         this.textButton = document.getElementById('text-button');
-        this.backgroundButton = document.getElementById('background-button');
         this.databaseButton = document.getElementById('database-button');
         
         // Untere Button-Leiste
@@ -41,12 +42,14 @@ class ProfilZeichner {
         this.bohneHeightInput = document.getElementById('bohne-height');
         this.bohneCancelButton = document.getElementById('bohne-cancel');
         this.bohneConfirmButton = document.getElementById('bohne-confirm');
+        this.bohneRemoveButton = document.getElementById('bohne-remove');
         
         this.cutoutModal = document.getElementById('cutout-modal');
         this.cutoutWidthInput = document.getElementById('cutout-width');
         this.cutoutHeightInput = document.getElementById('cutout-height');
         this.cutoutCancelButton = document.getElementById('cutout-cancel');
         this.cutoutConfirmButton = document.getElementById('cutout-confirm');
+        this.cutoutRemoveButton = document.getElementById('cutout-remove');
         
         this.kerbeModal = document.getElementById('kerbe-modal');
         this.kerbeTypeSelect = document.getElementById('kerbe-type');
@@ -64,6 +67,7 @@ class ProfilZeichner {
         this.nahtlinieTypeSelect = document.getElementById('nahtlinie-type');
         this.nahtlinieCancelButton = document.getElementById('nahtlinie-cancel');
         this.nahtlinieConfirmButton = document.getElementById('nahtlinie-confirm');
+        this.nahtlinieRemoveButton = document.getElementById('nahtlinie-remove');
         
         this.lochModal = document.getElementById('loch-modal');
         this.lochWidthInput = document.getElementById('loch-width');
@@ -74,6 +78,8 @@ class ProfilZeichner {
         this.lochTable = document.getElementById('loch-table');
         this.lochTbody = document.getElementById('loch-tbody');
         this.addLochBtn = document.getElementById('add-loch-btn');
+        this.lochUseKerbenPositionsCheckbox = document.getElementById('loch-use-kerben-positions');
+        this.lochKerbenCheckboxGroup = document.getElementById('loch-kerben-checkbox-group');
         
         // Ausschnitt Modal
         this.ausschnittModal = document.getElementById('ausschnitt-modal');
@@ -83,6 +89,16 @@ class ProfilZeichner {
         this.ausschnittTable = document.getElementById('ausschnitt-table');
         this.ausschnittTbody = document.getElementById('ausschnitt-tbody');
         this.addAusschnittRowBtn = document.getElementById('add-ausschnitt-row');
+        
+        // Crimping Modal
+        this.crimpingModal = document.getElementById('crimping-modal');
+        this.crimpingModalClose = document.getElementById('crimping-modal-close');
+        this.crimpingCancelButton = document.getElementById('crimping-cancel');
+        this.crimpingConfirmButton = document.getElementById('crimping-confirm');
+        this.crimpingTable = document.getElementById('crimping-table');
+        this.crimpingTbody = document.getElementById('crimping-tbody');
+        this.addCrimpingRowBtn = document.getElementById('add-crimping-row');
+        this.crimpingNoBohneWarning = document.getElementById('crimping-no-bohne-warning');
         
         this.textModal = document.getElementById('text-modal');
         this.textContentInput = document.getElementById('text-content');
@@ -113,6 +129,7 @@ class ProfilZeichner {
         this.kerben = [];
         this.loecher = [];
         this.ausschnitte = [];
+        this.crimping = [];
         this.nahtlinie = null;
         this.texts = [];
         this.showDimensions = false;
@@ -120,6 +137,10 @@ class ProfilZeichner {
         this.showFormatBorder = false;
         this.loadedProfileSkizze = null;
         this.loadedSkizzeImage = null;
+        this.skizzeX = null; // Position der Skizze (X)
+        this.skizzeY = null; // Position der Skizze (Y)
+        this.skizzeWidth = 40 * this.mmToPx; // Standard-Breite der Skizze
+        this.skizzeHeight = 30 * this.mmToPx; // Standard-Höhe der Skizze
         
         // Drag-and-Drop für Modals
         this.draggedModal = null;
@@ -130,6 +151,21 @@ class ProfilZeichner {
         this.textDragOffset = { x: 0, y: 0 };
         this.hoveredText = null; // Aktueller Text über dem die Maus schwebt
         this.selectedTextForEdit = null; // Text der bearbeitet wird
+        
+        // Kerben-Drag-and-Drop
+        this.draggedKerbe = null;
+        this.kerbeDragOffset = { x: 0, y: 0 };
+        this.hoveredKerbe = null; // Aktueller Kerbe über dem die Maus schwebt
+        
+        // Skizze-Drag-and-Resize
+        this.draggedSkizze = false;
+        this.skizzeDragOffset = { x: 0, y: 0 };
+        this.resizingSkizze = false;
+        this.resizeHandle = null; // 'nw', 'ne', 'sw', 'se' für die Ecken
+        this.resizeStartPos = { x: 0, y: 0 };
+        this.resizeStartSize = { width: 0, height: 0 };
+        this.resizeStartPosSkizze = { x: 0, y: 0 };
+        this.hoveredSkizze = false;
         
         // Pan-Modus
         this.panMode = false;
@@ -144,16 +180,22 @@ class ProfilZeichner {
         this.historyIndex = -1;
         this.maxHistorySize = 50; // Maximale Anzahl von Undo-Schritten
         
-        // Hintergrund-Optionen
-        this.canvasBackground = 'leer'; // leer, kariert, schiefer, carbon, tafel
-        this.carbonPatternCache = null; // Cache für Carbon-Muster
         
         this.setupCanvas();
         this.setupEventListeners();
         this.resizeCanvas();
+        this.updateVersionDisplay();
         
         // Speichere den initialen Zustand
         this.saveState();
+    }
+    
+    // Versionsnummer in der Anzeige aktualisieren
+    updateVersionDisplay() {
+        const versionElement = document.getElementById('version-info');
+        if (versionElement) {
+            versionElement.textContent = `Version ${this.version}`;
+        }
     }
     
     setupCanvas() {
@@ -203,8 +245,8 @@ class ProfilZeichner {
         this.nahtlinieButton.addEventListener('click', () => this.openNahtlinieModal());
         this.lochButton.addEventListener('click', () => this.openLochModal());
         this.ausschnittButton.addEventListener('click', () => this.openAusschnittModal());
+        this.crimpingButton.addEventListener('click', () => this.openCrimpingModal());
         this.textButton.addEventListener('click', () => this.openTextModal());
-        this.backgroundButton.addEventListener('click', () => this.toggleBackground());
         this.databaseButton.addEventListener('click', () => this.openDatabaseModal());
         
         // Untere Button-Leiste Event Listeners
@@ -238,10 +280,16 @@ class ProfilZeichner {
         // Modal Event Listeners
         this.bohneCancelButton.addEventListener('click', () => this.closeBohneModal());
         this.bohneConfirmButton.addEventListener('click', () => this.confirmBohne());
+        if (this.bohneRemoveButton) {
+            this.bohneRemoveButton.addEventListener('click', () => this.removeBohne());
+        }
         this.bohneModalClose.addEventListener('click', () => this.closeBohneModal());
         
         this.cutoutCancelButton.addEventListener('click', () => this.closeCutoutModal());
         this.cutoutConfirmButton.addEventListener('click', () => this.confirmCutout());
+        if (this.cutoutRemoveButton) {
+            this.cutoutRemoveButton.addEventListener('click', () => this.removeCutout());
+        }
         this.cutoutModalClose.addEventListener('click', () => this.closeCutoutModal());
         
         this.kerbeCancelButton.addEventListener('click', () => this.closeKerbeModal());
@@ -260,6 +308,9 @@ class ProfilZeichner {
         
         this.nahtlinieCancelButton.addEventListener('click', () => this.closeNahtlinieModal());
         this.nahtlinieConfirmButton.addEventListener('click', () => this.confirmNahtlinie());
+        if (this.nahtlinieRemoveButton) {
+            this.nahtlinieRemoveButton.addEventListener('click', () => this.removeNahtlinie());
+        }
         this.nahtlinieModalClose.addEventListener('click', () => this.closeNahtlinieModal());
         
         this.lochCancelButton.addEventListener('click', () => this.closeLochModal());
@@ -271,12 +322,60 @@ class ProfilZeichner {
             this.addLochBtn.addEventListener('click', () => this.addLochRow());
         }
         
+        // Checkbox-Event Listener für Kerben-Positionen
+        if (this.lochUseKerbenPositionsCheckbox) {
+            this.lochUseKerbenPositionsCheckbox.addEventListener('change', () => {
+                // Wenn aktiviert, aktualisiere automatisch die Tabelle
+                if (this.lochUseKerbenPositionsCheckbox.checked && this.kerben && this.kerben.length > 0) {
+                    // Leere die Tabelle und füge alle Kerben-Positionen hinzu
+                    const width = parseFloat(this.lochWidthInput.value) || 8;
+                    const height = parseFloat(this.lochHeightInput.value) || 4;
+                    const position = parseFloat(this.lochPositionInput.value) || 2;
+                    
+                    // Erstelle temporäre Liste mit allen Kerben-Positionen
+                    const kerbenDistances = this.kerben.map(kerbe => kerbe.distance);
+                    
+                    // Entferne alle Löcher die nicht zu Kerben gehören (optional - oder behalte sie)
+                    // Hier behalten wir alle und fügen nur neue hinzu
+                    const existingDistances = this.loecher.map(loch => loch.distance);
+                    
+                    // Füge fehlende Kerben-Positionen hinzu
+                    kerbenDistances.forEach(dist => {
+                        if (!existingDistances.includes(dist)) {
+                            this.loecher.push({
+                                distance: dist,
+                                width: width,
+                                height: height,
+                                position: position
+                            });
+                        }
+                    });
+                    
+                    // Sortiere nach Position
+                    this.loecher.sort((a, b) => a.distance - b.distance);
+                    
+                    this.refreshLochTable();
+                }
+            });
+        }
+        
         // Ausschnitt Modal Event Listeners
         this.ausschnittCancelButton.addEventListener('click', () => this.closeAusschnittModal());
         this.ausschnittConfirmButton.addEventListener('click', () => this.confirmAusschnitt());
         this.ausschnittModalClose.addEventListener('click', () => this.closeAusschnittModal());
+        if (this.addAusschnittRowBtn) {
+            this.addAusschnittRowBtn.addEventListener('click', () => this.addAusschnittRow());
+        }
         
-        // Ausschnitt-Tabelle Event Listeners
+        // Crimping Modal Event Listeners
+        this.crimpingCancelButton.addEventListener('click', () => this.closeCrimpingModal());
+        this.crimpingConfirmButton.addEventListener('click', () => this.confirmCrimping());
+        this.crimpingModalClose.addEventListener('click', () => this.closeCrimpingModal());
+        if (this.addCrimpingRowBtn) {
+            this.addCrimpingRowBtn.addEventListener('click', () => this.addCrimpingRow());
+        }
+        
+        // Ausschnitt-Tabelle Event Listeners (bereits vorhanden)
         if (this.addAusschnittRowBtn) {
             this.addAusschnittRowBtn.addEventListener('click', () => this.addAusschnittRow());
         }
@@ -354,7 +453,7 @@ class ProfilZeichner {
     }
     
     handleMouseDown(e) {
-        if (this.draggedText) {
+        if (this.draggedText || this.draggedSkizze || this.resizingSkizze || this.draggedKerbe) {
             // Element wird bereits gedraggt
             return;
         }
@@ -374,6 +473,48 @@ class ProfilZeichner {
             return;
         }
         
+        // Prüfe ob auf Skizze-Resize-Handle geklickt wurde (höchste Priorität)
+        if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
+            const screenSkizzeX = this.skizzeX * this.zoom + this.offsetX;
+            const screenSkizzeY = this.skizzeY * this.zoom + this.offsetY;
+            const screenSkizzeWidth = this.skizzeWidth * this.zoom;
+            const screenSkizzeHeight = this.skizzeHeight * this.zoom;
+            
+            const handleSize = 8;
+            const handles = [
+                { x: screenSkizzeX, y: screenSkizzeY, type: 'nw' },
+                { x: screenSkizzeX + screenSkizzeWidth, y: screenSkizzeY, type: 'ne' },
+                { x: screenSkizzeX, y: screenSkizzeY + screenSkizzeHeight, type: 'sw' },
+                { x: screenSkizzeX + screenSkizzeWidth, y: screenSkizzeY + screenSkizzeHeight, type: 'se' }
+            ];
+            
+            for (const handle of handles) {
+                if (mouseX >= handle.x - handleSize/2 && mouseX <= handle.x + handleSize/2 &&
+                    mouseY >= handle.y - handleSize/2 && mouseY <= handle.y + handleSize/2) {
+                    this.resizingSkizze = true;
+                    this.resizeHandle = handle.type;
+                    this.resizeStartPos = { x: mouseX, y: mouseY };
+                    this.resizeStartSize = { width: this.skizzeWidth, height: this.skizzeHeight };
+                    this.resizeStartPosSkizze = { x: this.skizzeX, y: this.skizzeY };
+                    e.preventDefault();
+                    this.canvas.style.cursor = this.getResizeCursor(handle.type);
+                    this.draw();
+                    return;
+                }
+            }
+            
+            // Prüfe ob auf Skizze geklickt wurde (zum Verschieben)
+            if (mouseX >= screenSkizzeX - 5 && mouseX <= screenSkizzeX + screenSkizzeWidth + 5 &&
+                mouseY >= screenSkizzeY - 5 && mouseY <= screenSkizzeY + screenSkizzeHeight + 5) {
+                this.draggedSkizze = true;
+                this.skizzeDragOffset.x = mouseX - screenSkizzeX;
+                this.skizzeDragOffset.y = mouseY - screenSkizzeY;
+                e.preventDefault();
+                this.canvas.style.cursor = 'grabbing';
+                this.draw();
+                return;
+            }
+        }
         
         // Prüfe ob auf Text geklickt wurde (mit erweiterter Hitbox)
         for (let i = this.texts.length - 1; i >= 0; i--) {
@@ -397,20 +538,146 @@ class ProfilZeichner {
                 return; // Sofort beenden
             }
         }
+        
+        // Prüfe ob auf Kerbe geklickt wurde
+        if (this.currentRect && this.kerben.length > 0) {
+            for (let i = this.kerben.length - 1; i >= 0; i--) {
+                const kerbe = this.kerben[i];
+                const distancePx = kerbe.distance * this.mmToPx;
+                const widthPx = kerbe.width * this.mmToPx;
+                const depthPx = kerbe.depth * this.mmToPx;
+                
+                const rect = this.currentRect;
+                const kerbeX = rect.x + distancePx;
+                
+                // Berechne Y-Position der Kerbe
+                let kerbeY;
+                if (kerbe.position === 'oben') {
+                    kerbeY = rect.y;
+                } else {
+                    kerbeY = rect.y + rect.height;
+                }
+                
+                // Berechne die Bildschirmposition (mit Zoom und Offset)
+                const screenX = kerbeX * this.zoom + this.offsetX;
+                const screenY = kerbeY * this.zoom + this.offsetY;
+                const screenWidth = widthPx * this.zoom;
+                const screenDepth = depthPx * this.zoom;
+                
+                // Erweiterte Hitbox (ca. 15 Pixel in alle Richtungen)
+                const hitboxSize = 15;
+                if (kerbe.position === 'oben') {
+                    // Kerbe oben - Hitbox geht von Kerbe nach unten
+                    if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                        mouseY >= screenY - hitboxSize && mouseY <= screenY + screenDepth + hitboxSize) {
+                        this.draggedKerbe = kerbe;
+                        this.kerbeDragOffset.x = mouseX - screenX;
+                        this.hoveredKerbe = null; // Reset hover beim Dragging
+                        e.preventDefault();
+                        this.canvas.style.cursor = 'grabbing';
+                        this.draw();
+                        return;
+                    }
+                } else {
+                    // Kerbe unten - Hitbox geht von Kerbe nach oben
+                    if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                        mouseY >= screenY - screenDepth - hitboxSize && mouseY <= screenY + hitboxSize) {
+                        this.draggedKerbe = kerbe;
+                        this.kerbeDragOffset.x = mouseX - screenX;
+                        this.hoveredKerbe = null; // Reset hover beim Dragging
+                        e.preventDefault();
+                        this.canvas.style.cursor = 'grabbing';
+                        this.draw();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+    
+    getResizeCursor(handleType) {
+        switch(handleType) {
+            case 'nw': return 'nw-resize';
+            case 'ne': return 'ne-resize';
+            case 'sw': return 'sw-resize';
+            case 'se': return 'se-resize';
+            default: return 'default';
+        }
     }
     
     handleMouseMove(e) {
-        if (this.draggedText) {
             const rect = this.canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             
+        if (this.resizingSkizze) {
+            // Resize-Modus
+            const deltaX = (mouseX - this.resizeStartPos.x) / this.zoom;
+            const deltaY = (mouseY - this.resizeStartPos.y) / this.zoom;
+            
+            const minSize = 10 * this.mmToPx; // Minimale Größe
+            
+            switch(this.resizeHandle) {
+                case 'nw':
+                    this.skizzeWidth = Math.max(minSize, this.resizeStartSize.width - deltaX);
+                    this.skizzeHeight = Math.max(minSize, this.resizeStartSize.height - deltaY);
+                    this.skizzeX = this.resizeStartPosSkizze.x + (this.resizeStartSize.width - this.skizzeWidth);
+                    this.skizzeY = this.resizeStartPosSkizze.y + (this.resizeStartSize.height - this.skizzeHeight);
+                    break;
+                case 'ne':
+                    this.skizzeWidth = Math.max(minSize, this.resizeStartSize.width + deltaX);
+                    this.skizzeHeight = Math.max(minSize, this.resizeStartSize.height - deltaY);
+                    this.skizzeX = this.resizeStartPosSkizze.x;
+                    this.skizzeY = this.resizeStartPosSkizze.y + (this.resizeStartSize.height - this.skizzeHeight);
+                    break;
+                case 'sw':
+                    this.skizzeWidth = Math.max(minSize, this.resizeStartSize.width - deltaX);
+                    this.skizzeHeight = Math.max(minSize, this.resizeStartSize.height + deltaY);
+                    this.skizzeX = this.resizeStartPosSkizze.x + (this.resizeStartSize.width - this.skizzeWidth);
+                    this.skizzeY = this.resizeStartPosSkizze.y;
+                    break;
+                case 'se':
+                    this.skizzeWidth = Math.max(minSize, this.resizeStartSize.width + deltaX);
+                    this.skizzeHeight = Math.max(minSize, this.resizeStartSize.height + deltaY);
+                    this.skizzeX = this.resizeStartPosSkizze.x;
+                    this.skizzeY = this.resizeStartPosSkizze.y;
+                    break;
+            }
+            this.draw();
+        } else if (this.draggedSkizze) {
+            // Verschiebe Skizze
+            const newX = (mouseX - this.skizzeDragOffset.x - this.offsetX) / this.zoom;
+            const newY = (mouseY - this.skizzeDragOffset.y - this.offsetY) / this.zoom;
+            this.skizzeX = newX;
+            this.skizzeY = newY;
+            this.draw();
+        } else if (this.draggedText) {
             // Berechne die neue Position in Weltkoordinaten
             const newX = (mouseX - this.textDragOffset.x - this.offsetX) / this.zoom;
             const newY = (mouseY - this.textDragOffset.y - this.offsetY) / this.zoom;
             
             this.draggedText.x = newX;
             this.draggedText.y = newY;
+            
+            this.draw();
+        } else if (this.draggedKerbe) {
+            // Berechne neue X-Position in Weltkoordinaten (nur X, nicht Y)
+            const worldX = (mouseX - this.offsetX - this.kerbeDragOffset.x) / this.zoom;
+            
+            // Berechne neue Distance basierend auf Profil-Start
+            if (this.currentRect) {
+                let newDistance = (worldX - this.currentRect.x) / this.mmToPx;
+                
+                // Begrenze auf sinnvolle Werte (0 bis Profilbreite)
+                const maxDistance = this.currentRect.width / this.mmToPx;
+                newDistance = Math.max(0, Math.min(maxDistance, newDistance));
+                
+                // Runde auf 5mm-Schritte (Snapping)
+                newDistance = Math.round(newDistance / 5) * 5;
+                newDistance = Math.max(0, Math.min(maxDistance, newDistance)); // Nochmal begrenzen nach Runden
+                
+                this.draggedKerbe.distance = newDistance;
+            }
             
             this.draw();
         } else if (this.isPanning) {
@@ -448,7 +715,7 @@ class ProfilZeichner {
                     mouseY >= screenY - textHeight - 10 && mouseY <= screenY + 10) {
                     if (this.hoveredText !== text) {
                         this.hoveredText = text;
-                        this.draw();
+            this.draw();
                     }
                     foundHover = true;
                     break;
@@ -459,13 +726,162 @@ class ProfilZeichner {
                 this.hoveredText = null;
                 this.draw();
             }
+            
+            // Hover-Tracking für Kerben
+            if (this.currentRect && this.kerben.length > 0 && !this.draggedKerbe) {
+                let foundKerbeHover = false;
+                
+                for (let i = this.kerben.length - 1; i >= 0; i--) {
+                    const kerbe = this.kerben[i];
+                    const distancePx = kerbe.distance * this.mmToPx;
+                    const widthPx = kerbe.width * this.mmToPx;
+                    const depthPx = kerbe.depth * this.mmToPx;
+                    
+                    const rect = this.currentRect;
+                    const kerbeX = rect.x + distancePx;
+                    
+                    // Berechne Y-Position der Kerbe
+                    let kerbeY;
+                    if (kerbe.position === 'oben') {
+                        kerbeY = rect.y;
+                    } else {
+                        kerbeY = rect.y + rect.height;
+                    }
+                    
+                    // Berechne die Bildschirmposition (mit Zoom und Offset)
+                    const screenX = kerbeX * this.zoom + this.offsetX;
+                    const screenY = kerbeY * this.zoom + this.offsetY;
+                    const screenWidth = widthPx * this.zoom;
+                    const screenDepth = depthPx * this.zoom;
+                    
+                    // Erweiterte Hitbox (ca. 15 Pixel in alle Richtungen)
+                    const hitboxSize = 15;
+                    if (kerbe.position === 'oben') {
+                        // Kerbe oben - Hitbox geht von Kerbe nach unten
+                        if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                            mouseY >= screenY - hitboxSize && mouseY <= screenY + screenDepth + hitboxSize) {
+                            if (this.hoveredKerbe !== kerbe) {
+                                this.hoveredKerbe = kerbe;
+                                this.draw();
+                            }
+                            foundKerbeHover = true;
+                            this.canvas.style.cursor = 'grab';
+                            break;
+                        }
+                    } else {
+                        // Kerbe unten - Hitbox geht von Kerbe nach oben
+                        if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                            mouseY >= screenY - screenDepth - hitboxSize && mouseY <= screenY + hitboxSize) {
+                            if (this.hoveredKerbe !== kerbe) {
+                                this.hoveredKerbe = kerbe;
+                                this.draw();
+                            }
+                            foundKerbeHover = true;
+                            this.canvas.style.cursor = 'grab';
+                            break;
+                        }
+                    }
+                }
+                
+                if (!foundKerbeHover && this.hoveredKerbe) {
+                    this.hoveredKerbe = null;
+                    this.canvas.style.cursor = 'default';
+                    this.draw();
+                }
+            }
+            
+            // Hover-Tracking für Skizze
+            if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
+                const screenSkizzeX = this.skizzeX * this.zoom + this.offsetX;
+                const screenSkizzeY = this.skizzeY * this.zoom + this.offsetY;
+                const screenSkizzeWidth = this.skizzeWidth * this.zoom;
+                const screenSkizzeHeight = this.skizzeHeight * this.zoom;
+                
+                // Prüfe ob Maus über Skizze ist
+                if (mouseX >= screenSkizzeX - 5 && mouseX <= screenSkizzeX + screenSkizzeWidth + 5 &&
+                    mouseY >= screenSkizzeY - 5 && mouseY <= screenSkizzeY + screenSkizzeHeight + 5) {
+                    if (!this.hoveredSkizze) {
+                        this.hoveredSkizze = true;
+                        this.draw();
+                    }
+                } else {
+                    if (this.hoveredSkizze) {
+                        this.hoveredSkizze = false;
+                        this.canvas.style.cursor = 'default';
+                        this.draw();
+                    }
+                }
+                
+                // Cursor für Resize-Handles
+                if (this.hoveredSkizze) {
+                    const handleSize = 8;
+                    const handles = [
+                        { x: screenSkizzeX, y: screenSkizzeY, type: 'nw' },
+                        { x: screenSkizzeX + screenSkizzeWidth, y: screenSkizzeY, type: 'ne' },
+                        { x: screenSkizzeX, y: screenSkizzeY + screenSkizzeHeight, type: 'sw' },
+                        { x: screenSkizzeX + screenSkizzeWidth, y: screenSkizzeY + screenSkizzeHeight, type: 'se' }
+                    ];
+                    
+                    let overHandle = false;
+                    for (const handle of handles) {
+                        if (mouseX >= handle.x - handleSize/2 && mouseX <= handle.x + handleSize/2 &&
+                            mouseY >= handle.y - handleSize/2 && mouseY <= handle.y + handleSize/2) {
+                            this.canvas.style.cursor = this.getResizeCursor(handle.type);
+                            overHandle = true;
+                            break;
+                        }
+                    }
+                    if (!overHandle) {
+                        this.canvas.style.cursor = 'move';
+                    }
+                }
+            } else {
+                if (this.hoveredSkizze) {
+                    this.hoveredSkizze = false;
+                    this.canvas.style.cursor = 'default';
+                    this.draw();
+                }
+            }
         }
     }
     
     handleMouseUp(e) {
+        if (this.resizingSkizze) {
+            this.resizingSkizze = false;
+            this.resizeHandle = null;
+            this.canvas.style.cursor = 'default';
+            this.saveState();
+            this.draw();
+        }
+        
+        if (this.draggedSkizze) {
+            this.draggedSkizze = false;
+            this.skizzeDragOffset = { x: 0, y: 0 };
+            this.canvas.style.cursor = 'default';
+            this.saveState();
+            this.draw();
+        }
+        
+        if (this.draggedKerbe) {
+            // Speichere State nach Verschiebung
+            this.saveState();
+            
+            // Aktualisiere Tabelle im Modal, wenn es geöffnet ist
+            // keepUserInputs = false, damit die neuen Positionen aus this.kerben angezeigt werden
+            if (this.kerbeModal && this.kerbeModal.style.display === 'block') {
+                this.refreshKerbeTable(false);
+            }
+            
+            this.draggedKerbe = null;
+            this.kerbeDragOffset = { x: 0, y: 0 };
+            this.hoveredKerbe = null; // Reset hover beim Loslassen
+            this.canvas.style.cursor = 'default';
+            this.draw();
+        }
+        
         if (this.draggedText) {
-            this.draggedText = null;
-            this.textDragOffset = { x: 0, y: 0 };
+        this.draggedText = null;
+        this.textDragOffset = { x: 0, y: 0 };
             this.canvas.style.cursor = 'default'; // Cursor zurücksetzen
             this.saveState(); // Speichere Position nach dem Verschieben
             this.draw();
@@ -523,9 +939,6 @@ class ProfilZeichner {
         const widthPx = width * this.mmToPx;
         const heightPx = height * this.mmToPx;
         
-        // Setze Zoom und Offset für perfekte Darstellung
-        this.zoom = Math.min(this.canvasWidth / widthPx, this.canvasHeight / heightPx) * 0.8;
-        
         // Positioniere das Rechteck so dass es bei x=0 startet (für korrekte Bemaßungen)
         this.currentRect = {
             x: 0, // Start bei x=0 für korrekte Bemaßungen
@@ -535,12 +948,9 @@ class ProfilZeichner {
             scale: 1
         };
         
-        // Setze Offset so dass das Koordinatensystem in der Canvas-Mitte ist
-        this.offsetX = this.canvasWidth / 2;
-        this.offsetY = this.canvasHeight / 2;
-        
         this.updateZoomLevel();
         this.draw();
+        this.autoZoom();
     }
     
     clearCanvas() {
@@ -550,12 +960,15 @@ class ProfilZeichner {
         this.kerben = [];
         this.loecher = [];
         this.ausschnitte = [];
+        this.crimping = [];
         this.nahtlinie = null;
         this.texts = [];
         this.showDimensions = false;
         this.showFormatBorder = false;
         this.loadedProfileSkizze = null;
         this.loadedSkizzeImage = null;
+        this.skizzeX = null;
+        this.skizzeY = null;
         this.draw();
     }
     
@@ -567,14 +980,18 @@ class ProfilZeichner {
             kerben: JSON.parse(JSON.stringify(this.kerben)),
             loecher: JSON.parse(JSON.stringify(this.loecher)),
             ausschnitte: JSON.parse(JSON.stringify(this.ausschnitte)),
+            crimping: JSON.parse(JSON.stringify(this.crimping)),
             nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
             texts: JSON.parse(JSON.stringify(this.texts)),
-            canvasBackground: this.canvasBackground,
             showDimensions: this.showDimensions,
             showFormatBorder: this.showFormatBorder,
             zoom: this.zoom,
             offsetX: this.offsetX,
-            offsetY: this.offsetY
+            offsetY: this.offsetY,
+            skizzeX: this.skizzeX,
+            skizzeY: this.skizzeY,
+            skizzeWidth: this.skizzeWidth,
+            skizzeHeight: this.skizzeHeight
         };
         
         // Lösche alle Zustände nach dem aktuellen Index (wenn wir nach einem Undo neue Aktionen machen)
@@ -602,14 +1019,18 @@ class ProfilZeichner {
         this.kerben = JSON.parse(JSON.stringify(state.kerben));
         this.loecher = JSON.parse(JSON.stringify(state.loecher));
         this.ausschnitte = JSON.parse(JSON.stringify(state.ausschnitte));
+        this.crimping = state.crimping ? JSON.parse(JSON.stringify(state.crimping)) : [];
         this.nahtlinie = state.nahtlinie ? { ...state.nahtlinie } : null;
         this.texts = JSON.parse(JSON.stringify(state.texts));
-        this.canvasBackground = state.canvasBackground || 'leer';
         this.showDimensions = state.showDimensions;
         this.showFormatBorder = state.showFormatBorder;
         this.zoom = state.zoom;
         this.offsetX = state.offsetX;
         this.offsetY = state.offsetY;
+        this.skizzeX = state.skizzeX !== undefined ? state.skizzeX : null;
+        this.skizzeY = state.skizzeY !== undefined ? state.skizzeY : null;
+        this.skizzeWidth = state.skizzeWidth !== undefined ? state.skizzeWidth : (40 * this.mmToPx);
+        this.skizzeHeight = state.skizzeHeight !== undefined ? state.skizzeHeight : (30 * this.mmToPx);
         
         this.draw();
     }
@@ -691,6 +1112,9 @@ class ProfilZeichner {
             // Zeichne Ausschnitte
             this.drawAusschnitte();
             
+            // Zeichne Crimping
+            this.drawCrimping();
+            
             // Zeichne Profil-Skizze (falls geladen)
             this.drawSkizze();
             
@@ -713,81 +1137,9 @@ class ProfilZeichner {
     }
     
     drawGrid() {
-        // Hintergrund zeichnen basierend auf ausgewählter Option
-        if (this.canvasBackground === 'leer') {
-            // Leerer weißer Hintergrund - nichts zu tun
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-        } else if (this.canvasBackground === 'kariert') {
-            // Karierter Hintergrund
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-            
-            const gridSize = 20;
-            this.ctx.strokeStyle = '#e0e0e0';
-            this.ctx.lineWidth = 1;
-            
-            // Vertikale Linien
-            for (let x = 0; x < this.canvasWidth; x += gridSize) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(x, 0);
-                this.ctx.lineTo(x, this.canvasHeight);
-                this.ctx.stroke();
-            }
-            
-            // Horizontale Linien
-            for (let y = 0; y < this.canvasHeight; y += gridSize) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, y);
-                this.ctx.lineTo(this.canvasWidth, y);
-                this.ctx.stroke();
-            }
-        } else if (this.canvasBackground === 'schiefer') {
-            // Schiefer Hintergrund
-            const pattern = this.ctx.createLinearGradient(0, 0, this.canvasWidth, this.canvasHeight);
-            pattern.addColorStop(0, '#4a5568');
-            pattern.addColorStop(1, '#2d3748');
-            this.ctx.fillStyle = pattern;
-            this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-        } else if (this.canvasBackground === 'carbon') {
-            // Carbon-Hintergrund
-            this.ctx.fillStyle = '#1a1a1a';
-            this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-            
-            // Carbon-Muster mit feinen Linien
-            this.ctx.strokeStyle = 'rgba(60, 60, 60, 0.3)';
-            this.ctx.lineWidth = 1;
-            
-            // Vertikale Carbon-Linien
-            for (let x = 0; x < this.canvasWidth; x += 4) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(x, 0);
-                this.ctx.lineTo(x, this.canvasHeight);
-                this.ctx.stroke();
-            }
-            
-            // Horizontale Carbon-Linien
-            for (let y = 0; y < this.canvasHeight; y += 4) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, y);
-                this.ctx.lineTo(this.canvasWidth, y);
-                this.ctx.stroke();
-            }
-        } else if (this.canvasBackground === 'tafel') {
-            // Tafel-Hintergrund (Grün)
-            this.ctx.fillStyle = '#2d5016';
-            this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
-            
-            // Tafel-Textur
-            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-            this.ctx.lineWidth = 1;
-            for (let y = 0; y < this.canvasHeight; y += 2) {
-                this.ctx.beginPath();
-                this.ctx.moveTo(0, y);
-                this.ctx.lineTo(this.canvasWidth, y);
-                this.ctx.stroke();
-            }
-        }
+        // Immer weißer Hintergrund
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
     
     drawCoordinateCross() {
@@ -852,13 +1204,76 @@ class ProfilZeichner {
         if (this.cutoutWidth > 0) {
             this.drawCutoutProfile();
         } else {
-            // Normales Rechteck
+            // Profil mit Berücksichtigung von Kerben zeichnen
             this.ctx.strokeStyle = '#333';
             this.ctx.lineWidth = 1;
             this.ctx.fillStyle = '#E0E0E0'; // Hellgrau
             
+            // Sammle alle Kerben sortiert nach Position (nur Dreieck-Typ, nicht Marker)
+            const kerbenOben = this.kerben.filter(k => k.position === 'oben' && (k.type !== 'marker')).sort((a, b) => a.distance - b.distance);
+            const kerbenUnten = this.kerben.filter(k => k.position === 'unten' && (k.type !== 'marker')).sort((a, b) => a.distance - b.distance);
+            
+            // Zeichne Profil als Pfad mit Unterbrechungen bei Kerben
             this.ctx.beginPath();
-            this.ctx.rect(rect.x, rect.y, rect.width, rect.height);
+            
+            // Startpunkt: oben links
+            this.ctx.moveTo(rect.x, rect.y);
+            
+            // Obere Kante mit Unterbrechungen bei Kerben oben
+            let currentX = rect.x;
+            for (const kerbe of kerbenOben) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                const widthPx = kerbe.width * this.mmToPx;
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                // Nur wenn Kerbe innerhalb der oberen Kante liegt
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width) {
+                    // Linie bis zur Kerbe (nur wenn es noch Platz gibt)
+                    if (kerbeStartX > currentX) {
+                        this.ctx.lineTo(kerbeStartX, rect.y);
+                    }
+                    // Kerbe überspringen - wir setzen nur currentX weiter, zeichnen aber keine Linie
+                    currentX = Math.max(currentX, kerbeEndX);
+                }
+            }
+            
+            // Rest der oberen Kante
+            if (currentX < rect.x + rect.width) {
+                this.ctx.lineTo(rect.x + rect.width, rect.y);
+            }
+            
+            // Rechte Kante (nach unten)
+            this.ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
+            
+            // Untere Kante mit Unterbrechungen bei Kerben unten (von rechts nach links)
+            currentX = rect.x + rect.width;
+            for (const kerbe of kerbenUnten) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                const widthPx = kerbe.width * this.mmToPx;
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                // Nur wenn Kerbe innerhalb der unteren Kante liegt
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width) {
+                    // Linie bis zur Kerbe (von rechts nach links)
+                    if (kerbeEndX < currentX) {
+                        this.ctx.lineTo(kerbeEndX, rect.y + rect.height);
+                    }
+                    // Kerbe überspringen
+                    currentX = Math.min(currentX, kerbeStartX);
+                }
+            }
+            
+            // Rest der unteren Kante
+            if (currentX > rect.x) {
+                this.ctx.lineTo(rect.x, rect.y + rect.height);
+            }
+            
+            // Linke Kante (nach oben zurück)
+            this.ctx.lineTo(rect.x, rect.y);
+            
+            this.ctx.closePath();
             this.ctx.fill();
             this.ctx.stroke();
         }
@@ -908,7 +1323,7 @@ class ProfilZeichner {
             ];
         }
         
-        // Zeichne das Cut-out-Profil
+        // Zeichne das Cut-out-Profil (Kerben werden separat überzeichnet)
         this.ctx.strokeStyle = '#333';
         this.ctx.lineWidth = 1;
         this.ctx.fillStyle = '#E0E0E0'; // Hellgrau
@@ -960,6 +1375,10 @@ class ProfilZeichner {
             const depthPx = kerbe.depth * this.mmToPx;
             const type = kerbe.type || 'triangle'; // Standard: Dreieck
             
+            // Hervorhebung wenn gehovered oder gedraggt
+            const isHovered = this.hoveredKerbe === kerbe;
+            const isDragged = this.draggedKerbe === kerbe;
+            
             let kerbeX, kerbeY;
             
             if (kerbe.position === 'oben') {
@@ -975,6 +1394,15 @@ class ProfilZeichner {
             this.ctx.fillStyle = 'white';
             
             if (type === 'marker') {
+                // Hervorhebung wenn gehovered oder gedraggt
+                if (isHovered || isDragged) {
+                    this.ctx.strokeStyle = isDragged ? '#ff6600' : '#0066cc';
+                    this.ctx.lineWidth = 3;
+                } else {
+                    this.ctx.strokeStyle = '#333';
+                    this.ctx.lineWidth = 1;
+                }
+                
                 // Strich-Markierung: Senkrecht zur Profillinie ins Profil rein ragen
                 const lineLength = depthPx; // Höhe der Markierung
                 
@@ -990,20 +1418,57 @@ class ProfilZeichner {
                 }
                 this.ctx.stroke();
             } else {
-                // Dreieck (Standard): Spitze nach innen
+                // Dreieck (Standard): Spitze nach innen - als weißer Ausschnitt
+                // Hervorhebung wenn gehovered oder gedraggt
+                if (isHovered || isDragged) {
+                    // Zeichne Rahmen um die Kerbe
+                    this.ctx.strokeStyle = isDragged ? '#ff6600' : '#0066cc'; // Orange wenn gedraggt, Blau wenn gehovered
+                    this.ctx.lineWidth = 2;
+                    this.ctx.setLineDash([]);
+                    const highlightSize = 8;
                 this.ctx.beginPath();
                 if (kerbe.position === 'oben') {
-                    // Kerbe oben: Spitze in der Mitte der Kerbe
-                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY); // Links
-                    this.ctx.lineTo(kerbeX, kerbeY + depthPx); // Spitze nach unten
-                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY); // Rechts
-                } else {
-                    // Kerbe unten: Spitze in der Mitte der Kerbe
-                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY); // Links
-                    this.ctx.lineTo(kerbeX, kerbeY - depthPx); // Spitze nach oben
-                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY); // Rechts
+                        this.ctx.rect(kerbeX - widthPx/2 - highlightSize, kerbeY - highlightSize, 
+                                     widthPx + 2*highlightSize, depthPx + 2*highlightSize);
+                    } else {
+                        this.ctx.rect(kerbeX - widthPx/2 - highlightSize, kerbeY - depthPx - highlightSize, 
+                                     widthPx + 2*highlightSize, depthPx + 2*highlightSize);
+                    }
+                    this.ctx.stroke();
                 }
+                
+                // Zuerst: Die durchgehende Profillinie an dieser Stelle mit Hintergrundfarbe überdecken
+                this.ctx.strokeStyle = '#E0E0E0'; // Gleiche Farbe wie Profil-Hintergrund
+                this.ctx.lineWidth = 2; // Etwas dicker, um sicher zu überdecken
+                this.ctx.lineCap = 'butt';
+                this.ctx.beginPath();
+                if (kerbe.position === 'oben') {
+                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY);
+                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY);
+                } else {
+                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY);
+                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY);
+                }
+                this.ctx.stroke();
+                
+                // Dann: Die Kerbe als Dreieck zeichnen
+                this.ctx.strokeStyle = '#333'; // Zurück zu schwarz für Umriss
+                this.ctx.lineWidth = 1;
+                this.ctx.fillStyle = 'white';
+                this.ctx.beginPath();
+                if (kerbe.position === 'oben') {
+                    // Kerbe oben: Spitze in der Mitte der Kerbe nach unten
+                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY); // Links oben
+                    this.ctx.lineTo(kerbeX, kerbeY + depthPx); // Spitze nach unten
+                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY); // Rechts oben
+                    this.ctx.closePath();
+                } else {
+                    // Kerbe unten: Spitze in der Mitte der Kerbe nach oben
+                    this.ctx.moveTo(kerbeX - widthPx/2, kerbeY); // Links unten
+                    this.ctx.lineTo(kerbeX, kerbeY - depthPx); // Spitze nach oben
+                    this.ctx.lineTo(kerbeX + widthPx/2, kerbeY); // Rechts unten
                 this.ctx.closePath();
+                }
                 this.ctx.fill();
                 this.ctx.stroke();
             }
@@ -1022,15 +1487,47 @@ class ProfilZeichner {
             const positionPx = loch.position * this.mmToPx;
             
             const lochX = rect.x + distancePx;
-            const lochY = rect.y + rect.height - positionPx;
+            // Position ist Abstand von oben (Standard 2mm)
+            // lochY ist Mittelpunkt des Lochs
+            const lochY = rect.y + positionPx + (heightPx / 2);
             
-            // Zeichne Loch als Ellipse (rund/oval)
             this.ctx.strokeStyle = '#333';
             this.ctx.lineWidth = 1;
-            this.ctx.fillStyle = 'white'; // Weiß gefüllt
+            this.ctx.fillStyle = 'white';
+            
+            // Kreis
+            if (Math.abs(widthPx - heightPx) < 0.1) {
+            this.ctx.beginPath();
+                this.ctx.arc(lochX, lochY, widthPx / 2, 0, 2 * Math.PI);
+                this.ctx.fill();
+                this.ctx.stroke();
+                return;
+            }
+            
+            // Kapsel (Stadion-Form) über gerundetes Rechteck
+            const radius = Math.min(widthPx, heightPx) / 2;
+            const x = lochX - widthPx / 2;
+            const y = lochY - heightPx / 2;
             
             this.ctx.beginPath();
-            this.ctx.ellipse(lochX, lochY, widthPx/2, heightPx/2, 0, 0, 2 * Math.PI);
+            if (typeof this.ctx.roundRect === 'function') {
+                this.ctx.roundRect(x, y, widthPx, heightPx, radius);
+            } else {
+                // Fallback für ältere Browser: generisches Rounded-Rect
+                const r = radius;
+                const rRight = x + widthPx - r;
+                const rBottom = y + heightPx - r;
+                this.ctx.moveTo(x + r, y);
+                this.ctx.lineTo(rRight, y);
+                this.ctx.arc(rRight, y + r, r, -Math.PI / 2, 0, false);
+                this.ctx.lineTo(x + widthPx, rBottom);
+                this.ctx.arc(rRight, rBottom, r, 0, Math.PI / 2, false);
+                this.ctx.lineTo(x + r, y + heightPx);
+                this.ctx.arc(x + r, rBottom, r, Math.PI / 2, Math.PI, false);
+                this.ctx.lineTo(x, y + r);
+                this.ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2, false);
+            }
+            this.ctx.closePath();
             this.ctx.fill();
             this.ctx.stroke();
         });
@@ -1105,26 +1602,61 @@ class ProfilZeichner {
         if (!this.loadedProfileSkizze || !this.currentRect) return;
         
         const rect = this.currentRect;
-        const skizzeWidth = 40 * this.mmToPx; // 40mm Breite für Skizze
-        const skizzeHeight = 30 * this.mmToPx; // 30mm Höhe für Skizze
-        const skizzeOffset = 40 * this.mmToPx; // 40mm Abstand vom Profil
         
-        // Position rechts neben dem Profil
-        const skizzeX = rect.x + rect.width + skizzeOffset;
-        const skizzeY = rect.y; // Oben bündig mit dem Profil
+        // Initialisiere Position wenn noch nicht gesetzt
+        if (this.skizzeX === null || this.skizzeY === null) {
+        const skizzeOffset = 40 * this.mmToPx; // 40mm Abstand vom Profil
+            this.skizzeX = rect.x + rect.width + skizzeOffset;
+            this.skizzeY = rect.y; // Oben bündig mit dem Profil
+        }
+        
+        // Zeichne Hintergrund-Frame (erweitert für Hover-Effekt)
+        if (this.hoveredSkizze && !this.draggedSkizze && !this.resizingSkizze) {
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.1)'; // Gelber Hintergrund beim Hover
+            this.ctx.fillRect(this.skizzeX - 5, this.skizzeY - 5, this.skizzeWidth + 10, this.skizzeHeight + 10);
+        }
         
         // Zeichne Rahmen um die Skizze
-        this.ctx.strokeStyle = '#666';
-        this.ctx.lineWidth = 1;
-        this.ctx.strokeRect(skizzeX, skizzeY, skizzeWidth, skizzeHeight);
+        this.ctx.strokeStyle = (this.hoveredSkizze || this.draggedSkizze || this.resizingSkizze) ? '#ffaa00' : '#666';
+        this.ctx.lineWidth = (this.hoveredSkizze || this.draggedSkizze || this.resizingSkizze) ? 2 : 1;
+        this.ctx.strokeRect(this.skizzeX, this.skizzeY, this.skizzeWidth, this.skizzeHeight);
         
         // Prüfe ob Skizze bereits als Image-Objekt geladen ist
         if (this.loadedSkizzeImage && this.loadedSkizzeImage.complete) {
             // Skizze ist bereits geladen, zeichne sie direkt
-            this.drawLoadedSkizze(skizzeX, skizzeY, skizzeWidth, skizzeHeight);
+            this.drawLoadedSkizze(this.skizzeX, this.skizzeY, this.skizzeWidth, this.skizzeHeight);
         } else if (this.loadedProfileSkizze.startsWith('data:image')) {
             // Lade Skizze erstmalig
-            this.loadSkizzeImage(skizzeX, skizzeY, skizzeWidth, skizzeHeight);
+            this.loadSkizzeImage(this.skizzeX, this.skizzeY, this.skizzeWidth, this.skizzeHeight);
+        }
+        
+        // Zeichne Resize-Handles an den Ecken (wenn gehovered oder während Resize)
+        if (this.hoveredSkizze || this.resizingSkizze) {
+            const handleSize = 8;
+            this.ctx.fillStyle = this.resizingSkizze ? '#ff6600' : '#0066cc';
+            this.ctx.strokeStyle = '#fff';
+            this.ctx.lineWidth = 1.5;
+            
+            // Ecken: oben links (nw), oben rechts (ne), unten links (sw), unten rechts (se)
+            const handles = [
+                { x: this.skizzeX, y: this.skizzeY, type: 'nw' }, // nw
+                { x: this.skizzeX + this.skizzeWidth, y: this.skizzeY, type: 'ne' }, // ne
+                { x: this.skizzeX, y: this.skizzeY + this.skizzeHeight, type: 'sw' }, // sw
+                { x: this.skizzeX + this.skizzeWidth, y: this.skizzeY + this.skizzeHeight, type: 'se' } // se
+            ];
+            
+            handles.forEach((handle) => {
+                // Highlight aktives Handle
+                if (this.resizingSkizze && this.resizeHandle === handle.type) {
+                    this.ctx.fillStyle = '#ff6600';
+                } else {
+                    this.ctx.fillStyle = '#0066cc';
+                }
+                this.ctx.beginPath();
+                this.ctx.rect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                this.ctx.fill();
+                this.ctx.stroke();
+            });
         }
         
         // Zeichne Beschriftung unter der Skizze
@@ -1132,7 +1664,7 @@ class ProfilZeichner {
         this.ctx.font = '10px Arial';
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'top';
-        this.ctx.fillText('Profil-Skizze', skizzeX + skizzeWidth / 2, skizzeY + skizzeHeight + 5);
+        this.ctx.fillText('Profil-Skizze', this.skizzeX + this.skizzeWidth / 2, this.skizzeY + this.skizzeHeight + 5);
     }
     
     loadSkizzeImage(skizzeX, skizzeY, skizzeWidth, skizzeHeight) {
@@ -1221,13 +1753,24 @@ class ProfilZeichner {
             });
         });
         
+        // Crimping hinzufügen
+        this.crimping.forEach(crimpingItem => {
+            allElements.push({
+                type: 'crimping',
+                position: crimpingItem.position,
+                length: crimpingItem.length,
+                element: crimpingItem
+            });
+        });
+        
         // Sortiere alle Elemente nach Position
         allElements.sort((a, b) => a.position - b.position);
         
         // Trenne nach oben/unten für separate Bemaßungsbereiche
         const elementsOben = allElements.filter(el => 
-            el.type === 'ausschnitt' && el.positionType === 'oben' ||
-            el.type === 'loch'
+            (el.type === 'ausschnitt' && el.positionType === 'oben') ||
+            el.type === 'loch' ||
+            el.type === 'crimping'
         );
         const elementsUnten = allElements.filter(el => 
             el.type === 'kerbe' ||
@@ -1250,7 +1793,7 @@ class ProfilZeichner {
                 const positionPx = element.position * this.mmToPx;
                 const dimensionY = obenDimensionY - obenOffset;
                 
-                // Für Cutouts nur Pfeil auf der linken Seite
+                // Für Cutouts und Crimping nur Pfeil auf der linken Seite
                 if (element.type === 'ausschnitt') {
                     this.drawHorizontalDimensionLeftArrowOnly(
                         corner4X,
@@ -1259,14 +1802,34 @@ class ProfilZeichner {
                         dimensionY,
                         `${element.position}mm`
                     );
-                } else {
-                    this.drawHorizontalDimensionFromZero(
+                } else if (element.type === 'crimping') {
+                    // Berechne Position relativ zur Bohne (wenn vorhanden)
+                    let crimpingPositionX = rect.x + positionPx;
+                    if (this.bohnen.length > 0) {
+                        const bohne = this.bohnen[0];
+                        let bohneWidth = rect.width;
+                        if (this.cutoutWidth > 0) {
+                            bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+                        }
+                        const bohneX = rect.x + (rect.width - bohneWidth) / 2;
+                        crimpingPositionX = bohneX + positionPx;
+                    }
+                    
+                    this.drawHorizontalDimensionLeftArrowOnly(
                         corner4X,
                         dimensionY,
-                        rect.x + positionPx,
+                        crimpingPositionX,
                         dimensionY,
                         `${element.position}mm`
                     );
+                } else {
+                this.drawHorizontalDimensionFromZero(
+                    corner4X,
+                    dimensionY,
+                    rect.x + positionPx,
+                    dimensionY,
+                    `${element.position}mm`
+                );
                 }
                 
                 obenOffset += dimensionOffset;
@@ -1288,13 +1851,13 @@ class ProfilZeichner {
                     `${element.position}mm`
                 );
             } else {
-                this.drawHorizontalDimensionFromZero(
-                    corner4X,
-                    dimensionY,
-                    rect.x + positionPx,
-                    dimensionY,
-                    `${element.position}mm`
-                );
+            this.drawHorizontalDimensionFromZero(
+                corner4X,
+                dimensionY,
+                rect.x + positionPx,
+                dimensionY,
+                `${element.position}mm`
+            );
             }
             
             currentYOffset += dimensionOffset;
@@ -1341,6 +1904,51 @@ class ProfilZeichner {
         }
         
         rightDimensionX += rightDimensionSpacing; // Nächste Position für weitere Bemaßungen
+        
+        // Cutout-Bemaßungen (rechts vom Profil, wenn Cutout vorhanden)
+        if (this.cutoutWidth > 0 || this.cutoutHeight > 0) {
+            const cutoutWidthPx = this.cutoutWidth * this.mmToPx;
+            const cutoutHeightPx = this.cutoutHeight * this.mmToPx;
+            
+            // Cutout-Breite bemaßen (oberhalb des Profils)
+            if (this.cutoutWidth > 0) {
+                const cutoutX1 = rect.x + cutoutWidthPx; // Cutout-Stelle links
+                const cutoutX2 = rect.x + rect.width - cutoutWidthPx; // Cutout-Stelle rechts
+                
+                // Horizontal-Bemaßung für Cutout-Breite (oberhalb des Profils)
+                let cutoutDimY;
+        if (this.bohnen.length > 0) {
+                    const bohneHeight = this.bohnen[0].height * this.mmToPx;
+                    cutoutDimY = rect.y - bohneHeight - (8 * this.mmToPx); // Oberhalb der Bohne
+                } else {
+                    cutoutDimY = rect.y - (8 * this.mmToPx); // Oberhalb des Profils
+                }
+            
+            this.drawHorizontalDimensionFromZero(
+                    rect.x, // Start bei Ecke 4 (oben links)
+                    cutoutDimY,
+                    cutoutX1, // Ende bei Cutout-Stelle links
+                    cutoutDimY,
+                    `${this.cutoutWidth}mm`
+                );
+            }
+            
+            // Cutout-Höhe bemaßen (von unten bis Cutout-Höhe, rechts)
+            if (this.cutoutHeight > 0) {
+                const cutoutBottomY = rect.y + rect.height; // Unten beim Profil
+                const cutoutTopY = cutoutBottomY - cutoutHeightPx; // Cutout-Höhe nach oben
+                
+            this.drawVerticalDimensionFromZero(
+                    cutoutTopY, // Start oben bei Cutout-Höhe
+                rightDimensionX,
+                    cutoutBottomY, // Ende unten beim Profil
+                rightDimensionX,
+                    `${this.cutoutHeight}mm`
+            );
+            
+            rightDimensionX += rightDimensionSpacing; // Nächste Position
+            }
+        }
         
         // Nahtlinie bemaßen (innerhalb des Profils, 30mm von links)
         if (this.nahtlinie && this.nahtlinie.distance > 0) {
@@ -1403,11 +2011,11 @@ class ProfilZeichner {
             this.ctx.lineWidth = lineWidth;
             
             // Gestrichelte Linie am Anfang (zum Element)
-            this.ctx.beginPath();
+        this.ctx.beginPath();
             this.ctx.moveTo(startX, y);
             this.ctx.lineTo(startX, elementTopY);
-            this.ctx.stroke();
-            
+        this.ctx.stroke();
+        
             // Gestrichelte Linie am Ende (zum Element)
             this.ctx.beginPath();
             this.ctx.moveTo(endX, y);
@@ -1420,10 +2028,10 @@ class ProfilZeichner {
         
         // Hauptbemaßungslinie mit dünnerer Linie
         this.ctx.lineWidth = lineWidth;
-        this.ctx.beginPath();
+            this.ctx.beginPath();
         this.ctx.moveTo(startX, y);
         this.ctx.lineTo(endX, y);
-        this.ctx.stroke();
+            this.ctx.stroke();
         
         // Pfeil am Anfang
         this.ctx.beginPath();
@@ -1511,7 +2119,33 @@ class ProfilZeichner {
         const arrowSize = 6;
         const lineWidth = 0.5; // Dünnere Linie
         
-        // Gestrichelte Hilfslinien wurden entfernt (TODO: richtig implementieren)
+        // Berechne den Abstand der Bemaßungslinie vom Profil
+        const rect = this.currentRect;
+        const dimDistance = Math.abs(x - (rect ? (rect.x + rect.width) : x)); // Abstand von der rechten Kante
+        
+        let elementRightX = rect ? (rect.x + rect.width) : x; // Standard: Rechte Kante des Profils
+        
+        // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
+        if (rect) {
+            this.ctx.setLineDash([5, 5]);
+            this.ctx.strokeStyle = '#0066cc'; // Blau
+            this.ctx.lineWidth = lineWidth;
+            
+            // Gestrichelte Linie am Anfang (oben) - horizontal bis zum Profil
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, startY);
+            this.ctx.lineTo(elementRightX, startY);
+            this.ctx.stroke();
+            
+            // Gestrichelte Linie am Ende (unten) - horizontal bis zum Profil
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, endY);
+            this.ctx.lineTo(elementRightX, endY);
+            this.ctx.stroke();
+            
+            this.ctx.setLineDash([]); // Zurück zu durchgezogen
+            this.ctx.strokeStyle = '#333'; // Zurück zu schwarz
+        }
         
         // Hauptbemaßungslinie mit dünnerer Linie
         this.ctx.lineWidth = lineWidth;
@@ -1592,7 +2226,8 @@ class ProfilZeichner {
             const positionPx = loch.position * this.mmToPx;
             
             const lochCenterX = rect.x + distancePx;
-            const lochCenterY = rect.y + rect.height - positionPx;
+            // Position ist Abstand von oben (Standard 2mm)
+            const lochCenterY = rect.y + positionPx + (heightPx / 2);
             
             // Kreis um Loch zeichnen - Radius basierend auf Loch-Größe
             const radius = Math.max(widthPx, heightPx) * 1.4; // 40% größer als Loch
@@ -1650,16 +2285,16 @@ class ProfilZeichner {
                 this.ctx.fillText(`${kerbe.depth}mm`, currentX + 15, startY + kerbeDepth/2 + 15);
             } else {
                 // Dreieck-Kerbe zeichnen - zentriert auf startY
-                this.ctx.beginPath();
-                this.ctx.moveTo(currentX, startY + kerbeDepth/2); // Links, zentriert
-                this.ctx.lineTo(currentX + kerbeWidth/2, startY - kerbeDepth/2); // Spitze nach oben
-                this.ctx.lineTo(currentX + kerbeWidth, startY + kerbeDepth/2); // Rechts, zentriert
-                this.ctx.closePath();
-                this.ctx.fillStyle = 'white';
-                this.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.moveTo(currentX, startY + kerbeDepth/2); // Links, zentriert
+            this.ctx.lineTo(currentX + kerbeWidth/2, startY - kerbeDepth/2); // Spitze nach oben
+            this.ctx.lineTo(currentX + kerbeWidth, startY + kerbeDepth/2); // Rechts, zentriert
+            this.ctx.closePath();
+            this.ctx.fillStyle = 'white';
+            this.ctx.fill();
                 this.ctx.strokeStyle = '#555';
-                this.ctx.stroke();
-                
+            this.ctx.stroke();
+            
                 // Bemaßung für Breite - direkt daneben mit Pfeillinien
                 this.drawDetailDimensionLine(
                     currentX, // Start links
@@ -1692,11 +2327,42 @@ class ProfilZeichner {
             const lochWidth = loch.width * this.mmToPx * scale;
             const lochHeight = loch.height * this.mmToPx * scale;
             
-            // Loch zeichnen (Ellipse) - zentriert auf startY
+            // Loch zeichnen (Kapsel-Form) - zentriert auf startY
             this.ctx.strokeStyle = '#555'; // Dunkelgrau
             this.ctx.fillStyle = 'white'; // Weiß gefüllt
+            
             this.ctx.beginPath();
-            this.ctx.ellipse(currentX + lochWidth/2, startY, lochWidth/2, lochHeight/2, 0, 0, 2 * Math.PI);
+            
+            // Prüfe ob Breite und Höhe gleich sind -> Kreis
+            if (Math.abs(lochWidth - lochHeight) < 0.1) {
+                // Perfekter Kreis
+                this.ctx.arc(currentX + lochWidth/2, startY, lochWidth / 2, 0, 2 * Math.PI);
+            } else {
+                // Kapsel (Stadion-Form) über gerundetes Rechteck
+                const radius = Math.min(lochWidth, lochHeight) / 2;
+                const x = currentX;
+                const y = startY - lochHeight / 2;
+                
+                if (typeof this.ctx.roundRect === 'function') {
+                    this.ctx.roundRect(x, y, lochWidth, lochHeight, radius);
+                } else {
+                    // Fallback für ältere Browser: generisches Rounded-Rect
+                    const r = radius;
+                    const rRight = x + lochWidth - r;
+                    const rBottom = y + lochHeight - r;
+                    this.ctx.moveTo(x + r, y);
+                    this.ctx.lineTo(rRight, y);
+                    this.ctx.arc(rRight, y + r, r, -Math.PI / 2, 0, false);
+                    this.ctx.lineTo(x + lochWidth, rBottom);
+                    this.ctx.arc(rRight, rBottom, r, 0, Math.PI / 2, false);
+                    this.ctx.lineTo(x + r, y + lochHeight);
+                    this.ctx.arc(x + r, rBottom, r, Math.PI / 2, Math.PI, false);
+                    this.ctx.lineTo(x, y + r);
+                    this.ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2, false);
+                }
+            }
+            
+            this.ctx.closePath();
             this.ctx.fill();
             this.ctx.stroke();
             
@@ -2055,37 +2721,155 @@ class ProfilZeichner {
             return;
         }
         
-        // Speichere aktuelle Einstellungen
+        // Speichere aktuelle Canvas-Einstellungen
         const originalZoom = this.zoom;
         const originalOffsetX = this.offsetX;
         const originalOffsetY = this.offsetY;
         
-        // Setze Zoom für bessere Qualität
-        this.zoom = 1.5;
-        this.offsetX = this.canvasWidth / 2;
-        this.offsetY = this.canvasHeight / 2;
+        // Verwende autoZoom-Logik für korrekte Bounding Box-Berechnung
+        // Berechne die Gesamtausdehnung aller Elemente (wie in autoZoom)
+        let minX = this.currentRect.x;
+        let maxX = this.currentRect.x + this.currentRect.width;
+        let minY = this.currentRect.y;
+        let maxY = this.currentRect.y + this.currentRect.height;
         
-        // Zeichne neu mit besserer Qualität
-        this.draw();
+        // Bohne berücksichtigen
+        if (this.bohnen.length > 0) {
+            const bohne = this.bohnen[0];
+            const bohneHeight = bohne.height * this.mmToPx;
+            minY = Math.min(minY, this.currentRect.y - bohneHeight);
+        }
+        
+        // Bemaßungen berücksichtigen (mit größerem Offset für Sicherheit)
+        if (this.showDimensions) {
+            const dimensionOffset = 60 * this.mmToPx; // Mehr Platz für Bemaßungen
+            minY -= dimensionOffset;
+            maxY += dimensionOffset;
+            minX -= dimensionOffset;
+            maxX += dimensionOffset;
+        }
+        
+        // Detailzeichnungen berücksichtigen
+        // Berechne tatsächliche Position der Detailzeichnungen basierend auf Bemaßungen
+        if (this.kerben.length > 0 || this.loecher.length > 0) {
+            // Berechne wo die Detailzeichnungen tatsächlich starten
+            const rect = this.currentRect;
+            const corner4Y = rect.y + rect.height;
+            let detailStartY = corner4Y;
+            
+            // Wenn Bemaßungen aktiv sind, Detailzeichnungen nach den Bemaßungen
+            if (this.showDimensions) {
+                const dimensionOffset = 7 * this.mmToPx;
+                let currentYOffset = 10 * this.mmToPx;
+                
+                // Zähle Bemaßungen unten
+                const elementsUnten = [];
+                this.kerben.forEach(kerbe => elementsUnten.push({ position: kerbe.distance }));
+                this.ausschnitte.forEach(ausschnitt => {
+                    if (ausschnitt.positionType === 'unten') {
+                        elementsUnten.push({ position: ausschnitt.position });
+                    }
+                });
+                
+                currentYOffset += elementsUnten.length * dimensionOffset;
+                if (this.nahtlinie && this.nahtlinie.distance > 0) {
+                    currentYOffset += dimensionOffset;
+                }
+                
+                const totalWidthY = corner4Y + currentYOffset;
+                detailStartY = totalWidthY + (40 * this.mmToPx); // 40mm unter der letzten Bemaßung
+            } else {
+                detailStartY = corner4Y + (50 * this.mmToPx); // 50mm unter dem Profil
+            }
+            
+            // Detailzeichnungen sind etwa 80-100mm hoch
+            const detailHeight = 100 * this.mmToPx;
+            maxY = Math.max(maxY, detailStartY + detailHeight);
+        }
+        
+        // Skizze berücksichtigen
+        if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
+            minX = Math.min(minX, this.skizzeX - 10);
+            maxX = Math.max(maxX, this.skizzeX + this.skizzeWidth + 10);
+            minY = Math.min(minY, this.skizzeY - 10);
+            maxY = Math.max(maxY, this.skizzeY + this.skizzeHeight + 10);
+        }
+        
+        // Texte berücksichtigen
+        this.texts.forEach(text => {
+            const textWidth = this.ctx.measureText(text.content).width;
+            const textHeight = parseInt(text.size);
+            minX = Math.min(minX, text.x - 15);
+            maxX = Math.max(maxX, text.x + textWidth + 15);
+            minY = Math.min(minY, text.y - textHeight - 15);
+            maxY = Math.max(maxY, text.y + 15);
+        });
+        
+        // Zusätzlicher Sicherheitsrand
+        const safetyMargin = 20 * this.mmToPx;
+        minX -= safetyMargin;
+        maxX += safetyMargin;
+        minY -= safetyMargin;
+        maxY += safetyMargin;
+        
+        // Berechne die tatsächliche Größe des Zeichnungsinhalts
+        const contentWidth = maxX - minX;
+        const contentHeight = maxY - minY;
         
         // A4 Format-Dimensionen in mm (Querformat)
         const a4Width = 297; // mm
         const a4Height = 210; // mm
-        const scaleFactor = 2; // Bessere Qualität durch höhere Auflösung
+        const margin = 5; // mm Rand
+        const usableWidth = a4Width - (2 * margin);
+        const usableHeight = a4Height - (2 * margin);
         
-        // Erstelle temporäres Canvas mit höherer Auflösung
+        // Berechne Skalierung (in mm)
+        const contentWidthMm = contentWidth / this.mmToPx;
+        const contentHeightMm = contentHeight / this.mmToPx;
+        
+        const scaleX = usableWidth / contentWidthMm;
+        const scaleY = usableHeight / contentHeightMm;
+        const scale = Math.min(scaleX, scaleY);
+        
+        // Verwende autoZoom-Logik um alles korrekt zu positionieren
+        const totalWidth = maxX - minX;
+        const totalHeight = maxY - minY;
+        
+        // Berechne optimalen Zoom (ähnlich wie autoZoom)
+        const zoomX = (this.canvasWidth * 0.8) / totalWidth;
+        const zoomY = (this.canvasHeight * 0.8) / totalHeight;
+        const optimalZoom = Math.min(zoomX, zoomY);
+        
+        // Zentriere die Ansicht
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        // Setze temporäre Zoom/Offset für PDF
+        this.zoom = optimalZoom;
+        this.offsetX = this.canvasWidth / 2 - centerX * this.zoom;
+        this.offsetY = this.canvasHeight / 2 - centerY * this.zoom;
+        
+        // Zeichne auf den normalen Canvas
+        this.draw();
+        
+        // Screenshot des gesamten Canvas mit hoher Auflösung
+        const scaleFactor = 3; // Hohe Auflösung für PDF
+        
+        // Erstelle temporäres Canvas für hohe Auflösung - verwende gesamten Canvas
         const tempCanvas = document.createElement('canvas');
         const tempCtx = tempCanvas.getContext('2d');
-        
-        // Canvas-Größe in hoher Auflösung (für bessere Qualität)
         tempCanvas.width = this.canvasWidth * scaleFactor;
         tempCanvas.height = this.canvasHeight * scaleFactor;
         
-        // Scale context für bessere Qualität
-        tempCtx.scale(scaleFactor, scaleFactor);
+        // Kopiere den gesamten Canvas-Inhalt auf hohe Auflösung
+        tempCtx.drawImage(
+            this.canvas,
+            0, 0, this.canvasWidth, this.canvasHeight,
+            0, 0, tempCanvas.width, tempCanvas.height
+        );
         
-        // Zeichne den aktuellen Canvas-Inhalt auf das temporäre Canvas
-        tempCtx.drawImage(this.canvas, 0, 0);
+        // Verwende tempCanvas für PDF
+        const imgData = tempCanvas.toDataURL('image/png', 1.0);
         
         // Erstelle PDF mit jsPDF - A4 Querformat
         const { jsPDF } = window.jspdf;
@@ -2095,27 +2879,29 @@ class ProfilZeichner {
             format: 'a4'
         });
         
-        // Konvertiere Canvas zu Bild mit hoher Qualität
-        const imgData = tempCanvas.toDataURL('image/png', 1.0);
+        // Berechne die sichtbare Welt-Koordinaten-Region auf dem Canvas
+        // Der Canvas zeigt den gesamten Bereich von minX bis maxX (dank optimalZoom)
+        const visibleWorldWidth = this.canvasWidth / this.zoom;
+        const visibleWorldHeight = this.canvasHeight / this.zoom;
         
-        // Berechne die Skalierung für A4 - Canvas sollte auf A4 passen
-        const canvasWidthMm = this.canvasWidth / this.mmToPx;
-        const canvasHeightMm = this.canvasHeight / this.mmToPx;
+        // Verwende den gesamten sichtbaren Bereich für PDF
+        const finalWidthMm = visibleWorldWidth / this.mmToPx;
+        const finalHeightMm = visibleWorldHeight / this.mmToPx;
         
-        // Scale to fit A4
-        const scaleX = a4Width / canvasWidthMm;
-        const scaleY = a4Height / canvasHeightMm;
-        const scale = Math.min(scaleX, scaleY) * 0.95; // 95% um Rand zu lassen
+        // Skaliere für A4
+        const scaleX2 = usableWidth / finalWidthMm;
+        const scaleY2 = usableHeight / finalHeightMm;
+        const finalScale = Math.min(scaleX2, scaleY2);
         
-        const scaledWidth = canvasWidthMm * scale;
-        const scaledHeight = canvasHeightMm * scale;
+        const finalWidth = finalWidthMm * finalScale;
+        const finalHeight = finalHeightMm * finalScale;
         
         // Zentriere auf A4
-        const xOffset = (a4Width - scaledWidth) / 2;
-        const yOffset = (a4Height - scaledHeight) / 2;
+        const xOffset = (a4Width - finalWidth) / 2;
+        const yOffset = (a4Height - finalHeight) / 2;
         
         // Füge Bild zum PDF hinzu
-        pdf.addImage(imgData, 'PNG', xOffset, yOffset, scaledWidth, scaledHeight);
+        pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
         
         // Speichere PDF
         const fileName = `ProfilZeichner_A4_${new Date().toISOString().slice(0,10)}.pdf`;
@@ -2130,29 +2916,336 @@ class ProfilZeichner {
         alert('PDF wurde als A4-Format exportiert!');
     }
     
-    toggleBackground() {
-        const backgrounds = ['leer', 'kariert', 'schiefer', 'carbon', 'tafel'];
-        const currentIndex = backgrounds.indexOf(this.canvasBackground);
-        const nextIndex = (currentIndex + 1) % backgrounds.length;
-        this.canvasBackground = backgrounds[nextIndex];
+    // Zeichne alle Elemente auf einen gegebenen Kontext (für PDF-Export)
+    drawToContext(ctx, forPDF = false) {
+        const rect = this.currentRect;
+        if (!rect) return;
         
-        // Aktualisiere Button-Text basierend auf Hintergrund
-        const buttonIcons = {
-            'leer': '🎨', 'kariert': '📏', 'schiefer': '🔘', 'carbon': '⬛', 'tafel': '📝'
-        };
-        this.backgroundButton.textContent = buttonIcons[this.canvasBackground];
+        // Zeichne Hauptprofil
+        this.drawProfileToContext(ctx, rect);
         
-        // Aktualisiere Tooltip
-        const tooltips = {
-            'leer': 'Hintergrund wechseln - Leer',
-            'kariert': 'Hintergrund wechseln - Kariert',
-            'schiefer': 'Hintergrund wechseln - Schiefer',
-            'carbon': 'Hintergrund wechseln - Carbon',
-            'tafel': 'Hintergrund wechseln - Tafel'
-        };
-        this.backgroundButton.title = tooltips[this.canvasBackground];
+        // Zeichne Bohne
+        this.drawBohnenToContext(ctx, rect);
         
-        this.draw();
+        // Zeichne Kerben
+        this.drawKerbenToContext(ctx, rect);
+        
+        // Zeichne Löcher
+        this.drawLoecherToContext(ctx, rect);
+        
+        // Zeichne Nahtlinie
+        this.drawNahtlinieToContext(ctx, rect);
+        
+        // Zeichne Ausschnitte
+        this.drawAusschnitteToContext(ctx, rect);
+        
+        // Zeichne Skizze
+        if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
+            this.drawSkizzeToContext(ctx);
+        }
+        
+        // Zeichne Bemaßungen
+        if (this.showDimensions) {
+            this.drawDimensionsToContext(ctx, rect, forPDF);
+        }
+        
+        // Zeichne Detail-Indikatoren
+        this.drawDetailIndicatorsToContext(ctx, rect);
+        
+        // Zeichne Texte
+        this.drawTextsToContext(ctx);
+        
+        // Zeichne Detailzeichnungen
+        if (this.kerben.length > 0 || this.loecher.length > 0) {
+            const detailStartY = rect.y + rect.height + (50 * this.mmToPx);
+            this.drawDetailDrawingsToContext(ctx, rect, detailStartY);
+        }
+    }
+    
+    // Hilfsfunktionen zum Zeichnen auf beliebigen Kontext
+    drawProfileToContext(ctx, rect) {
+        // Kopie der drawProfile Logik
+        if (this.cutoutWidth > 0) {
+            // Cutout-Profil zeichnen (vereinfacht für PDF)
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#E0E0E0';
+            // TODO: Cutout-Profil zeichnen
+            ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+            ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+        } else {
+            // Normales Profil mit Kerben-Unterbrechungen
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = '#E0E0E0';
+            
+            const kerbenOben = this.kerben.filter(k => k.position === 'oben' && (k.type !== 'marker')).sort((a, b) => a.distance - b.distance);
+            const kerbenUnten = this.kerben.filter(k => k.position === 'unten' && (k.type !== 'marker')).sort((a, b) => a.distance - b.distance);
+            
+            ctx.beginPath();
+            ctx.moveTo(rect.x, rect.y);
+            
+            let currentX = rect.x;
+            for (const kerbe of kerbenOben) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                const widthPx = kerbe.width * this.mmToPx;
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width) {
+                    if (kerbeStartX > currentX) {
+                        ctx.lineTo(kerbeStartX, rect.y);
+                    }
+                    currentX = Math.max(currentX, kerbeEndX);
+                }
+            }
+            
+            if (currentX < rect.x + rect.width) {
+                ctx.lineTo(rect.x + rect.width, rect.y);
+            }
+            
+            ctx.lineTo(rect.x + rect.width, rect.y + rect.height);
+            
+            currentX = rect.x + rect.width;
+            for (const kerbe of kerbenUnten) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                const widthPx = kerbe.width * this.mmToPx;
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width) {
+                    if (kerbeEndX < currentX) {
+                        ctx.lineTo(kerbeEndX, rect.y + rect.height);
+                    }
+                    currentX = Math.min(currentX, kerbeStartX);
+                }
+            }
+            
+            if (currentX > rect.x) {
+                ctx.lineTo(rect.x, rect.y + rect.height);
+            }
+            
+            ctx.lineTo(rect.x, rect.y);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+    }
+    
+    drawBohnenToContext(ctx, rect) {
+        if (this.bohnen.length === 0) return;
+        const bohne = this.bohnen[0];
+        let bohneWidth = rect.width;
+        if (this.cutoutWidth > 0) {
+            bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+        }
+        const bohneHeight = bohne.height * this.mmToPx;
+        const bohneX = rect.x + (rect.width - bohneWidth) / 2;
+        const bohneY = rect.y - bohneHeight;
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 1;
+        ctx.fillStyle = '#36454F';
+        ctx.fillRect(bohneX, bohneY, bohneWidth, bohneHeight);
+        ctx.strokeRect(bohneX, bohneY, bohneWidth, bohneHeight);
+    }
+    
+    drawKerbenToContext(ctx, rect) {
+        if (this.kerben.length === 0) return;
+        this.kerben.forEach(kerbe => {
+            const distancePx = kerbe.distance * this.mmToPx;
+            const widthPx = kerbe.width * this.mmToPx;
+            const depthPx = kerbe.depth * this.mmToPx;
+            const type = kerbe.type || 'triangle';
+            const kerbeX = rect.x + distancePx;
+            const kerbeY = kerbe.position === 'oben' ? rect.y : rect.y + rect.height;
+            
+            if (type === 'marker') {
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                if (kerbe.position === 'oben') {
+                    ctx.moveTo(kerbeX, kerbeY);
+                    ctx.lineTo(kerbeX, kerbeY + depthPx);
+                } else {
+                    ctx.moveTo(kerbeX, kerbeY);
+                    ctx.lineTo(kerbeX, kerbeY - depthPx);
+                }
+                ctx.stroke();
+            } else {
+                ctx.strokeStyle = '#E0E0E0';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(kerbeX - widthPx/2, kerbeY);
+                ctx.lineTo(kerbeX + widthPx/2, kerbeY);
+                ctx.stroke();
+                
+                ctx.strokeStyle = '#333';
+                ctx.lineWidth = 1;
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                if (kerbe.position === 'oben') {
+                    ctx.moveTo(kerbeX - widthPx/2, kerbeY);
+                    ctx.lineTo(kerbeX, kerbeY + depthPx);
+                    ctx.lineTo(kerbeX + widthPx/2, kerbeY);
+                } else {
+                    ctx.moveTo(kerbeX - widthPx/2, kerbeY);
+                    ctx.lineTo(kerbeX, kerbeY - depthPx);
+                    ctx.lineTo(kerbeX + widthPx/2, kerbeY);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+            }
+        });
+    }
+    
+    drawLoecherToContext(ctx, rect) {
+        if (this.loecher.length === 0) return;
+        this.loecher.forEach(loch => {
+            const distancePx = loch.distance * this.mmToPx;
+            const widthPx = loch.width * this.mmToPx;
+            const heightPx = loch.height * this.mmToPx;
+            const positionPx = loch.position * this.mmToPx;
+            const lochX = rect.x + distancePx;
+            const lochY = rect.y + positionPx + (heightPx / 2);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = 'white';
+            
+            if (Math.abs(widthPx - heightPx) < 0.1) {
+                ctx.beginPath();
+                ctx.arc(lochX, lochY, widthPx / 2, 0, 2 * Math.PI);
+                ctx.fill();
+                ctx.stroke();
+            } else {
+                const radius = Math.min(widthPx, heightPx) / 2;
+                const x = lochX - widthPx / 2;
+                const y = lochY - heightPx / 2;
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(x, y, widthPx, heightPx, radius);
+                } else {
+                    const r = radius;
+                    const rRight = x + widthPx - r;
+                    const rBottom = y + heightPx - r;
+                    ctx.beginPath();
+                    ctx.moveTo(x + r, y);
+                    ctx.lineTo(rRight, y);
+                    ctx.arc(rRight, y + r, r, -Math.PI / 2, 0, false);
+                    ctx.lineTo(x + widthPx, rBottom);
+                    ctx.arc(rRight, rBottom, r, 0, Math.PI / 2, false);
+                    ctx.lineTo(x + r, y + heightPx);
+                    ctx.arc(x + r, rBottom, r, Math.PI / 2, Math.PI, false);
+                    ctx.lineTo(x, y + r);
+                    ctx.arc(x + r, y + r, r, Math.PI, -Math.PI / 2, false);
+                    ctx.closePath();
+                }
+                ctx.fill();
+                ctx.stroke();
+            }
+        });
+    }
+    
+    drawNahtlinieToContext(ctx, rect) {
+        if (!this.nahtlinie) return;
+        const nahtlinieY = rect.y + this.nahtlinie.distance * this.mmToPx;
+        ctx.strokeStyle = '#0066cc';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(rect.x, nahtlinieY);
+        ctx.lineTo(rect.x + rect.width, nahtlinieY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+    
+    drawAusschnitteToContext(ctx, rect) {
+        if (this.ausschnitte.length === 0) return;
+        this.ausschnitte.forEach(ausschnitt => {
+            const distancePx = ausschnitt.distance * this.mmToPx;
+            const widthPx = ausschnitt.width * this.mmToPx;
+            const heightPx = ausschnitt.height * this.mmToPx;
+            const ausschnittX = rect.x + distancePx;
+            const ausschnittY = rect.y + (rect.height - heightPx) / 2;
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.fillStyle = 'white';
+            ctx.fillRect(ausschnittX, ausschnittY, widthPx, heightPx);
+            ctx.strokeRect(ausschnittX, ausschnittY, widthPx, heightPx);
+        });
+    }
+    
+    drawSkizzeToContext(ctx) {
+        if (!this.loadedProfileSkizze || !this.loadedSkizzeImage || !this.loadedSkizzeImage.complete) return;
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(this.skizzeX, this.skizzeY, this.skizzeWidth, this.skizzeHeight);
+        
+        const aspectRatio = this.loadedSkizzeImage.width / this.loadedSkizzeImage.height;
+        let drawWidth = this.skizzeWidth;
+        let drawHeight = this.skizzeHeight;
+        if (aspectRatio > this.skizzeWidth / this.skizzeHeight) {
+            drawHeight = this.skizzeWidth / aspectRatio;
+        } else {
+            drawWidth = this.skizzeHeight * aspectRatio;
+        }
+        const centerX = this.skizzeX + (this.skizzeWidth - drawWidth) / 2;
+        const centerY = this.skizzeY + (this.skizzeHeight - drawHeight) / 2;
+        ctx.drawImage(this.loadedSkizzeImage, centerX, centerY, drawWidth, drawHeight);
+    }
+    
+    drawTextsToContext(ctx) {
+        this.texts.forEach(text => {
+            ctx.fillStyle = '#333';
+            ctx.font = `${text.size}px Arial`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(text.content, text.x, text.y);
+        });
+    }
+    
+    drawDimensionsToContext(ctx, rect, forPDF) {
+        if (!this.showDimensions) return;
+        
+        // Speichere originalen Context
+        const originalCtx = this.ctx;
+        
+        // Verwende temporären Context
+        this.ctx = ctx;
+        
+        // Zeichne Dimensions mit dem temporären Context
+        try {
+            // Rufe die normale drawDimensions auf, die aber jetzt auf ctx zeichnet
+            this.drawDimensions();
+        } catch (e) {
+            console.error('Fehler beim Zeichnen der Bemaßungen für PDF:', e);
+        }
+        
+        // Stelle originalen Context wieder her
+        this.ctx = originalCtx;
+    }
+    
+    drawDetailIndicatorsToContext(ctx, rect) {
+        // Vereinfacht - nur wenn nötig
+    }
+    
+    drawDetailDrawingsToContext(ctx, rect, startY) {
+        // Speichere originalen Context
+        const originalCtx = this.ctx;
+        
+        // Verwende temporären Context
+        this.ctx = ctx;
+        
+        // Zeichne Detailzeichnungen mit dem temporären Context
+        try {
+            this.drawDetailDrawings(rect, startY);
+        } catch (e) {
+            console.error('Fehler beim Zeichnen der Detailzeichnungen für PDF:', e);
+        }
+        
+        // Stelle originalen Context wieder her
+        this.ctx = originalCtx;
     }
     
     // Beschriftungsfeld Modal
@@ -2180,6 +3273,16 @@ class ProfilZeichner {
         this.bohneModal.style.display = 'none';
     }
     
+    removeBohne() {
+        this.saveState(); // Speichere Zustand vor dem Entfernen
+        
+        this.bohnen = [];
+        
+        this.closeBohneModal();
+        this.draw();
+        this.autoZoom();
+    }
+    
     confirmBohne() {
         const height = parseFloat(this.bohneHeightInput.value);
         
@@ -2197,6 +3300,7 @@ class ProfilZeichner {
         
         this.closeBohneModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Cut-out Modal
@@ -2206,6 +3310,17 @@ class ProfilZeichner {
     
     closeCutoutModal() {
         this.cutoutModal.style.display = 'none';
+    }
+    
+    removeCutout() {
+        this.saveState(); // Speichere Zustand vor dem Entfernen
+        
+        this.cutoutWidth = 0;
+        this.cutoutHeight = 0;
+        
+        this.closeCutoutModal();
+        this.draw();
+        this.autoZoom();
     }
     
     confirmCutout() {
@@ -2229,53 +3344,89 @@ class ProfilZeichner {
         
         this.closeCutoutModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Kerbe Modal
     openKerbeModal() {
+        // Aktualisiere die Tabelle mit den aktuellen Werten aus this.kerben
+        // (inklusive verschobene Positionen)
         this.kerbeModal.style.display = 'block';
-        this.refreshKerbeTable();
+        this.refreshKerbeTable(true);
     }
     
     closeKerbeModal() {
         this.kerbeModal.style.display = 'none';
     }
     
-    refreshKerbeTable() {
+    refreshKerbeTable(keepUserInputs = false) {
         if (!this.kerbeTbody) return;
         
-        // Lese zuerst die aktuellen Werte aus der Tabelle, bevor wir sie neu aufbauen
-        const rows = this.kerbeTbody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
-            if (index < this.kerben.length) {
+        // Lese zuerst die aktuellen Werte aus der Tabelle, falls Modal bereits geöffnet war
+        // UND wir die Benutzereingaben beibehalten wollen (nicht nach Verschiebung)
+        // WICHTIG: Die Position (distance) wird IMMER aus this.kerben genommen, nicht aus der Tabelle!
+        // Nur Typ und Position (oben/unten) werden aus der Tabelle übernommen, wenn keepUserInputs = true
+        const existingRows = this.kerbeTbody.querySelectorAll('tr');
+        if (keepUserInputs && existingRows.length > 0 && this.kerbeModal.style.display === 'block') {
+            // Finde die aktuelle Kerbe anhand der Position (da die Tabelle sortiert ist)
+            existingRows.forEach((row) => {
                 const distanceInput = row.querySelector('.kerbe-distance-input');
+                const typeSelect = row.querySelector('.kerbe-type-select');
                 const positionSelect = row.querySelector('.kerbe-position-select');
                 
                 if (distanceInput) {
-                    const distance = parseFloat(distanceInput.value);
-                    if (!isNaN(distance)) {
-                        this.kerben[index].distance = distance;
+                    const tableDistance = parseFloat(distanceInput.value);
+                    if (!isNaN(tableDistance)) {
+                        // Finde die Kerbe in this.kerben anhand der Position (mit Toleranz wegen Rundung)
+                        const matchingKerbe = this.kerben.find(kerbe => 
+                            Math.abs(kerbe.distance - tableDistance) < 0.1
+                        );
+                        
+                        if (matchingKerbe) {
+                            // Nur Typ und Position (oben/unten) aus Tabelle übernehmen
+                            // Die distance wird NICHT überschrieben, da sie möglicherweise verschoben wurde!
+                            if (typeSelect) {
+                                matchingKerbe.type = typeSelect.value;
+                            }
+                            if (positionSelect) {
+                                matchingKerbe.position = positionSelect.value;
+                            }
+                        }
                     }
                 }
-                if (positionSelect) {
-                    this.kerben[index].position = positionSelect.value;
-                }
-            }
-        });
+            });
+        }
         
         this.kerbeTbody.innerHTML = '';
         
-        this.kerben.forEach((kerbe, index) => {
+        // Hole den Standard-Typ aus dem oberen Dropdown
+        const defaultType = this.kerbeTypeSelect ? this.kerbeTypeSelect.value : 'triangle';
+        
+        // Zeige immer die aktuellen Werte aus this.kerben an (inklusive verschobene Positionen)
+        // Sortiere Kerben nach Position für Anzeige, aber behalte Original-Index
+        const sortedKerben = this.kerben.map((kerbe, originalIndex) => ({ kerbe, originalIndex }))
+            .sort((a, b) => a.kerbe.distance - b.kerbe.distance);
+        
+        sortedKerben.forEach((item, displayIndex) => {
+            const kerbe = item.kerbe;
+            const originalIndex = item.originalIndex;
             const row = document.createElement('tr');
+            const currentType = kerbe.type || defaultType;
             row.innerHTML = `
-                <td><input type="number" value="${kerbe.distance}" min="0" step="0.1" class="kerbe-distance-input"></td>
+                <td>
+                    <select class="kerbe-type-select">
+                        <option value="triangle" ${currentType === 'triangle' ? 'selected' : ''}>Dreieck</option>
+                        <option value="marker" ${currentType === 'marker' ? 'selected' : ''}>Strichmarkierung</option>
+                    </select>
+                </td>
+                <td><input type="number" value="${kerbe.distance}" min="0" step="5" class="kerbe-distance-input"></td>
                 <td>
                     <select class="kerbe-position-select">
                         <option value="oben" ${kerbe.position === 'oben' ? 'selected' : ''}>Oben</option>
                         <option value="unten" ${kerbe.position === 'unten' ? 'selected' : ''}>Unten</option>
                     </select>
                 </td>
-                <td><button class="remove-kerbe-btn" onclick="profilZeichner.removeKerbeRow(${index})">Entfernen</button></td>
+                <td><button class="remove-kerbe-btn" onclick="profilZeichner.removeKerbeRow(${originalIndex})">Entfernen</button></td>
             `;
             this.kerbeTbody.appendChild(row);
         });
@@ -2300,19 +3451,23 @@ class ProfilZeichner {
         const depth = parseFloat(this.kerbeDepthInput.value) || 4;
         const width = parseFloat(this.kerbeWidthInput.value) || 6;
         
+        // Typ aus dem oberen Dropdown übernehmen
+        const defaultType = this.kerbeTypeSelect ? this.kerbeTypeSelect.value : 'triangle';
+        
         this.kerben.push({
             distance: suggestedDistance,
             position: 'unten',
             depth: depth,
-            width: width
+            width: width,
+            type: defaultType
         });
         
-        this.refreshKerbeTable();
+        this.refreshKerbeTable(true);
     }
     
     removeKerbeRow(index) {
         this.kerben.splice(index, 1);
-        this.refreshKerbeTable();
+        this.refreshKerbeTable(true);
     }
     
     updateKerbeTypeDisplay() {
@@ -2339,15 +3494,16 @@ class ProfilZeichner {
         // Aktualisiere Kerben-Daten aus der Tabelle
         const rows = this.kerbeTbody.querySelectorAll('tr');
         this.kerben = [];
-        const type = this.kerbeTypeSelect.value;
         
         rows.forEach(row => {
+            const typeSelect = row.querySelector('.kerbe-type-select');
             const distanceInput = row.querySelector('.kerbe-distance-input');
             const positionSelect = row.querySelector('.kerbe-position-select');
             
-            if (distanceInput && positionSelect) {
+            if (distanceInput && positionSelect && typeSelect) {
                 const distance = parseFloat(distanceInput.value);
                 const position = positionSelect.value;
+                const type = typeSelect.value; // Typ aus jeder Zeile einzeln lesen
                 const depth = parseFloat(this.kerbeDepthInput.value) || 4;
                 const width = parseFloat(this.kerbeWidthInput.value) || 6;
                 
@@ -2357,7 +3513,7 @@ class ProfilZeichner {
                         position: position,
                         depth: depth,
                         width: width,
-                        type: type // Neuer Typ (triangle oder marker)
+                        type: type // Typ aus der Zeile übernehmen
                     });
                 }
             }
@@ -2365,6 +3521,7 @@ class ProfilZeichner {
         
         this.closeKerbeModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Nahtlinie Modal
@@ -2374,6 +3531,16 @@ class ProfilZeichner {
     
     closeNahtlinieModal() {
         this.nahtlinieModal.style.display = 'none';
+    }
+    
+    removeNahtlinie() {
+        this.saveState(); // Speichere Zustand vor dem Entfernen
+        
+        this.nahtlinie = null;
+        
+        this.closeNahtlinieModal();
+        this.draw();
+        this.autoZoom();
     }
     
     confirmNahtlinie() {
@@ -2394,10 +3561,19 @@ class ProfilZeichner {
         
         this.closeNahtlinieModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Loch Modal
     openLochModal() {
+        // Zeige Checkbox-Gruppe nur wenn Kerben vorhanden sind
+        if (this.kerben && this.kerben.length > 0) {
+            this.lochKerbenCheckboxGroup.style.display = 'block';
+        } else {
+            this.lochKerbenCheckboxGroup.style.display = 'none';
+            this.lochUseKerbenPositionsCheckbox.checked = false;
+        }
+        
         this.lochModal.style.display = 'block';
         this.refreshLochTable();
     }
@@ -2437,7 +3613,38 @@ class ProfilZeichner {
     }
     
     addLochRow() {
-        // Berechne automatisch eine Position (nach dem letzten Loch + 25mm)
+        // Prüfe ob Checkbox aktiviert ist und Kerben vorhanden sind
+        if (this.lochUseKerbenPositionsCheckbox && this.lochUseKerbenPositionsCheckbox.checked && 
+            this.kerben && this.kerben.length > 0) {
+            // Übernehme alle Kerben-Positionen
+            const width = parseFloat(this.lochWidthInput.value) || 8;
+            const height = parseFloat(this.lochHeightInput.value) || 4;
+            const position = parseFloat(this.lochPositionInput.value) || 2;
+            
+            // Sammle alle vorhandenen Loch-Positionen
+            const existingDistances = this.loecher.map(loch => loch.distance);
+            
+            // Füge Löcher für jede Kerbe hinzu, die noch nicht existiert
+            this.kerben.forEach(kerbe => {
+                if (!existingDistances.includes(kerbe.distance)) {
+        this.loecher.push({
+                        distance: kerbe.distance,
+            width: width,
+            height: height,
+            position: position
+                    });
+                    existingDistances.push(kerbe.distance);
+                }
+            });
+            
+            // Sortiere nach Position
+            this.loecher.sort((a, b) => a.distance - b.distance);
+            
+            this.refreshLochTable();
+            return;
+        }
+        
+        // Normale Logik: Berechne automatisch eine Position (nach dem letzten Loch + 25mm)
         let suggestedDistance = 0;
         
         if (this.loecher.length > 0) {
@@ -2450,9 +3657,9 @@ class ProfilZeichner {
         }
         
         // Neues Loch mit Vorschlag hinzufügen
-        const width = parseFloat(this.lochWidthInput.value) || 5;
-        const height = parseFloat(this.lochHeightInput.value) || 5;
-        const position = parseFloat(this.lochPositionInput.value) || 10;
+        const width = parseFloat(this.lochWidthInput.value) || 8;
+        const height = parseFloat(this.lochHeightInput.value) || 4;
+        const position = parseFloat(this.lochPositionInput.value) || 2;
         
         this.loecher.push({
             distance: suggestedDistance,
@@ -2483,7 +3690,7 @@ class ProfilZeichner {
                 const distance = parseFloat(distanceInput.value);
                 const width = parseFloat(this.lochWidthInput.value) || 5;
                 const height = parseFloat(this.lochHeightInput.value) || 5;
-                const position = parseFloat(this.lochPositionInput.value) || 10;
+                const position = parseFloat(this.lochPositionInput.value) || 2; // Standard: 2mm von oben
                 
                 if (!isNaN(distance) && distance >= 0) {
                     this.loecher.push({
@@ -2498,6 +3705,7 @@ class ProfilZeichner {
         
         this.closeLochModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Ausschnitt-Funktionen
@@ -2615,6 +3823,7 @@ class ProfilZeichner {
         
         this.closeAusschnittModal();
         this.draw();
+        this.autoZoom();
     }
     
     drawAusschnitte() {
@@ -2706,6 +3915,246 @@ class ProfilZeichner {
         });
     }
     
+    // Crimping Modal
+    openCrimpingModal() {
+        // Prüfe ob Bohne vorhanden ist
+        if (!this.bohnen || this.bohnen.length === 0) {
+            // Zeige Warnung
+            if (this.crimpingNoBohneWarning) {
+                this.crimpingNoBohneWarning.style.display = 'block';
+            }
+            // Modal trotzdem öffnen, aber Button deaktivieren?
+        } else {
+            if (this.crimpingNoBohneWarning) {
+                this.crimpingNoBohneWarning.style.display = 'none';
+            }
+        }
+        
+        this.crimpingModal.style.display = 'block';
+        this.refreshCrimpingTable();
+    }
+    
+    closeCrimpingModal() {
+        this.crimpingModal.style.display = 'none';
+    }
+    
+    refreshCrimpingTable() {
+        if (!this.crimpingTbody) return;
+        
+        // Hole alle bestehenden Zeilen
+        const rows = this.crimpingTbody.querySelectorAll('tr');
+        
+        // Setze alle Inputs auf 0
+        rows.forEach(row => {
+            const positionInput = row.querySelector('.crimping-position-input');
+            const lengthInput = row.querySelector('.crimping-length-input');
+            
+            if (positionInput) positionInput.value = '0';
+            if (lengthInput) lengthInput.value = '0';
+        });
+        
+        // Fülle die ersten Zeilen mit gespeicherten Crimping-Elementen
+        this.crimping.forEach((crimpingItem, index) => {
+            if (index < rows.length) {
+                const row = rows[index];
+                const positionInput = row.querySelector('.crimping-position-input');
+                const lengthInput = row.querySelector('.crimping-length-input');
+                
+                if (positionInput) positionInput.value = crimpingItem.position;
+                if (lengthInput) lengthInput.value = crimpingItem.length;
+            }
+        });
+    }
+    
+    addCrimpingRow() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="number" class="crimping-position-input" placeholder="0" step="0.1"></td>
+            <td><input type="number" class="crimping-length-input" placeholder="0" step="0.1"></td>
+            <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+        `;
+        this.crimpingTbody.appendChild(row);
+    }
+    
+    removeCrimpingRow(index) {
+        if (typeof index === 'number') {
+            this.crimping.splice(index, 1);
+            this.refreshCrimpingTable();
+        } else {
+            // Wenn ein Button-Element übergeben wurde - leere die Zeile
+            const row = index.parentNode.parentNode;
+            const positionInput = row.querySelector('.crimping-position-input');
+            const lengthInput = row.querySelector('.crimping-length-input');
+            
+            if (positionInput) positionInput.value = '0';
+            if (lengthInput) lengthInput.value = '0';
+        }
+    }
+    
+    confirmCrimping() {
+        // Prüfe ob Bohne vorhanden ist
+        if (!this.bohnen || this.bohnen.length === 0) {
+            alert('Bitte erstellen Sie zuerst eine Bohne, bevor Sie Crimping hinzufügen können!');
+            return;
+        }
+        
+        this.saveState(); // Speichere Zustand vor dem Hinzufügen
+        
+        // Aktualisiere Crimping-Daten aus der Tabelle
+        const rows = this.crimpingTbody.querySelectorAll('tr');
+        this.crimping = [];
+        
+        rows.forEach(row => {
+            const positionInput = row.querySelector('.crimping-position-input');
+            const lengthInput = row.querySelector('.crimping-length-input');
+            
+            if (positionInput && lengthInput) {
+                const position = parseFloat(positionInput.value);
+                const length = parseFloat(lengthInput.value);
+                
+                if (!isNaN(position) && !isNaN(length) && 
+                    position >= 0 && length > 0) {
+                    this.crimping.push({
+                        position: position,
+                        length: length
+                    });
+                }
+            }
+        });
+        
+        this.closeCrimpingModal();
+        this.draw();
+        this.autoZoom();
+    }
+    
+    drawCrimping() {
+        if (!this.currentRect || this.crimping.length === 0 || !this.bohnen || this.bohnen.length === 0) return;
+        
+        const rect = this.currentRect;
+        const bohne = this.bohnen[0];
+        
+        // Berechne Bohne-Position (wie in drawBohnen)
+        let bohneWidth = rect.width;
+        if (this.cutoutWidth > 0) {
+            bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+        }
+        
+        const bohneHeight = bohne.height * this.mmToPx;
+        const bohneX = rect.x + (rect.width - bohneWidth) / 2; // Zentriert
+        const bohneY = rect.y - bohneHeight; // Direkt über dem Profil
+        
+        // Zeichne jedes Crimping-Element
+        this.crimping.forEach(crimpingItem => {
+            const x = bohneX + (crimpingItem.position * this.mmToPx);
+            const width = crimpingItem.length * this.mmToPx;
+            const height = bohneHeight; // Höhe = Bohne-Höhe
+            
+            // Prüfe ob innerhalb der Bohne - aber nur warnen, nicht überspringen
+            // Begrenze die Position auf die Bohne, falls außerhalb
+            let actualX = x;
+            let actualWidth = width;
+            
+            if (x < bohneX) {
+                // Zu weit links - beginne an der linken Kante der Bohne
+                actualX = bohneX;
+                actualWidth = width - (bohneX - x);
+            }
+            if (x + width > bohneX + bohneWidth) {
+                // Zu weit rechts - begrenze auf rechte Kante der Bohne
+                actualWidth = (bohneX + bohneWidth) - actualX;
+            }
+            
+            // Nur zeichnen wenn noch Breite übrig ist
+            if (actualWidth <= 0) {
+                return; // Überspringen wenn keine Breite mehr
+            }
+            
+            // Zeichne Rechteck mit grauer Füllung und Schraffur
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 1;
+            
+            // Fülle Rechteck mit grauer Farbe
+            this.ctx.fillStyle = '#CCCCCC'; // Hellgrau
+            this.ctx.beginPath();
+            this.ctx.rect(actualX, bohneY, actualWidth, height);
+            this.ctx.fill();
+            
+            // Zeichne Rahmen
+            this.ctx.beginPath();
+            this.ctx.rect(actualX, bohneY, actualWidth, height);
+            this.ctx.stroke();
+            
+            // Zeichne Schraffur (diagonale Linien)
+            this.ctx.strokeStyle = '#666';
+            this.ctx.lineWidth = 0.5;
+            
+            // Schraffur-Parameter
+            const hatchSpacing = 4; // Abstand zwischen Schraffur-Linien in Pixel
+            
+            // Einfache diagonale Schraffur: Linien von oben links nach unten rechts
+            // Durchlaufe die Breite und Höhe
+            const maxDim = Math.max(width, height);
+            
+            for (let i = -maxDim; i <= maxDim; i += hatchSpacing) {
+                this.ctx.beginPath();
+                
+                // Berechne Start- und Endpunkt der diagonalen Linie
+                // Linie: y = bohneY + (x - (x + i))
+                let x1 = actualX + i;
+                let y1 = bohneY;
+                let x2 = actualX + i + height;
+                let y2 = bohneY + height;
+                
+                // Schneide mit Rechteck-Kanten
+                let startX, startY, endX, endY;
+                
+                // Startpunkt: linke oder obere Kante
+                if (x1 < actualX) {
+                    startX = actualX;
+                    startY = bohneY - i;
+                } else if (y1 < bohneY) {
+                    startX = actualX - i;
+                    startY = bohneY;
+                } else {
+                    startX = x1;
+                    startY = y1;
+                }
+                
+                // Endpunkt: rechte oder untere Kante
+                if (x2 > actualX + actualWidth) {
+                    endX = actualX + actualWidth;
+                    endY = bohneY + (actualX + actualWidth - (actualX + i));
+                } else if (y2 > bohneY + height) {
+                    endX = actualX + i + height;
+                    endY = bohneY + height;
+                } else {
+                    endX = x2;
+                    endY = y2;
+                }
+                
+                // Zeichne nur wenn Linie innerhalb des Rechtecks
+                if (startX >= actualX && startX <= actualX + actualWidth && startY >= bohneY && startY <= bohneY + height &&
+                    endX >= actualX && endX <= actualX + actualWidth && endY >= bohneY && endY <= bohneY + height) {
+                    this.ctx.moveTo(startX, startY);
+                    this.ctx.lineTo(endX, endY);
+                    this.ctx.stroke();
+                }
+            }
+            
+            // Zeichne Breite-Text direkt im Crimping-Rechteck (nur wenn Bemaßungen aktiviert)
+            if (this.showDimensions && actualWidth > 20 && height > 15) { // Nur wenn Bemaßungen aktiv und Rechteck groß genug ist
+                this.ctx.fillStyle = '#333';
+                this.ctx.font = '10px Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                
+                const textX = actualX + actualWidth / 2;
+                const textY = bohneY + height / 2;
+                this.ctx.fillText(`${crimpingItem.length}mm`, textX, textY);
+            }
+        });
+    }
+    
     // Text Modal
     openTextModal() {
         this.textModal.style.display = 'block';
@@ -2742,16 +4191,17 @@ class ProfilZeichner {
             this.selectedTextForEdit = null;
         } else {
             // Neuen Text erstellen (zentriert)
-            this.texts.push({
-                content: content,
-                size: size,
-                x: this.canvasWidth / 2,
-                y: this.canvasHeight / 2
-            });
+        this.texts.push({
+            content: content,
+            size: size,
+            x: this.canvasWidth / 2,
+            y: this.canvasHeight / 2
+        });
         }
         
         this.closeTextModal();
         this.draw();
+        this.autoZoom();
     }
     
     // Drag-and-Drop für Modals
@@ -2879,7 +4329,8 @@ class ProfilZeichner {
                 modalBorderRadius: this.databaseModal.style.borderRadius,
                 modalPosition: this.databaseModal.style.position,
                 contentWidth: modalContent ? modalContent.style.width : '',
-                contentMaxWidth: modalContent ? modalContent.style.maxWidth : ''
+                contentMaxWidth: modalContent ? modalContent.style.maxWidth : '',
+                contentTransform: modalContent ? modalContent.style.transform : ''
             };
         }
         
@@ -2909,6 +4360,7 @@ class ProfilZeichner {
             modalContent.style.left = '0';
             modalContent.style.right = '0';
             modalContent.style.bottom = '0';
+            modalContent.style.transform = 'none'; // Wichtig: Transform zurücksetzen
             modalContent.style.display = 'flex';
             modalContent.style.flexDirection = 'column';
         }
@@ -2966,6 +4418,9 @@ class ProfilZeichner {
                 modalContent.style.position = '';
                 modalContent.style.top = '';
                 modalContent.style.left = '';
+                modalContent.style.right = '';
+                modalContent.style.bottom = '';
+                modalContent.style.transform = this.originalModalStyle.contentTransform || 'translateY(-50%)'; // Transform wiederherstellen
                 modalContent.style.display = '';
                 modalContent.style.flexDirection = '';
             }
@@ -3595,6 +5050,11 @@ class ProfilZeichner {
         
         // Speichere Profil-Skizze für Anzeige
         this.loadedProfileSkizze = profile.skizze;
+        // Reset Skizze-Position beim Laden eines neuen Profils
+        this.skizzeX = null;
+        this.skizzeY = null;
+        this.skizzeWidth = 40 * this.mmToPx;
+        this.skizzeHeight = 30 * this.mmToPx;
         console.log('Skizze geladen:', this.loadedProfileSkizze ? 'Ja' : 'Nein');
         console.log('Skizze-Typ:', typeof this.loadedProfileSkizze);
         console.log('Skizze-Inhalt:', this.loadedProfileSkizze ? this.loadedProfileSkizze.substring(0, 50) + '...' : 'Keine Skizze');
@@ -3880,6 +5340,12 @@ function removeAusschnittRow(element) {
     }
 }
 
+function removeCrimpingRow(element) {
+    if (profilZeichner) {
+        profilZeichner.removeCrimpingRow(element);
+    }
+}
+
 // ProfilZeichner instanziieren
 const profilZeichner = new ProfilZeichner();
 
@@ -3888,4 +5354,3 @@ profilZeichner.initDatabase();
 
 // Globale Variable für onclick-Handler
 window.profilZeichner = profilZeichner;
-
