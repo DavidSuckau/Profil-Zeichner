@@ -62,12 +62,9 @@
                 <button id="ausschnitt-button" class="icon-button profile-button" title="Ausschnitt erstellen - Ein rechteckiger Ausschnitt">▢</button>
                 <button id="crimping-button" class="icon-button profile-button" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
                 <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
-                <button id="format-button" class="icon-button profile-button" title="Format wählen - A3 oder A4 Format">📄</button>
                 <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">📝</button>
-                <button id="title-block-button" class="icon-button profile-button" title="Beschriftungsfeld - DIN ISO 7200 Titelblock">📋</button>
                 <button id="background-button" class="icon-button profile-button" title="Hintergrund wechseln - Leer, Kariert, Schiefer, Carbon, Tafel">🎨</button>
                 <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">🗃️</button>
-                <button id="ai-photo-button" class="icon-button profile-button" title="KI Foto-Erkennung - Profil aus Foto erstellen">🤖📸</button>
             </div>
             
             <!-- Untere Button-Leiste -->
@@ -254,35 +251,6 @@
         </div>
     </div>
     
-    <!-- Format Modal -->
-    <div id="format-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Format wählen</h3>
-                <button id="format-modal-close" class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="format-options">
-                    <div class="format-option">
-                        <input type="radio" id="format-a4" name="format" value="a4" checked>
-                        <label for="format-a4">A4 (210 × 297 mm)</label>
-                    </div>
-                    <div class="format-option">
-                        <input type="radio" id="format-a3" name="format" value="a3">
-                        <label for="format-a3">A3 (297 × 420 mm)</label>
-                    </div>
-                </div>
-                <div class="format-actions">
-                    <button id="format-apply" class="btn-confirm">Anwenden</button>
-                    <button id="format-export-pdf" class="btn-confirm">PDF exportieren</button>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="format-cancel" class="btn-cancel">Abbrechen</button>
-            </div>
-        </div>
-    </div>
-    
     <!-- Text Modal -->
     <div id="text-modal" class="modal">
         <div class="modal-content">
@@ -304,50 +272,6 @@
             <div class="modal-footer">
                 <button id="text-cancel" class="btn-cancel">Abbrechen</button>
                 <button id="text-confirm" class="btn-confirm">Bestätigen</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Beschriftungsfeld Modal -->
-    <div id="title-block-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Beschriftungsfeld bearbeiten</h3>
-                <button id="title-block-modal-close" class="modal-close">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label for="title-block-title">Titel:</label>
-                    <input type="text" id="title-block-title" placeholder="Titel eingeben" maxlength="20">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-drawing-number">Zeichnungsnummer:</label>
-                    <input type="text" id="title-block-drawing-number" placeholder="Zeichnungsnummer" maxlength="15">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-date">Datum:</label>
-                    <input type="text" id="title-block-date" placeholder="Datum" maxlength="15">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-scale">Maßstab:</label>
-                    <input type="text" id="title-block-scale" placeholder="Maßstab" maxlength="10">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-material">Material:</label>
-                    <input type="text" id="title-block-material" placeholder="Material" maxlength="15">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-designer">Zeichner:</label>
-                    <input type="text" id="title-block-designer" placeholder="Zeichner" maxlength="15">
-                </div>
-                <div class="input-group">
-                    <label for="title-block-company">Firma:</label>
-                    <input type="text" id="title-block-company" placeholder="Firma" maxlength="20">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="title-block-cancel" class="btn-cancel">Abbrechen</button>
-                <button id="title-block-confirm" class="btn-confirm">Bestätigen</button>
             </div>
         </div>
     </div>
@@ -496,66 +420,6 @@
         </div>
     </div>
 
-    <!-- KI Foto-Erkennung Modal -->
-    <div id="ai-photo-modal" class="modal">
-        <div class="modal-content" style="width: 600px;">
-            <div class="modal-header">
-                <h3>🤖 KI Foto-Erkennung</h3>
-                <button id="ai-photo-modal-close" class="modal-close" title="Schließen">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div style="margin-bottom: 20px;">
-                    <p style="color: #666; margin-bottom: 15px;">
-                        Laden Sie ein Foto Ihres Profils hoch. Die KI erkennt automatisch Kerben, Löcher und andere Details.
-                    </p>
-                    
-                    <!-- Foto-Upload Bereich -->
-                    <div id="photo-upload-area" class="photo-upload-area">
-                        <div class="photo-upload-placeholder">
-                            <div class="photo-upload-icon">📸</div>
-                            <div class="photo-upload-text">Foto hier ablegen oder klicken zum Auswählen</div>
-                            <div class="photo-upload-hint">Unterstützte Formate: JPG, PNG, WEBP</div>
-                        </div>
-                        <input type="file" id="photo-file-input" accept="image/*" style="display: none;">
-                    </div>
-                    
-                    <!-- Foto-Vorschau -->
-                    <div id="photo-preview" class="photo-preview" style="display: none;">
-                        <img id="photo-preview-img" src="" alt="Foto-Vorschau">
-                        <button id="remove-photo-btn" class="btn-cancel" style="position: absolute; top: 10px; right: 10px;">✕</button>
-                    </div>
-                </div>
-                
-                <!-- Gesamtlänge Eingabe -->
-                <div style="margin-bottom: 20px;">
-                    <label for="total-length-input" style="display: block; margin-bottom: 8px; font-weight: bold;">
-                        Gesamtlänge des Profils (mm):
-                    </label>
-                    <input type="number" id="total-length-input" placeholder="z.B. 100" min="1" step="0.1" 
-                           style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 16px;">
-                </div>
-                
-                <!-- KI-Analyse Status -->
-                <div id="ai-analysis-status" class="ai-analysis-status" style="display: none;">
-                    <div class="ai-loading">
-                        <div class="ai-spinner"></div>
-                        <span>KI analysiert das Foto...</span>
-                    </div>
-                </div>
-                
-                <!-- KI-Ergebnisse -->
-                <div id="ai-results" class="ai-results" style="display: none;">
-                    <h4>🎯 KI-Analyse Ergebnisse:</h4>
-                    <div id="ai-detected-elements"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button id="ai-photo-analyze" class="btn-confirm" disabled>🔍 KI-Analyse starten</button>
-                <button id="ai-photo-apply" class="btn-confirm" disabled>✅ Zeichnung erstellen</button>
-                <button id="ai-photo-cancel" class="btn-cancel">Abbrechen</button>
-            </div>
-        </div>
-    </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
