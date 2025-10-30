@@ -6,6 +6,649 @@ class ProfilZeichner {
         this.init();
     }
     
+    // Zeichnungen-DB: Öffnen/Schließen
+    openZeichnungenDb() {
+        if (!this.zdb) this.zdb = { version: '1.0', projects: [] };
+        this.zeichnungsdbModal.style.display = 'block';
+        if (this.zdbFileInfo) {
+            this.zdbFileInfo.textContent = this.zdbFileName ? this.zdbFileName : 'Keine Datei geladen';
+        }
+        this.zdbRender();
+    }
+
+    // =============== DXF Export (R12, Geometrie) ===============
+    exportToDXF() {
+        if (!this.currentRect) {
+            alert('Bitte zuerst ein Profil erstellen.');
+            return;
+        }
+        const lines = [];
+        const arcs = [];
+        const circles = [];
+        const texts = [];
+
+        // Helper: push line
+        const addLine = (x1,y1,x2,y2,layer) => lines.push({x1,y1,x2,y2,layer});
+        const addArc = (cx,cy,r,startDeg,endDeg,layer) => arcs.push({cx,cy,r,startDeg,endDeg,layer});
+        const addCircle = (cx,cy,r,layer) => circles.push({cx,cy,r,layer});
+        const addText = (x,y,height,value,layer) => texts.push({x,y,height,value,layer});
+
+        // Profile (als Rechteck-Kontur)
+        const rect = this.currentRect;
+        const x1 = rect.x, y1 = rect.y, x2 = rect.x + rect.width, y2 = rect.y + rect.height;
+        addLine(x1,y1,x2,y1,'PROFILE');
+        addLine(x2,y1,x2,y2,'PROFILE');
+        addLine(x2,y2,x1,y2,'PROFILE');
+        addLine(x1,y2,x1,y1,'PROFILE');
+
+        // Nahtlinie (als Linie im Innenbereich)
+        if (this.nahtlinie) {
+            const nx = rect.x + (this.nahtlinie.distance || 0) * this.mmToPx; // distance ist von links in mm; falls px, bitte anpassen
+            addLine(nx, y1, nx, y2, 'NAHT');
+        }
+
+        // Ausschnitte (Rechtecke)
+        (this.ausschnitte || []).forEach(a => {
+            const top = a.positionType === 'oben';
+            const ax = rect.x + a.position * this.mmToPx;
+            const aw = a.length * this.mmToPx;
+            const ah = a.height * this.mmToPx;
+            const ay = top ? rect.y : (rect.y + rect.height - ah);
+            addLine(ax,ay,ax+aw,ay,'CUTOUTS');
+            addLine(ax+aw,ay,ax+aw,ay+ah,'CUTOUTS');
+            addLine(ax+aw,ay+ah,ax,ay+ah,'CUTOUTS');
+            addLine(ax,ay+ah,ax,ay,'CUTOUTS');
+        });
+
+        // Crimping (Rechtecke)
+        (this.crimping || []).forEach(c => {
+            if (!this.bohnen || this.bohnen.length === 0) return;
+            const b = this.bohnen[0];
+            const totalWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+            const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+            const bohneY = rect.y - (b.height * this.mmToPx);
+            const x = bohneX + c.position * this.mmToPx;
+            const w = c.length * this.mmToPx;
+            const h = b.height * this.mmToPx;
+            addLine(x,bohneY,x+w,bohneY,'CRIMPING');
+            addLine(x+w,bohneY,x+w,bohneY+h,'CRIMPING');
+            addLine(x+w,bohneY+h,x,bohneY+h,'CRIMPING');
+            addLine(x,bohneY+h,x,bohneY,'CRIMPING');
+        });
+
+        // Bohne (als horizontale Kapsel: 2 Linien + 2 Bögen)
+        if (this.bohnen && this.bohnen.length > 0) {
+            const b = this.bohnen[0];
+            const R = (b.height * this.mmToPx) / 2;
+            const bohneWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+            const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+            const bohneY = rect.y - (b.height * this.mmToPx);
+            const leftCx = bohneX + R;
+            const rightCx = bohneX + bohneWidth - R;
+            const cy = bohneY + R;
+            const topY = bohneY;
+            const bottomY = bohneY + 2*R;
+            // horizontale Geraden
+            addLine(leftCx, topY, rightCx, topY, 'BOHNE');
+            addLine(leftCx, bottomY, rightCx, bottomY, 'BOHNE');
+            // linke Halbkreis-Bögen (oben->unten)
+            addArc(leftCx, cy, R, 90, 270, 'BOHNE');
+            // rechte Halbkreis-Bögen (unten->oben)
+            addArc(rightCx, cy, R, 270, 90, 'BOHNE');
+        }
+
+        // Löcher
+        (this.loecher || []).forEach(loch => {
+            const cx = rect.x + loch.distance * this.mmToPx;
+            const w = loch.width * this.mmToPx;
+            const h = loch.height * this.mmToPx;
+            const topY = rect.y - (loch.positionFromTop ? loch.positionFromTop * this.mmToPx : (2 * this.mmToPx));
+            const cy = topY + h/2;
+            if (Math.abs(w - h) < 1e-6) {
+                // rund
+                addCircle(cx, cy, w/2, 'LOECHER');
+            } else {
+                // Kapsel (rounded rect) via 4 Lines + 2 Arcs
+                const R = Math.min(w,h)/2;
+                const left = cx - w/2 + R;
+                const right = cx + w/2 - R;
+                const top = cy - h/2 + R;
+                const bottom = cy + h/2 - R;
+                // Seitenlinien
+                addLine(left, top - R, left, bottom + R, 'LOECHER');
+                addLine(right, top - R, right, bottom + R, 'LOECHER');
+                // horizontale Linien oben/unten (zwischen den Bogenenden)
+                addLine(left, top - R, right, top - R, 'LOECHER');
+                addLine(left, bottom + R, right, bottom + R, 'LOECHER');
+                // obere/untere Halbkreise (ARC)
+                addArc(cx, top, R, 180, 360, 'LOECHER');
+                addArc(cx, bottom, R, 0, 180, 'LOECHER');
+            }
+        });
+
+        // Kerben
+        const kerbeDepthMm = parseFloat(this.kerbeDepthInput ? this.kerbeDepthInput.value : '4') || 4;
+        const kerbeWidthMm = parseFloat(this.kerbeWidthInput ? this.kerbeWidthInput.value : '6') || 6;
+        (this.kerben || []).forEach(k => {
+            const xCenter = rect.x + k.distance * this.mmToPx;
+            const depth = kerbeDepthMm * this.mmToPx;
+            const halfW = (kerbeWidthMm * this.mmToPx) / 2;
+            if (k.type === 'triangle') {
+                if (k.position === 'oben') {
+                    // Dreieck mit Basis auf der oberen Profilkante
+                    const yBase = rect.y;
+                    const yApex = rect.y + depth;
+                    const xL = xCenter - halfW;
+                    const xR = xCenter + halfW;
+                    addLine(xL, yBase, xR, yBase, 'KERBEN');
+                    addLine(xL, yBase, xCenter, yApex, 'KERBEN');
+                    addLine(xCenter, yApex, xR, yBase, 'KERBEN');
+                } else {
+                    // Dreieck mit Basis auf der unteren Profilkante
+                    const yBase = rect.y + rect.height;
+                    const yApex = yBase - depth;
+                    const xL = xCenter - halfW;
+                    const xR = xCenter + halfW;
+                    addLine(xL, yBase, xR, yBase, 'KERBEN');
+                    addLine(xL, yBase, xCenter, yApex, 'KERBEN');
+                    addLine(xCenter, yApex, xR, yBase, 'KERBEN');
+                }
+            } else {
+                // Strichmarkierung (kurze Linie)
+                const len = depth;
+                if (k.position === 'oben') {
+                    addLine(xCenter, rect.y, xCenter, rect.y - len, 'KERBEN');
+                } else {
+                    addLine(xCenter, rect.y + rect.height, xCenter, rect.y + rect.height + len, 'KERBEN');
+                }
+            }
+        });
+
+        // Texte (nur einfache TEXT Entities)
+        (this.texts || []).forEach(t => {
+            addText(t.x, t.y, (t.size || 16) * 0.264583, t.content || '', 'TEXT'); // 16px ~ 4.23mm
+        });
+
+        // Bounding Box bestimmen (für Y-Invert & Verschiebung ins positive)
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        const considerPoint = (x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
+        lines.forEach(l=>{considerPoint(l.x1,l.y1);considerPoint(l.x2,l.y2);});
+        circles.forEach(c=>{considerPoint(c.cx-c.r,c.cy-c.r);considerPoint(c.cx+c.r,c.cy+c.r);});
+        arcs.forEach(a=>{considerPoint(a.cx-a.r,a.cy-a.r);considerPoint(a.cx+a.r,a.cy+a.r);});
+        texts.forEach(tx=>considerPoint(tx.x,tx.y));
+        if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
+
+        // Koordinaten transformieren: DXF-Y nach oben: y' = (maxY - y); und nach 0,0 verschieben
+        const TX = -minX;
+        const TY = 0; // wir nutzen y' = (maxY - (y + 0))
+        const toDXF = (x,y)=>({x: x+TX, y: (maxY - y)});
+
+        // DXF Builder
+        const sec = [];
+        const push = (...args)=>sec.push(...args.map(String));
+        const layer = (name)=>(['8',name]);
+
+        // Header (mm Einheiten)
+        push('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC');
+        // Tables (nur Layer)
+        push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70','7');
+        const layers = ['PROFILE','CUTOUTS','KERBEN','LOECHER','NAHT','CRIMPING','TEXT','BOHNE'];
+        layers.forEach((ln,i)=>{
+            push('0','LAYER','2',ln,'70','0','62', String((i%7)+1),'6','CONTINUOUS');
+        });
+        push('0','ENDTAB','0','ENDSEC');
+
+        // ENTITIES
+        push('0','SECTION','2','ENTITIES');
+        // Linien
+        lines.forEach(l=>{
+            const p1 = toDXF(l.x1,l.y1); const p2 = toDXF(l.x2,l.y2);
+            push('0','LINE',...layer(l.layer),'10',p1.x,'20',p1.y,'11',p2.x,'21',p2.y);
+        });
+        // Kreise
+        circles.forEach(c=>{
+            const p = toDXF(c.cx,c.cy);
+            push('0','CIRCLE',...layer(c.layer),'10',p.x,'20',p.y,'40',c.r);
+        });
+        // Bögen
+        arcs.forEach(a=>{
+            const p = toDXF(a.cx,a.cy);
+            push('0','ARC',...layer(a.layer),'10',p.x,'20',p.y,'40',a.r,'50',a.startDeg,'51',a.endDeg);
+        });
+        // Texte
+        texts.forEach(t=>{
+            const p = toDXF(t.x,t.y);
+            push('0','TEXT',...layer(t.layer),'10',p.x,'20',p.y,'40',t.height,'1',t.value||'');
+        });
+        push('0','ENDSEC','0','EOF');
+
+        const blob = new Blob([sec.join('\n')], { type: 'application/dxf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'Zeichnung.dxf';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+    closeZeichnungenDb() {
+        if (this.zeichnungsdbModal) this.zeichnungsdbModal.style.display = 'none';
+    }
+
+    toggleZeichnungenDbMaximize() {
+        if (!this.zeichnungsdbModal) return;
+        this.zeichnungsdbModal.classList.add('maximized');
+        const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.width = '100%';
+            modalContent.style.maxWidth = '100%';
+            modalContent.style.height = '100%';
+            modalContent.style.maxHeight = '100%';
+            modalContent.style.transform = 'none';
+        }
+    }
+
+    restoreZeichnungenDbSize() {
+        if (!this.zeichnungsdbModal) return;
+        this.zeichnungsdbModal.classList.remove('maximized');
+        const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.width = '90%';
+            modalContent.style.maxWidth = '1200px';
+            modalContent.style.height = '';
+            modalContent.style.maxHeight = '';
+            modalContent.style.transform = '';
+        }
+    }
+
+    // Zeichnungen-DB: Storage
+    zdbLoad() {
+        try {
+            const raw = localStorage.getItem(this.zdbKey);
+            if (!raw) return { version: '1.0', projects: [] };
+            const parsed = JSON.parse(raw);
+            if (!parsed.projects) parsed.projects = [];
+            return parsed;
+        } catch (e) {
+            return { version: '1.0', projects: [] };
+        }
+    }
+
+    zdbSave() {
+        localStorage.setItem(this.zdbKey, JSON.stringify(this.zdb));
+    }
+
+    // Zeichnungen-DB: Render
+    zdbRender() {
+        this.zdbRenderProjects();
+        this.zdbRenderVariants();
+        this.zdbRenderReferences();
+        this.zdbRenderProfiles();
+    }
+
+    zdbRenderProjects() {
+        if (!this.zdbProjectList) return;
+        this.zdbProjectList.innerHTML = '';
+        this.zdb.projects.forEach(p => {
+            const li = document.createElement('li');
+            li.className = 'list-item-row';
+            const left = document.createElement('div');
+            left.textContent = p.name;
+            const del = document.createElement('button');
+            del.className = 'delete-btn-small';
+            del.title = 'Projekt löschen';
+            del.textContent = '×';
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.zdbDeleteProject(p.id);
+            });
+            if (this.zdbSelectedProjectId === p.id) li.classList.add('active');
+            li.addEventListener('click', () => {
+                this.zdbSelectedProjectId = p.id;
+                this.zdbSelectedVariantId = null;
+                this.zdbSelectedReferenceId = null;
+                this.zdbRender();
+            });
+            li.appendChild(left);
+            li.appendChild(del);
+            this.zdbProjectList.appendChild(li);
+        });
+    }
+
+    zdbRenderVariants() {
+        if (!this.zdbVariantList) return;
+        this.zdbVariantList.innerHTML = '';
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        (project.varianten || []).forEach(v => {
+            const li = document.createElement('li');
+            li.className = 'list-item-row';
+            const left = document.createElement('div');
+            left.textContent = v.name;
+            const del = document.createElement('button');
+            del.className = 'delete-btn-small';
+            del.title = 'Variante löschen';
+            del.textContent = '×';
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.zdbDeleteVariant(v.id);
+            });
+            if (this.zdbSelectedVariantId === v.id) li.classList.add('active');
+            li.addEventListener('click', () => {
+                this.zdbSelectedVariantId = v.id;
+                this.zdbSelectedReferenceId = null;
+                this.zdbRenderReferences();
+                this.zdbRenderProfiles();
+                this.zdbRenderVariants();
+            });
+            li.appendChild(left);
+            li.appendChild(del);
+            this.zdbVariantList.appendChild(li);
+        });
+    }
+
+    zdbRenderReferences() {
+        if (!this.zdbRefList) return;
+        this.zdbRefList.innerHTML = '';
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+        if (!variant) return;
+        // Migration: falls altes Schema (profiles) existiert, in Default-Referenz migrieren
+        if (variant.profiles && variant.profiles.length) {
+            variant.references = variant.references || [];
+            const def = { id: this.zdbUuid(), number: 'REF-1', createdAt: new Date().toISOString(), profiles: variant.profiles };
+            variant.references.push(def);
+            delete variant.profiles;
+            this.zdbSave();
+        }
+        (variant.references || []).forEach(ref => {
+            const li = document.createElement('li');
+            li.className = 'list-item-row';
+            const left = document.createElement('div');
+            left.textContent = ref.number;
+            const del = document.createElement('button');
+            del.className = 'delete-btn-small';
+            del.title = 'Bezügenummer löschen';
+            del.textContent = '×';
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.zdbDeleteReference(ref.id);
+            });
+            if (this.zdbSelectedReferenceId === ref.id) li.classList.add('active');
+            li.addEventListener('click', () => {
+                this.zdbSelectedReferenceId = ref.id;
+                this.zdbRenderProfiles();
+                this.zdbRenderReferences();
+            });
+            li.appendChild(left);
+            li.appendChild(del);
+            this.zdbRefList.appendChild(li);
+        });
+    }
+
+    zdbRenderProfiles() {
+        if (!this.zdbProfileGrid) return;
+        this.zdbProfileGrid.innerHTML = '';
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+        if (!variant) return;
+        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
+        const profiles = ref ? (ref.profiles || []) : [];
+        profiles.forEach(pr => {
+            const card = document.createElement('div');
+            card.className = 'profile-card';
+            const del = document.createElement('button');
+            del.className = 'delete-btn-small card-delete';
+            del.title = 'Profil löschen';
+            del.textContent = '×';
+            del.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.zdbDeleteProfile(pr.id);
+            });
+            const img = document.createElement('img');
+            img.src = pr.previewImage || '';
+            const title = document.createElement('div');
+            title.className = 'title';
+            title.textContent = pr.name;
+            const meta = document.createElement('div');
+            meta.className = 'meta';
+            meta.textContent = pr.supplierNumber ? `Lieferant: ${pr.supplierNumber}` : '—';
+            card.appendChild(del);
+            card.appendChild(img);
+            card.appendChild(title);
+            card.appendChild(meta);
+            // Single-Click: visuelle Auswahl (optional)
+            card.addEventListener('click', () => {
+                // Auswahlzustand setzen
+                Array.from(this.zdbProfileGrid.children).forEach(el => el.classList.remove('active'));
+                card.classList.add('active');
+            });
+            // Doppelklick: sofort öffnen
+            card.addEventListener('dblclick', () => this.zdbOpenProfile(pr));
+            this.zdbProfileGrid.appendChild(card);
+        });
+    }
+
+    // Löschfunktionen
+    zdbDeleteProject(projectId) {
+        const ix = this.zdb.projects.findIndex(p => p.id === projectId);
+        if (ix >= 0 && confirm('Projekt inklusive Varianten und Bezügenummern löschen?')) {
+            this.zdb.projects.splice(ix, 1);
+            this.zdbSelectedProjectId = null;
+            this.zdbSelectedVariantId = null;
+            this.zdbSelectedReferenceId = null;
+            this.zdbSave();
+            this.zdbRender();
+        }
+    }
+
+    zdbDeleteVariant(variantId) {
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        const ix = (project.varianten || []).findIndex(v => v.id === variantId);
+        if (ix >= 0 && confirm('Variante inklusive Bezügenummern löschen?')) {
+            project.varianten.splice(ix, 1);
+            this.zdbSelectedVariantId = null;
+            this.zdbSelectedReferenceId = null;
+            this.zdbSave();
+            this.zdbRender();
+        }
+    }
+
+    zdbDeleteReference(referenceId) {
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+        if (!variant) return;
+        const ix = (variant.references || []).findIndex(r => r.id === referenceId);
+        if (ix >= 0 && confirm('Bezügenummer und zugehörige Profile löschen?')) {
+            variant.references.splice(ix, 1);
+            this.zdbSelectedReferenceId = null;
+            this.zdbSave();
+            this.zdbRenderReferences();
+            this.zdbRenderProfiles();
+        }
+    }
+
+    zdbDeleteProfile(profileId) {
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return;
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+        if (!variant) return;
+        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
+        if (!ref) return;
+        const ix = (ref.profiles || []).findIndex(pr => pr.id === profileId);
+        if (ix >= 0 && confirm('Profil löschen?')) {
+            ref.profiles.splice(ix, 1);
+            this.zdbSave();
+            this.zdbRenderProfiles();
+        }
+    }
+
+    // Helpers
+    zdbUuid() {
+        return 'id-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    // CRUD
+    zdbEnsureDefault() {
+        if (!this.zdb.projects.length) {
+            this.zdb.projects.push({ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), varianten: [] });
+        }
+        const project = this.zdb.projects[0];
+        if (!project.varianten || !project.varianten.length) {
+            project.varianten = [{ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), profiles: [] }];
+        }
+        this.zdbSelectedProjectId = project.id;
+        this.zdbSelectedVariantId = project.varianten[0].id;
+    }
+
+    zdbAddProject() {
+        const name = prompt('Projektname eingeben:', 'Neues Projekt');
+        if (!name) return;
+        this.zdb.projects.push({ id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), varianten: [] });
+        this.zdbSave();
+        this.zdbSelectedProjectId = this.zdb.projects[this.zdb.projects.length - 1].id;
+        this.zdbSelectedVariantId = null;
+        this.zdbRender();
+    }
+
+    zdbAddVariant() {
+        if (!this.zdb.projects.length) this.zdbEnsureDefault();
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
+        const name = prompt('Variantenname eingeben:', 'Neue Variante');
+        if (!name) return;
+        project.varianten = project.varianten || [];
+        const v = { id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), references: [] };
+        project.varianten.push(v);
+        this.zdbSave();
+        this.zdbSelectedVariantId = v.id;
+        this.zdbRender();
+    }
+
+    zdbAddReference() {
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+        if (!project) return alert('Bitte zuerst ein Projekt wählen.');
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+        if (!variant) return alert('Bitte zuerst eine Variante wählen.');
+        const number = (this.zdbRefInput && this.zdbRefInput.value.trim()) || prompt('Bezügenummer eingeben:', 'REF-001');
+        if (!number) return;
+        variant.references = variant.references || [];
+        const ref = { id: this.zdbUuid(), number, createdAt: new Date().toISOString(), profiles: [] };
+        variant.references.push(ref);
+        this.zdbSave();
+        this.zdbSelectedReferenceId = ref.id;
+        if (this.zdbRefInput) this.zdbRefInput.value = '';
+        this.zdbRenderReferences();
+        this.zdbRenderProfiles();
+    }
+
+    async zdbSaveCurrentProfile() {
+        // Sicherstellen, dass Ziel existiert
+        if (!this.zdb.projects.length) this.zdbEnsureDefault();
+        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
+        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId) || project.varianten[0];
+        if (!variant.references || !variant.references.length) return alert('Bitte zuerst eine Bezügenummer anlegen und auswählen.');
+        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId) || null;
+        if (!ref) return alert('Bitte eine Bezügenummer auswählen.');
+        const name = prompt('Profilname eingeben:', 'Neue Zeichnung');
+        if (!name) return;
+        const supplierNumber = prompt('Lieferantennummer (optional):', '') || '';
+
+        // Screenshot erzeugen (skaliertes Bild der sichtbaren Canvas)
+        const previewImage = this.canvas.toDataURL('image/png');
+
+        // Zustand speichern
+        const data = this.getCurrentStateForExport ? this.getCurrentStateForExport() : this.createStateSnapshotForExport();
+
+        const profile = {
+            id: this.zdbUuid(),
+            name,
+            supplierNumber,
+            previewImage,
+            data,
+            version: this.version,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        ref.profiles = ref.profiles || [];
+        ref.profiles.push(profile);
+        this.zdbSave();
+        this.zdbRenderProfiles();
+        alert('Zeichnung gespeichert.');
+    }
+
+    // Export der aktuellen Zeichen-State-Struktur
+    createStateSnapshotForExport() {
+        // Reuse saveState logic without pushing to history
+        return {
+            currentRect: this.currentRect ? { ...this.currentRect } : null,
+            bohnen: JSON.parse(JSON.stringify(this.bohnen || [])),
+            kerben: JSON.parse(JSON.stringify(this.kerben || [])),
+            loecher: JSON.parse(JSON.stringify(this.loecher || [])),
+            ausschnitte: JSON.parse(JSON.stringify(this.ausschnitte || [])),
+            nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
+            crimping: JSON.parse(JSON.stringify(this.crimping || [])),
+            zoom: this.zoom,
+            offsetX: this.offsetX,
+            offsetY: this.offsetY,
+        };
+    }
+
+    zdbOpenProfile(profile) {
+        if (!profile || !profile.data) return;
+        // Bestehendes auf dem Canvas entfernen und dann laden
+        this.clearCanvas();
+        this.saveState();
+        this.restoreState(profile.data);
+        this.draw();
+        this.autoZoom();
+        this.closeZeichnungenDb();
+    }
+
+    // Import/Export
+    zdbExport() {
+        const blob = new Blob([JSON.stringify(this.zdb)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const fileName = this.zdbFileName || 'Zeichnungen.json';
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        // Anzeige aktualisieren
+        if (!this.zdbFileName) {
+            this.zdbFileName = 'Zeichnungen.json';
+        }
+        if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
+    }
+
+    zdbHandleImport(e) {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const data = JSON.parse(reader.result);
+                if (data && data.projects) {
+                    this.zdb = data;
+                    this.zdbSave();
+                    this.zdbSelectedProjectId = null;
+                    this.zdbSelectedVariantId = null;
+                    this.zdbRender();
+                    this.zdbFileName = file.name || 'Zeichnungen.json';
+                    if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
+                } else {
+                    alert('Ungültiges Datei-Format.');
+                }
+            } catch (err) {
+                alert('Import fehlgeschlagen.');
+            }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+    }
     init() {
         // Canvas-Elemente
         this.canvas = document.getElementById('main-canvas');
@@ -30,11 +673,13 @@ class ProfilZeichner {
         this.bemaßungButton = document.getElementById('bemaßung-button');
         this.textButton = document.getElementById('text-button');
         this.databaseButton = document.getElementById('database-button');
+        this.zeichnungsdbButton = document.getElementById('zeichnungsdb-button');
         
         // Untere Button-Leiste
         this.autoZoomButton = document.getElementById('auto-zoom-button');
         this.panButton = document.getElementById('pan-button');
         this.pdfButton = document.getElementById('pdf-button');
+        this.dxfButton = document.getElementById('dxf-button');
         
         
         // Modal-Elemente
@@ -114,6 +759,24 @@ class ProfilZeichner {
         this.lochModalClose = document.getElementById('loch-modal-close');
         
         this.canvasContainer = document.querySelector('.canvas-container');
+
+        // Zeichnungen-DB Elemente
+        this.zeichnungsdbModal = document.getElementById('zeichnungsdb-modal');
+        this.zeichnungsdbModalClose = document.getElementById('zeichnungsdb-modal-close');
+        this.zeichnungsdbClose = document.getElementById('zeichnungsdb-close');
+        this.zdbAddProjectBtn = document.getElementById('zeichnungsdb-add-project');
+        this.zdbAddVariantBtn = document.getElementById('zeichnungsdb-add-variant');
+        this.zdbSaveCurrentBtn = document.getElementById('zeichnungsdb-save-current');
+        this.zdbExportBtn = document.getElementById('zeichnungsdb-export');
+        this.zdbImportBtn = document.getElementById('zeichnungsdb-import');
+        this.zdbFileInput = document.getElementById('zeichnungsdb-file-input');
+        this.zdbProjectList = document.getElementById('zeichnungsdb-project-list');
+        this.zdbVariantList = document.getElementById('zeichnungsdb-variant-list');
+        this.zdbRefList = document.getElementById('zeichnungsdb-ref-list');
+        this.zdbRefInput = document.getElementById('zeichnungsdb-ref-input');
+        this.zdbAddRefBtn = document.getElementById('zeichnungsdb-add-ref');
+        this.zdbProfileGrid = document.getElementById('zeichnungsdb-profile-grid');
+        this.zdbFileInfo = document.getElementById('zeichnungsdb-file-info');
         
         // Canvas-Einstellungen
         this.canvasWidth = window.innerWidth;
@@ -248,6 +911,36 @@ class ProfilZeichner {
         this.crimpingButton.addEventListener('click', () => this.openCrimpingModal());
         this.textButton.addEventListener('click', () => this.openTextModal());
         this.databaseButton.addEventListener('click', () => this.openDatabaseModal());
+        if (this.zeichnungsdbButton) {
+            this.zeichnungsdbButton.addEventListener('click', () => this.openZeichnungenDb());
+        }
+
+        // Zeichnungen-DB Events
+        if (this.zeichnungsdbModalClose) this.zeichnungsdbModalClose.addEventListener('click', () => this.closeZeichnungenDb());
+        if (this.zeichnungsdbClose) this.zeichnungsdbClose.addEventListener('click', () => this.closeZeichnungenDb());
+        if (this.zdbAddProjectBtn) this.zdbAddProjectBtn.addEventListener('click', () => this.zdbAddProject());
+        if (this.zdbAddVariantBtn) this.zdbAddVariantBtn.addEventListener('click', () => this.zdbAddVariant());
+        if (this.zdbSaveCurrentBtn) this.zdbSaveCurrentBtn.addEventListener('click', () => this.zdbSaveCurrentProfile());
+        // Umbenannte Datei-Buttons: Öffnen/Speichern
+        this.zdbOpenFileBtn = document.getElementById('zeichnungsdb-open-file');
+        this.zdbSaveFileBtn = document.getElementById('zeichnungsdb-save-file');
+        if (this.zdbSaveFileBtn) this.zdbSaveFileBtn.addEventListener('click', () => this.zdbExport());
+        if (this.zdbOpenFileBtn) this.zdbOpenFileBtn.addEventListener('click', () => this.zdbFileInput && this.zdbFileInput.click());
+        // Maximize/Minimize
+        this.zeichnungsdbModalMaximize = document.getElementById('zeichnungsdb-modal-maximize');
+        this.zeichnungsdbModalMinimize = document.getElementById('zeichnungsdb-modal-minimize');
+        if (this.zeichnungsdbModalMaximize) this.zeichnungsdbModalMaximize.addEventListener('click', () => this.toggleZeichnungenDbMaximize());
+        if (this.zeichnungsdbModalMinimize) this.zeichnungsdbModalMinimize.addEventListener('click', () => this.restoreZeichnungenDbSize());
+        if (this.zdbFileInput) this.zdbFileInput.addEventListener('change', (e) => this.zdbHandleImport(e));
+        if (this.zdbAddRefBtn) this.zdbAddRefBtn.addEventListener('click', () => this.zdbAddReference());
+
+        // Zeichnungen-DB State
+        this.zdbKey = 'pz.zeichnungsdb.v1';
+        this.zdb = this.zdbLoad();
+        this.zdbSelectedProjectId = null;
+        this.zdbSelectedVariantId = null;
+        this.zdbSelectedReferenceId = null;
+        this.zdbFileName = null;
         
         // Untere Button-Leiste Event Listeners
         if (this.autoZoomButton) {
@@ -256,9 +949,8 @@ class ProfilZeichner {
         if (this.panButton) {
             this.panButton.addEventListener('click', () => this.togglePanMode());
         }
-        if (this.pdfButton) {
-            this.pdfButton.addEventListener('click', () => this.exportToPDF());
-        }
+        if (this.pdfButton) this.pdfButton.addEventListener('click', () => this.exportToPDF());
+        if (this.dxfButton) this.dxfButton.addEventListener('click', () => this.exportToDXF());
         
         this.bemaßungButton.addEventListener('click', () => {
             this.toggleDimensions();
@@ -1014,19 +1706,19 @@ class ProfilZeichner {
     
     // Stellt einen gespeicherten Zustand wieder her
     restoreState(state) {
-        this.currentRect = state.currentRect ? { ...state.currentRect } : null;
-        this.bohnen = JSON.parse(JSON.stringify(state.bohnen));
-        this.kerben = JSON.parse(JSON.stringify(state.kerben));
-        this.loecher = JSON.parse(JSON.stringify(state.loecher));
-        this.ausschnitte = JSON.parse(JSON.stringify(state.ausschnitte));
-        this.crimping = state.crimping ? JSON.parse(JSON.stringify(state.crimping)) : [];
-        this.nahtlinie = state.nahtlinie ? { ...state.nahtlinie } : null;
-        this.texts = JSON.parse(JSON.stringify(state.texts));
-        this.showDimensions = state.showDimensions;
-        this.showFormatBorder = state.showFormatBorder;
-        this.zoom = state.zoom;
-        this.offsetX = state.offsetX;
-        this.offsetY = state.offsetY;
+        this.currentRect = state && state.currentRect ? { ...state.currentRect } : null;
+        this.bohnen = state && state.bohnen ? JSON.parse(JSON.stringify(state.bohnen)) : [];
+        this.kerben = state && state.kerben ? JSON.parse(JSON.stringify(state.kerben)) : [];
+        this.loecher = state && state.loecher ? JSON.parse(JSON.stringify(state.loecher)) : [];
+        this.ausschnitte = state && state.ausschnitte ? JSON.parse(JSON.stringify(state.ausschnitte)) : [];
+        this.crimping = state && state.crimping ? JSON.parse(JSON.stringify(state.crimping)) : [];
+        this.nahtlinie = state && state.nahtlinie ? { ...state.nahtlinie } : null;
+        this.texts = state && state.texts ? JSON.parse(JSON.stringify(state.texts)) : [];
+        this.showDimensions = state && typeof state.showDimensions === 'boolean' ? state.showDimensions : this.showDimensions || false;
+        this.showFormatBorder = state && typeof state.showFormatBorder === 'boolean' ? state.showFormatBorder : false;
+        this.zoom = state && typeof state.zoom === 'number' ? state.zoom : this.zoom || 1;
+        this.offsetX = state && typeof state.offsetX === 'number' ? state.offsetX : this.offsetX || (this.canvasWidth / 2);
+        this.offsetY = state && typeof state.offsetY === 'number' ? state.offsetY : this.offsetY || (this.canvasHeight / 2);
         this.skizzeX = state.skizzeX !== undefined ? state.skizzeX : null;
         this.skizzeY = state.skizzeY !== undefined ? state.skizzeY : null;
         this.skizzeWidth = state.skizzeWidth !== undefined ? state.skizzeWidth : (40 * this.mmToPx);
@@ -5346,11 +6038,46 @@ function removeCrimpingRow(element) {
     }
 }
 
-// ProfilZeichner instanziieren
-const profilZeichner = new ProfilZeichner();
+// App-Start nach Authentifizierung
+function startProfilZeichnerApp() {
+    const app = new ProfilZeichner();
+    if (typeof app.initDatabase === 'function') {
+        app.initDatabase();
+    }
+    window.profilZeichner = app;
+}
 
-// Datenbank initialisieren
-profilZeichner.initDatabase();
+document.addEventListener('DOMContentLoaded', () => {
+    const overlay = document.getElementById('auth-overlay');
+    const pwdInput = document.getElementById('auth-password');
+    const btn = document.getElementById('auth-login-btn');
+    const err = document.getElementById('auth-error');
+    const REQUIRED_PW = 'TrimShop002=';
 
-// Globale Variable für onclick-Handler
-window.profilZeichner = profilZeichner;
+    const authenticated = sessionStorage.getItem('pz.auth') === 'ok';
+    if (authenticated) {
+        if (overlay) overlay.style.display = 'none';
+        startProfilZeichnerApp();
+        return;
+    }
+    if (overlay) overlay.style.display = 'flex';
+    if (pwdInput) pwdInput.focus();
+
+    function tryLogin() {
+        const val = (pwdInput && pwdInput.value) || '';
+        if (val === REQUIRED_PW) {
+            sessionStorage.setItem('pz.auth', 'ok');
+            if (err) err.style.display = 'none';
+            if (overlay) overlay.style.display = 'none';
+            startProfilZeichnerApp();
+        } else {
+            if (err) err.style.display = 'block';
+            if (pwdInput) pwdInput.select();
+        }
+    }
+
+    if (btn) btn.addEventListener('click', tryLogin);
+    if (pwdInput) pwdInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') tryLogin();
+    });
+});
