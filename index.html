@@ -64,6 +64,7 @@
                 <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
                 <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">T</button>
                 <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">🗃️</button>
+                <button id="zeichnungsdb-button" class="icon-button profile-button" title="Zeichnungen öffnen - Fertige Zeichnungen verwalten">🖼️</button>
             </div>
             
             <!-- Untere Button-Leiste -->
@@ -71,8 +72,66 @@
                 <button id="auto-zoom-button" class="format-button" title="Automatisch zoomen - Gesamte Zeichnung anzeigen">🔍</button>
                 <button id="pan-button" class="format-button" title="Alles verschieben - Per Mausklick und Drag">✋</button>
                 <button id="pdf-button" class="format-button" title="Als PDF exportieren - Speichern als PDF-Datei">📄</button>
+                <button id="dxf-button" class="format-button" title="Als DXF exportieren - CAD-Geometrie exportieren">DXF</button>
             </div>
         </div>
+        </div>
+    </div>
+
+    <!-- Zeichnungen Modal -->
+    <div id="zeichnungsdb-modal" class="modal">
+        <div class="modal-content" style="width: 90%; max-width: 1200px;">
+            <div class="modal-header">
+                <h3>Zeichnungen</h3>
+                <div class="modal-controls">
+                    <button id="zeichnungsdb-modal-minimize" class="modal-minimize" title="Minimieren">−</button>
+                    <button id="zeichnungsdb-modal-maximize" class="modal-maximize" title="Maximieren">□</button>
+                    <button id="zeichnungsdb-modal-close" class="modal-close" title="Schließen">&times;</button>
+                </div>
+            </div>
+            <div class="modal-body">
+                <div class="zeichnungsdb-toolbar">
+                    <div class="zeichnungsdb-left">
+                        <button id="zeichnungsdb-add-project" class="btn-confirm" title="Projekt hinzufügen">+ Projekt</button>
+                        <button id="zeichnungsdb-add-variant" class="btn-confirm" title="Variante hinzufügen">+ Variante</button>
+                        <button id="zeichnungsdb-save-current" class="btn-confirm" style="background:#28a745" title="Aktuelle Zeichnung in Datenbank speichern">💾 Speichern</button>
+                    </div>
+                    <div class="zeichnungsdb-right">
+                        <button id="zeichnungsdb-open-file" class="btn-confirm" title="Zeichnungen laden (Datei öffnen)">📂 Öffnen</button>
+                        <button id="zeichnungsdb-save-file" class="btn-confirm" title="Zeichnungen speichern (Datei speichern)">💾 Speichern</button>
+                        <input type="file" id="zeichnungsdb-file-input" accept=".json" style="display:none;" />
+                    </div>
+                </div>
+                <!-- Datei-Info für Zeichnungen-Datenbank -->
+                <div class="database-file-info">
+                    <span id="zeichnungsdb-file-info">Keine Datei geladen</span>
+                </div>
+                <div class="zeichnungsdb-layout">
+                    <div class="zeichnungsdb-col zeichnungsdb-col-projects">
+                        <div class="col-title">Projekte</div>
+                        <ul id="zeichnungsdb-project-list" class="list"></ul>
+                    </div>
+                    <div class="zeichnungsdb-col zeichnungsdb-col-variants">
+                        <div class="col-title">Varianten</div>
+                        <ul id="zeichnungsdb-variant-list" class="list"></ul>
+                    </div>
+                    <div class="zeichnungsdb-col zeichnungsdb-col-references">
+                        <div class="col-title">Bezügenummern</div>
+                        <div style="display:flex; gap:6px; margin-bottom:6px;">
+                            <input type="text" id="zeichnungsdb-ref-input" placeholder="Bezügenummer..." style="flex:1; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
+                            <button id="zeichnungsdb-add-ref" class="btn-confirm" title="Bezügenummer hinzufügen">+</button>
+                        </div>
+                        <ul id="zeichnungsdb-ref-list" class="list"></ul>
+                    </div>
+                    <div class="zeichnungsdb-col zeichnungsdb-col-profiles">
+                        <div class="col-title">Profile</div>
+                        <div id="zeichnungsdb-profile-grid" class="profile-grid"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="zeichnungsdb-close" class="btn-cancel" title="Schließen">✕</button>
+            </div>
         </div>
     </div>
 
@@ -488,5 +547,16 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
+    
+    <!-- Auth Overlay -->
+    <div id="auth-overlay" class="auth-overlay" style="display:none;">
+        <div class="auth-card">
+            <div class="auth-title">Zugang geschützt</div>
+            <div class="auth-subtitle">Bitte Passwort eingeben, um das Tool zu benutzen.</div>
+            <input type="password" id="auth-password" class="auth-input" placeholder="Passwort" autocomplete="current-password">
+            <div id="auth-error" class="auth-error" style="display:none;">Falsches Passwort.</div>
+            <button id="auth-login-btn" class="auth-btn">Anmelden</button>
+        </div>
+    </div>
 </body>
 </html>
