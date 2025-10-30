@@ -1,8 +1,8 @@
 {
-  "version": "1.8.0",
+  "version": "1.2.0",
   "lastUpdate": "2024-10-28",
   "changelog": {
-    "1.1.0": {
+    "1.2.0": {
       "date": "2024-10-28",
       "changes": [
         "Löschfunktionen für Bohne, Cutout und Nahtlinie hinzugefügt",
@@ -17,7 +17,7 @@
       ],
       "type": "minor"
     },
-    "1.0.0": {
+    "1.2.0": {
       "date": "2024-10-24",
       "changes": [
         "Initiale Version"
