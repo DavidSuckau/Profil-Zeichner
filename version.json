@@ -1,0 +1,29 @@
+{
+  "version": "1.1.0",
+  "lastUpdate": "2024-10-28",
+  "changelog": {
+    "1.1.0": {
+      "date": "2024-10-28",
+      "changes": [
+        "Löschfunktionen für Bohne, Cutout und Nahtlinie hinzugefügt",
+        "Ovale Löcher als Kapsel-Form implementiert",
+        "AutoZoom nach jeder Aktion",
+        "Cutout-Bemaßungen hinzugefügt",
+        "Gestrichelte Linien bei vertikalen Bemaßungen",
+        "Typ-Auswahl pro Kerbe (Dreieck/Strichmarkierung)",
+        "Loch-Positionierung: Standard 2mm von oben",
+        "Modals scrollbar gemacht",
+        "Versionshinweis hinzugefügt"
+      ],
+      "type": "minor"
+    },
+    "1.0.0": {
+      "date": "2024-10-24",
+      "changes": [
+        "Initiale Version"
+      ],
+      "type": "major"
+    }
+  }
+}
+
