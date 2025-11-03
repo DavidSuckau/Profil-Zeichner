@@ -1,8 +1,29 @@
 {
-  "version": "1.2.0",
-  "lastUpdate": "2024-10-28",
+  "version": "1.2.1",
+  "lastUpdate": "2025-01-01",
   "changelog": {
+    "1.2.1": {
+      "date": "2025-01-01",
+      "changes": [
+        "Maximal 3 Kerben-Typen möglich",
+        "Kerben-Typ-Einstellungen bleiben erhalten",
+        "Kerben-Positionen werden nicht zurückgesetzt beim Hinzufügen",
+        "Strichmarkierung wird korrekt angewendet und gespeichert"
+      ],
+      "type": "patch"
+    },
     "1.2.0": {
+      "date": "2024-12-31",
+      "changes": [
+        "Bemaßungslinien verschiebbar (horizontal in Y, vertikal in X)",
+        "Löcher verschiebbar in X-Richtung (5mm Snapping)",
+        "Code-Struktur verbessert (CONFIG-Objekt, Kommentare)",
+        "Performance-Optimierung (CSS minifiziert, WebP-Support)",
+        "Hover-Effekte für Bemaßungslinien und Löcher"
+      ],
+      "type": "minor"
+    },
+    "1.1.0": {
       "date": "2024-10-28",
       "changes": [
         "Löschfunktionen für Bohne, Cutout und Nahtlinie hinzugefügt",
@@ -17,7 +38,7 @@
       ],
       "type": "minor"
     },
-    "1.2.0": {
+    "1.0.0": {
       "date": "2024-10-24",
       "changes": [
         "Initiale Version"
