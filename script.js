@@ -1,654 +1,912 @@
 // ProfilZeichner Klasse
 class ProfilZeichner {
     constructor() {
-        // Versionsnummer - wird automatisch verwaltet
-        this.version = '1.1.1';
+                                                                                                                                            // ====================================================================
+                                                                                                                                            // KONFIGURATION & KONSTANTEN
+                                                                                                                                            // ====================================================================
+                                                                                                                                            this.CONFIG = {
+                                                                                                                                                // Versionsnummer - wird automatisch verwaltet
+                                                                                                                                                version: '1.2.1',
+                                                                                                                                                
+                                                                                                                                                // Umrechnung & Skalierung
+                                                                                                                                                defaultDpi: 96,
+                                                                                                                                                mmPerInch: 25.4,
+                                                                                                                                                // mmToPx wird nach CONFIG-Erstellung berechnet: 96 / 25.4 ≈ 3.7795 px/mm
+                                                                                                                                                
+                                                                                                                                                // Canvas-Dimensionen
+                                                                                                                                                menuBarHeight: 80, // px - Abzug für Menüleiste
+                                                                                                                                                
+                                                                                                                                                // Zoom-Einstellungen
+                                                                                                                                                zoomMin: 10, // % - Minimaler Zoom-Level
+                                                                                                                                                zoomMax: 500, // % - Maximaler Zoom-Level
+                                                                                                                                                zoomDefault: 100, // % - Standard Zoom-Level
+                                                                                                                                                zoomStep: 5, // % - Schrittweite für Zoom-Slider
+                                                                                                                                                
+                                                                                                                                                // Bemaßungen
+                                                                                                                                                dimensionLineSpacing: 7, // mm - Abstand zwischen Bemaßungslinien
+                                                                                                                                                dimensionOffset: 10, // mm - Erste Bemaßungslinie vom Nullpunkt
+                                                                                                                                                dimensionArrowSize: 6, // px - Größe der Bemaßungspfeile
+                                                                                                                                                dimensionLineWidth: 0.5, // px - Dicke der Bemaßungslinien
+                                                                                                                                                dimensionFontSize: 12, // px - Schriftgröße für Bemaßungstexte
+                                                                                                                                                dimensionFontFamily: 'Arial', // Schriftart für Bemaßungen
+                                                                                                                                                
+                                                                                                                                                // Titelblock
+                                                                                                                                                titleBlockWidth: 90, // mm - Breite des Titelblocks
+                                                                                                                                                titleBlockHeight: 40, // mm - Höhe des Titelblocks
+                                                                                                                                                titleBlockPadding: 8, // px - Padding innerhalb des Titelblocks
+                                                                                                                                                titleBlockFontSize: 10, // px - Schriftgröße im Titelblock
+                                                                                                                                                titleBlockFontFamily: 'sans-serif', // Schriftart im Titelblock
+                                                                                                                                                titleBlockOffset: 10, // mm - Abstand vom Profil
+                                                                                                                                                
+                                                                                                                                                // Standard-Werte für Profilelemente
+                                                                                                                                                defaultBohneHeight: 4, // mm - Standard-Höhe für Bohne
+                                                                                                                                                defaultLochWidth: 8, // mm - Standard-Breite für Löcher
+                                                                                                                                                defaultLochHeight: 4, // mm - Standard-Höhe für Löcher
+                                                                                                                                                defaultLochPositionFromTop: 2, // mm - Abstand unter Profil-Oberkante
+                                                                                                                                                
+                                                                                                                                                // Skizze
+                                                                                                                                                skizzeDefaultWidth: 40, // mm - Standard-Breite für Skizzen
+                                                                                                                                                skizzeDefaultHeight: 30, // mm - Standard-Höhe für Skizzen
+                                                                                                                                                
+                                                                                                                                                // State Management
+                                                                                                                                                maxHistorySize: 50, // Maximale Anzahl Undo/Redo-Schritte
+                                                                                                                                                
+                                                                                                                                                // Farben
+                                                                                                                                                colors: {
+                                                                                                                                                    profile: '#333', // Hauptfarbe für Profil-Linien
+                                                                                                                                                    highlight: '#0066cc', // Farbe für Hover-Effekte
+                                                                                                                                                    drag: '#ff6600', // Farbe beim Ziehen
+                                                                                                                                                    dimension: '#333', // Farbe für Bemaßungen
+                                                                                                                                                    background: '#ffffff', // Canvas-Hintergrund
+                                                                                                                                                    titleBlockText: '#222', // Textfarbe im Titelblock
+                                                                                                                                                    titleBlockHighlight: 'rgba(255,255,0,0.10)', // Hover-Hintergrund Titelblock
+                                                                                                                                                    titleBlockBackground: 'rgba(255,255,255,0.95)' // Standard-Hintergrund Titelblock
+                                                                                                                                                },
+                                                                                                                                                
+                                                                                                                                                // Kerben-Snap-Schritte
+                                                                                                                                                kerbeSnapStep: 5 // mm - Schrittweite beim Verschieben von Kerben
+                                                                                                                                            };
+                                                                                                                                            
+                                                                                                                                            // Berechne mmToPx basierend auf CONFIG
+                                                                                                                                            this.CONFIG.mmToPx = this.CONFIG.defaultDpi / this.CONFIG.mmPerInch;
+                                                                                                                                            
+                                                                                                                                            // Versionsnummer für Kompatibilität
+                                                                                                                                            this.version = this.CONFIG.version;
+                                                                                                                                            
         this.init();
     }
+                                                                                                                                        
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DATENBANK (Zeichnungen-DB)
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        openZeichnungenDb() {
+                                                                                                                                            if (!this.zdb) this.zdb = { version: '1.0', projects: [] };
+                                                                                                                                            this.zeichnungsdbModal.style.display = 'block';
+                                                                                                                                            if (this.zdbFileInfo) {
+                                                                                                                                                this.zdbFileInfo.textContent = this.zdbFileName ? this.zdbFileName : 'Keine Datei geladen';
+                                                                                                                                            }
+                                                                                                                                            this.zdbRender();
+                                                                                                                                        }
+
+                                                                                                                                        drawTitleBlock() {
+                                                                                                                                            if (!this.currentRect) return;
+                                                                                                                                            const rect = this.currentRect;
+                                                                                                                                            // Initialposition: rechts unten neben Profil
+                                                                                                                                            if (this.titleBlock.x == null || this.titleBlock.y == null) {
+                                                                                                                                                this.titleBlock.x = rect.x + rect.width + this.CONFIG.titleBlockOffset * this.mmToPx;
+                                                                                                                                                this.titleBlock.y = rect.y + rect.height - this.titleBlock.height;
+                                                                                                                                            }
+                                                                                                                                            const { x, y, width: w, height: h } = this.titleBlock;
+                                                                                                                                            const ctx = this.ctx;
+                                                                                                                                            ctx.save();
+                                                                                                                                            ctx.setLineDash([]);
+                                                                                                                                            ctx.lineWidth = 1;
+                                                                                                                                            ctx.strokeStyle = this.titleBlock.dragging 
+                                                                                                                                                ? this.CONFIG.colors.drag 
+                                                                                                                                                : (this.hoveredTitleBlock ? this.CONFIG.colors.highlight : this.CONFIG.colors.profile);
+
+                                                                                                                                            // Hintergrund
+                                                                                                                                            ctx.fillStyle = (this.hoveredTitleBlock || this.titleBlock.dragging)
+                                                                                                                                                ? this.CONFIG.colors.titleBlockHighlight
+                                                                                                                                                : this.CONFIG.colors.titleBlockBackground;
+                                                                                                                                            ctx.beginPath();
+                                                                                                                                            ctx.rect(x, y, w, h);
+                                                                                                                                            ctx.fill();
+                                                                                                                                            ctx.stroke();
+
+                                                                                                                                            // Spalten- und Zeilenmaße berechnen
+                                                                                                                                            const leftColX = x + this.CONFIG.titleBlockPadding;
+                                                                                                                                            const rightColX = x + w * 0.5 + this.CONFIG.titleBlockPadding;
+                                                                                                                                            const totalRows = Math.max(this.titleBlock.layout[0].length, this.titleBlock.layout[1].length);
+                                                                                                                                            const rowH = h / totalRows;
+
+                                                                                                                                            // Spaltentrenner
+                                                                                                                                            ctx.beginPath();
+                                                                                                                                            ctx.moveTo(x + w * 0.5, y);
+                                                                                                                                            ctx.lineTo(x + w * 0.5, y + h);
+                                                                                                                                            ctx.stroke();
+
+                                                                                                                                            // Zeilentrenner
+                                                                                                                                            for (let i = 1; i < totalRows; i++) {
+                                                                                                                                                const yy = y + rowH * i;
+                                                                                                                                                ctx.beginPath();
+                                                                                                                                                ctx.moveTo(x, yy);
+                                                                                                                                                ctx.lineTo(x + w, yy);
+                                                                                                                                                ctx.stroke();
+                                                                                                                                            }
+
+                                                                                                                                            // Text - alle Eigenschaften explizit setzen für Stabilität
+                                                                                                                                            ctx.fillStyle = this.CONFIG.colors.titleBlockText;
+                                                                                                                                            ctx.font = `${this.CONFIG.titleBlockFontSize}px ${this.CONFIG.titleBlockFontFamily}`;
+                                                                                                                                            ctx.textBaseline = 'top';
+                                                                                                                                            ctx.textAlign = 'left';
+                                                                                                                                            ctx.setLineDash([]); // Nochmal sicherstellen (nach Text-Eigenschaften)
+
+                                                                                                                                            const drawColumn = (colData, colX) => {
+                                                                                                                                                colData.forEach((item, i) => {
+                                                                                                                                                    const value = this.titleBlock.fields[item.field] || '';
+                                                                                                                                                    const text = `${item.label}: ${value}${item.suffix || ''}`;
+                                                                                                                                                    const yy = y + rowH * i + rowH * 0.25;
+                                                                                                                                                    // Explizite Koordinaten verwenden (gerundet)
+                                                                                                                                                    const textX = Math.round(colX);
+                                                                                                                                                    const textY = Math.round(yy);
+                                                                                                                                                    ctx.fillText(text, textX, textY);
+                                                                                                                                                });
+                                                                                                                                            };
+
+                                                                                                                                            drawColumn(this.titleBlock.layout[0], leftColX);
+                                                                                                                                            drawColumn(this.titleBlock.layout[1], rightColX);
+
+                                                                                                                                            ctx.restore();
+                                                                                                                                        }
+
+                                                                                                                                        openTitleBlockModal() {
+                                                                                                                                            if (!this.titleblockModal) return;
+                                                                                                                                            // Vorbelegen
+                                                                                                                                            this.tbProject.value = this.titleBlock.fields.project || '';
+                                                                                                                                            this.tbVariant.value = this.titleBlock.fields.variant || '';
+                                                                                                                                            this.tbReference.value = this.titleBlock.fields.reference || '';
+                                                                                                                                            this.tbZeichnungsnummer.value = this.titleBlock.fields.zeichnungsnummer || '';
+                                                                                                                                            this.tbRevision.value = this.titleBlock.fields.revision || '';
+                                                                                                                                            this.tbSpsNummer.value = this.titleBlock.fields.spsNummer || '';
+                                                                                                                                            this.tbMaterial.value = this.titleBlock.fields.material || '';
+                                                                                                                                            this.tbSupplier.value = this.titleBlock.fields.supplierNumber || '';
+                                                                                                                                            this.tbDate.value = this.titleBlock.fields.date || '';
+                                                                                                                                            this.titleblockModal.style.display = 'block';
+                                                                                                                                        }
+                                                                                                                                        closeTitleBlockModal() {
+                                                                                                                                            if (this.titleblockModal) this.titleblockModal.style.display = 'none';
+                                                                                                                                        }
+                                                                                                                                        confirmTitleBlock() {
+                                                                                                                                            this.titleBlock.fields.project = this.tbProject.value.trim();
+                                                                                                                                            this.titleBlock.fields.variant = this.tbVariant.value.trim();
+                                                                                                                                            this.titleBlock.fields.reference = this.tbReference.value.trim();
+                                                                                                                                            this.titleBlock.fields.zeichnungsnummer = this.tbZeichnungsnummer.value.trim();
+                                                                                                                                            this.titleBlock.fields.revision = this.tbRevision.value.trim();
+                                                                                                                                            this.titleBlock.fields.spsNummer = this.tbSpsNummer.value.trim();
+                                                                                                                                            this.titleBlock.fields.material = this.tbMaterial.value.trim();
+                                                                                                                                            this.titleBlock.fields.supplierNumber = this.tbSupplier.value.trim();
+                                                                                                                                            this.titleBlock.fields.date = this.tbDate.value;
+                                                                                                                                            this.closeTitleBlockModal();
+                                                                                                                                            this.saveState();
+                                                                                                                                            this.draw();
+                                                                                                                                        }
+                                                                                                                                        titleBlockFillFromDb() {
+                                                                                                                                            // Versuche, Namen aus aktueller Auswahl zu übernehmen
+                                                                                                                                            try {
+                                                                                                                                                const proj = (this.zdb && this.zdb.projects || []).find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                                const variant = proj && (proj.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                                const ref = variant && (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
+                                                                                                                                                if (proj) this.tbProject.value = proj.name || this.tbProject.value;
+                                                                                                                                                if (variant) this.tbVariant.value = variant.name || this.tbVariant.value;
+                                                                                                                                                if (ref) this.tbReference.value = ref.number || this.tbReference.value;
+                                                                                                                                            } catch (e) {
+                                                                                                                                                console.warn('Fehler beim Befüllen des Titelblocks aus DB:', e);
+                                                                                                                                            }
+                                                                                                                                        }
+                                                                                                                                        titleBlockSaveToDb() {
+                                                                                                                                            // Optional: könnte Metadaten in ein Profil-Objekt schreiben; vorerst nur Hinweis
+                                                                                                                                            alert('Metadaten im Titelblock gespeichert. (DB-Sync optional)');
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // TITELBLOCK
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        // (Die drawTitleBlock() Funktion ist bereits weiter oben definiert)
+                                                                                                                                        
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // DXF EXPORT (R12 Format)
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        exportToDXF() {
+                                                                                                                                            if (!this.currentRect) {
+                                                                                                                                                alert('Bitte zuerst ein Profil erstellen.');
+                                                                                                                                                return;
+                                                                                                                                            }
+                                                                                                                                            const lines = [];
+                                                                                                                                            const arcs = [];
+                                                                                                                                            const circles = [];
+                                                                                                                                            const texts = [];
+
+                                                                                                                                            // Helper: push line
+                                                                                                                                            const addLine = (x1,y1,x2,y2,layer) => lines.push({x1,y1,x2,y2,layer});
+                                                                                                                                            const addArc = (cx,cy,r,startDeg,endDeg,layer) => arcs.push({cx,cy,r,startDeg,endDeg,layer});
+                                                                                                                                            const addCircle = (cx,cy,r,layer) => circles.push({cx,cy,r,layer});
+                                                                                                                                            const addText = (x,y,height,value,layer) => texts.push({x,y,height,value,layer});
+
+                                                                                                                                            // Profile (als Rechteck-Kontur)
+                                                                                                                                            const rect = this.currentRect;
+                                                                                                                                            const x1 = rect.x, y1 = rect.y, x2 = rect.x + rect.width, y2 = rect.y + rect.height;
+                                                                                                                                            addLine(x1,y1,x2,y1,'PROFILE');
+                                                                                                                                            addLine(x2,y1,x2,y2,'PROFILE');
+                                                                                                                                            addLine(x2,y2,x1,y2,'PROFILE');
+                                                                                                                                            addLine(x1,y2,x1,y1,'PROFILE');
+
+                                                                                                                                            // Nahtlinie (als Linie im Innenbereich)
+                                                                                                                                            if (this.nahtlinie) {
+                                                                                                                                                const nx = rect.x + (this.nahtlinie.distance || 0) * this.mmToPx; // distance ist von links in mm; falls px, bitte anpassen
+                                                                                                                                                addLine(nx, y1, nx, y2, 'NAHT');
+                                                                                                                                            }
+
+                                                                                                                                            // Ausschnitte (Rechtecke)
+                                                                                                                                            (this.ausschnitte || []).forEach(a => {
+                                                                                                                                                const top = a.positionType === 'oben';
+                                                                                                                                                const ax = rect.x + a.position * this.mmToPx;
+                                                                                                                                                const aw = a.length * this.mmToPx;
+                                                                                                                                                const ah = a.height * this.mmToPx;
+                                                                                                                                                const ay = top ? rect.y : (rect.y + rect.height - ah);
+                                                                                                                                                addLine(ax,ay,ax+aw,ay,'CUTOUTS');
+                                                                                                                                                addLine(ax+aw,ay,ax+aw,ay+ah,'CUTOUTS');
+                                                                                                                                                addLine(ax+aw,ay+ah,ax,ay+ah,'CUTOUTS');
+                                                                                                                                                addLine(ax,ay+ah,ax,ay,'CUTOUTS');
+                                                                                                                                            });
+
+                                                                                                                                            // Crimping (Rechtecke)
+                                                                                                                                            (this.crimping || []).forEach(c => {
+                                                                                                                                                if (!this.bohnen || this.bohnen.length === 0) return;
+                                                                                                                                                const b = this.bohnen[0];
+                                                                                                                                                const totalWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+                                                                                                                                                const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+                                                                                                                                                const bohneY = rect.y - (b.height * this.mmToPx);
+                                                                                                                                                const x = bohneX + c.position * this.mmToPx;
+                                                                                                                                                const w = c.length * this.mmToPx;
+                                                                                                                                                const h = b.height * this.mmToPx;
+                                                                                                                                                addLine(x,bohneY,x+w,bohneY,'CRIMPING');
+                                                                                                                                                addLine(x+w,bohneY,x+w,bohneY+h,'CRIMPING');
+                                                                                                                                                addLine(x+w,bohneY+h,x,bohneY+h,'CRIMPING');
+                                                                                                                                                addLine(x,bohneY+h,x,bohneY,'CRIMPING');
+                                                                                                                                            });
+
+                                                                                                                                            // Bohne (als horizontale Kapsel: 2 Linien + 2 Bögen)
+                                                                                                                                            if (this.bohnen && this.bohnen.length > 0) {
+                                                                                                                                                const b = this.bohnen[0];
+                                                                                                                                                const R = (b.height * this.mmToPx) / 2;
+                                                                                                                                                const bohneWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+                                                                                                                                                const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
+                                                                                                                                                const bohneY = rect.y - (b.height * this.mmToPx);
+                                                                                                                                                const leftCx = bohneX + R;
+                                                                                                                                                const rightCx = bohneX + bohneWidth - R;
+                                                                                                                                                const cy = bohneY + R;
+                                                                                                                                                const topY = bohneY;
+                                                                                                                                                const bottomY = bohneY + 2*R;
+                                                                                                                                                // horizontale Geraden
+                                                                                                                                                addLine(leftCx, topY, rightCx, topY, 'BOHNE');
+                                                                                                                                                addLine(leftCx, bottomY, rightCx, bottomY, 'BOHNE');
+                                                                                                                                                // linke Halbkreis-Bögen (oben->unten)
+                                                                                                                                                addArc(leftCx, cy, R, 90, 270, 'BOHNE');
+                                                                                                                                                // rechte Halbkreis-Bögen (unten->oben)
+                                                                                                                                                addArc(rightCx, cy, R, 270, 90, 'BOHNE');
+                                                                                                                                            }
+
+                                                                                                                                            // Löcher
+                                                                                                                                            (this.loecher || []).forEach(loch => {
+                                                                                                                                                const cx = rect.x + loch.distance * this.mmToPx;
+                                                                                                                                                const w = loch.width * this.mmToPx;
+                                                                                                                                                const h = loch.height * this.mmToPx;
+                                                                                                                                                const topY = rect.y - (loch.positionFromTop ? loch.positionFromTop * this.mmToPx : (2 * this.mmToPx));
+                                                                                                                                                const cy = topY + h/2;
+                                                                                                                                                if (Math.abs(w - h) < 1e-6) {
+                                                                                                                                                    // rund
+                                                                                                                                                    addCircle(cx, cy, w/2, 'LOECHER');
+                                                                                                                                                } else {
+                                                                                                                                                    // Kapsel (rounded rect) via 4 Lines + 2 Arcs
+                                                                                                                                                    const R = Math.min(w,h)/2;
+                                                                                                                                                    const left = cx - w/2 + R;
+                                                                                                                                                    const right = cx + w/2 - R;
+                                                                                                                                                    const top = cy - h/2 + R;
+                                                                                                                                                    const bottom = cy + h/2 - R;
+                                                                                                                                                    // Seitenlinien
+                                                                                                                                                    addLine(left, top - R, left, bottom + R, 'LOECHER');
+                                                                                                                                                    addLine(right, top - R, right, bottom + R, 'LOECHER');
+                                                                                                                                                    // horizontale Linien oben/unten (zwischen den Bogenenden)
+                                                                                                                                                    addLine(left, top - R, right, top - R, 'LOECHER');
+                                                                                                                                                    addLine(left, bottom + R, right, bottom + R, 'LOECHER');
+                                                                                                                                                    // obere/untere Halbkreise (ARC)
+                                                                                                                                                    addArc(cx, top, R, 180, 360, 'LOECHER');
+                                                                                                                                                    addArc(cx, bottom, R, 0, 180, 'LOECHER');
+                                                                                                                                                }
+                                                                                                                                            });
+
+                                                                                                                                            // Kerben
+                                                                                                                                            const kerbeDepthMm = parseFloat(this.kerbeDepthInput ? this.kerbeDepthInput.value : '4') || 4;
+                                                                                                                                            const kerbeWidthMm = parseFloat(this.kerbeWidthInput ? this.kerbeWidthInput.value : '6') || 6;
+                                                                                                                                            (this.kerben || []).forEach(k => {
+                                                                                                                                                const xCenter = rect.x + k.distance * this.mmToPx;
+                                                                                                                                                const depth = kerbeDepthMm * this.mmToPx;
+                                                                                                                                                const halfW = (kerbeWidthMm * this.mmToPx) / 2;
+                                                                                                                                                if (k.type === 'triangle') {
+                                                                                                                                                    if (k.position === 'oben') {
+                                                                                                                                                        // Dreieck mit Basis auf der oberen Profilkante
+                                                                                                                                                        const yBase = rect.y;
+                                                                                                                                                        const yApex = rect.y + depth;
+                                                                                                                                                        const xL = xCenter - halfW;
+                                                                                                                                                        const xR = xCenter + halfW;
+                                                                                                                                                        addLine(xL, yBase, xR, yBase, 'KERBEN');
+                                                                                                                                                        addLine(xL, yBase, xCenter, yApex, 'KERBEN');
+                                                                                                                                                        addLine(xCenter, yApex, xR, yBase, 'KERBEN');
+                                                                                                                                                    } else {
+                                                                                                                                                        // Dreieck mit Basis auf der unteren Profilkante
+                                                                                                                                                        const yBase = rect.y + rect.height;
+                                                                                                                                                        const yApex = yBase - depth;
+                                                                                                                                                        const xL = xCenter - halfW;
+                                                                                                                                                        const xR = xCenter + halfW;
+                                                                                                                                                        addLine(xL, yBase, xR, yBase, 'KERBEN');
+                                                                                                                                                        addLine(xL, yBase, xCenter, yApex, 'KERBEN');
+                                                                                                                                                        addLine(xCenter, yApex, xR, yBase, 'KERBEN');
+                                                                                                                                                    }
+                                                                                                                                                } else {
+                                                                                                                                                    // Strichmarkierung (kurze Linie)
+                                                                                                                                                    const len = depth;
+                                                                                                                                                    if (k.position === 'oben') {
+                                                                                                                                                        addLine(xCenter, rect.y, xCenter, rect.y - len, 'KERBEN');
+                                                                                                                                                    } else {
+                                                                                                                                                        addLine(xCenter, rect.y + rect.height, xCenter, rect.y + rect.height + len, 'KERBEN');
+                                                                                                                                                    }
+                                                                                                                                                }
+                                                                                                                                            });
+
+                                                                                                                                            // Texte (nur einfache TEXT Entities)
+                                                                                                                                            (this.texts || []).forEach(t => {
+                                                                                                                                                addText(t.x, t.y, (t.size || 16) * 0.264583, t.content || '', 'TEXT'); // 16px ~ 4.23mm
+                                                                                                                                            });
+
+                                                                                                                                            // Bounding Box bestimmen (für Y-Invert & Verschiebung ins positive)
+                                                                                                                                            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                                                                                                                                            const considerPoint = (x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
+                                                                                                                                            lines.forEach(l=>{considerPoint(l.x1,l.y1);considerPoint(l.x2,l.y2);});
+                                                                                                                                            circles.forEach(c=>{considerPoint(c.cx-c.r,c.cy-c.r);considerPoint(c.cx+c.r,c.cy+c.r);});
+                                                                                                                                            arcs.forEach(a=>{considerPoint(a.cx-a.r,a.cy-a.r);considerPoint(a.cx+a.r,a.cy+a.r);});
+                                                                                                                                            texts.forEach(tx=>considerPoint(tx.x,tx.y));
+                                                                                                                                            if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
+
+                                                                                                                                            // Koordinaten transformieren: DXF-Y nach oben: y' = (maxY - y); und nach 0,0 verschieben
+                                                                                                                                            const TX = -minX;
+                                                                                                                                            const TY = 0; // wir nutzen y' = (maxY - (y + 0))
+                                                                                                                                            const toDXF = (x,y)=>({x: x+TX, y: (maxY - y)});
+
+                                                                                                                                            // DXF Builder
+                                                                                                                                            const sec = [];
+                                                                                                                                            const push = (...args)=>sec.push(...args.map(String));
+                                                                                                                                            const layer = (name)=>(['8',name]);
+
+                                                                                                                                            // Header (mm Einheiten)
+                                                                                                                                            push('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC');
+                                                                                                                                            // Tables (nur Layer)
+                                                                                                                                            push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70','7');
+                                                                                                                                            const layers = ['PROFILE','CUTOUTS','KERBEN','LOECHER','NAHT','CRIMPING','TEXT','BOHNE','TITLEBLOCK'];
+                                                                                                                                            layers.forEach((ln,i)=>{
+                                                                                                                                                push('0','LAYER','2',ln,'70','0','62', String((i%7)+1),'6','CONTINUOUS');
+                                                                                                                                            });
+                                                                                                                                            push('0','ENDTAB','0','ENDSEC');
+
+                                                                                                                                            // ENTITIES
+                                                                                                                                            push('0','SECTION','2','ENTITIES');
+                                                                                                                                            // Linien
+                                                                                                                                            lines.forEach(l=>{
+                                                                                                                                                const p1 = toDXF(l.x1,l.y1); const p2 = toDXF(l.x2,l.y2);
+                                                                                                                                                push('0','LINE',...layer(l.layer),'10',p1.x,'20',p1.y,'11',p2.x,'21',p2.y);
+                                                                                                                                            });
+                                                                                                                                            // Kreise
+                                                                                                                                            circles.forEach(c=>{
+                                                                                                                                                const p = toDXF(c.cx,c.cy);
+                                                                                                                                                push('0','CIRCLE',...layer(c.layer),'10',p.x,'20',p.y,'40',c.r);
+                                                                                                                                            });
+                                                                                                                                            // Bögen
+                                                                                                                                            arcs.forEach(a=>{
+                                                                                                                                                const p = toDXF(a.cx,a.cy);
+                                                                                                                                                push('0','ARC',...layer(a.layer),'10',p.x,'20',p.y,'40',a.r,'50',a.startDeg,'51',a.endDeg);
+                                                                                                                                            });
+                                                                                                                                            // Texte
+                                                                                                                                            texts.forEach(t=>{
+                                                                                                                                                const p = toDXF(t.x,t.y);
+                                                                                                                                                push('0','TEXT',...layer(t.layer),'10',p.x,'20',p.y,'40',t.height,'1',t.value||'');
+                                                                                                                                            });
+                                                                                                                                            // Titelblock als Rechteck + TEXT
+                                                                                                                                            if (this.titleBlock && this.titleBlock.x != null) {
+                                                                                                                                                const bx = this.titleBlock.x, by = this.titleBlock.y, bw = this.titleBlock.width, bh = this.titleBlock.height;
+                                                                                                                                                const p1 = toDXF(bx,by), p2 = toDXF(bx+bw,by), p3 = toDXF(bx+bw,by+bh), p4 = toDXF(bx,by+bh);
+                                                                                                                                                // Rahmen
+                                                                                                                                                push('0','LINE',...layer('TITLEBLOCK'),'10',p1.x,'20',p1.y,'11',p2.x,'21',p2.y);
+                                                                                                                                                push('0','LINE',...layer('TITLEBLOCK'),'10',p2.x,'20',p2.y,'11',p3.x,'21',p3.y);
+                                                                                                                                                push('0','LINE',...layer('TITLEBLOCK'),'10',p3.x,'20',p3.y,'11',p4.x,'21',p4.y);
+                                                                                                                                                push('0','LINE',...layer('TITLEBLOCK'),'10',p4.x,'20',p4.y,'11',p1.x,'21',p1.y);
+                                                                                                                                                // Texte (klein)
+                                                                                                                                                const th = 3; // 3mm Texthöhe
+                                                                                                                                                const tx = bx + 5, tyBase = by + 10;
+                                                                                                                                                const entries = [
+                                                                                                                                                    `Projekt: ${this.titleBlock.fields.project||''}`,
+                                                                                                                                                    `Variante: ${this.titleBlock.fields.variant||''}`,
+                                                                                                                                                    `Bezug: ${this.titleBlock.fields.reference||''}`,
+                                                                                                                                                    `Zeichnungsnummer: ${this.titleBlock.fields.zeichnungsnummer||''}`,
+                                                                                                                                                    `Revision: ${this.titleBlock.fields.revision||''}`,
+                                                                                                                                                    `SPS Nummer: ${this.titleBlock.fields.spsNummer||''}`,
+                                                                                                                                                    `Material: ${this.titleBlock.fields.material||''}`,
+                                                                                                                                                    `Lieferant: ${this.titleBlock.fields.supplierNumber||''}`,
+                                                                                                                                                    `Datum: ${this.titleBlock.fields.date||''}`
+                                                                                                                                                ];
+                                                                                                                                                entries.forEach((txt, idx)=>{
+                                                                                                                                                    const py = toDXF(tx, by + 8 + idx* (bh/8)).y;
+                                                                                                                                                    const px = toDXF(tx, by).x;
+                                                                                                                                                    push('0','TEXT',...layer('TITLEBLOCK'),'10',px,'20',py,'40',th,'1',txt);
+                                                                                                                                                });
+                                                                                                                                            }
+                                                                                                                                            push('0','ENDSEC','0','EOF');
+
+                                                                                                                                            const blob = new Blob([sec.join('\n')], { type: 'application/dxf' });
+                                                                                                                                            const url = URL.createObjectURL(blob);
+                                                                                                                                            const a = document.createElement('a');
+                                                                                                                                            a.href = url;
+                                                                                                                                            a.download = 'Zeichnung.dxf';
+                                                                                                                                            a.click();
+                                                                                                                                            URL.revokeObjectURL(url);
+                                                                                                                                        }
+                                                                                                                                        closeZeichnungenDb() {
+                                                                                                                                            if (this.zeichnungsdbModal) this.zeichnungsdbModal.style.display = 'none';
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DB: UI & Modal-Verwaltung
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        toggleZeichnungenDbMaximize() {
+                                                                                                                                            if (!this.zeichnungsdbModal) return;
+                                                                                                                                            this.zeichnungsdbModal.classList.add('maximized');
+                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
+                                                                                                                                            if (modalContent) {
+                                                                                                                                                modalContent.style.width = '100%';
+                                                                                                                                                modalContent.style.maxWidth = '100%';
+                                                                                                                                                modalContent.style.height = '100%';
+                                                                                                                                                modalContent.style.maxHeight = '100%';
+                                                                                                                                                modalContent.style.transform = 'none';
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        restoreZeichnungenDbSize() {
+                                                                                                                                            if (!this.zeichnungsdbModal) return;
+                                                                                                                                            this.zeichnungsdbModal.classList.remove('maximized');
+                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
+                                                                                                                                            if (modalContent) {
+                                                                                                                                                modalContent.style.width = '90%';
+                                                                                                                                                modalContent.style.maxWidth = '1200px';
+                                                                                                                                                modalContent.style.height = '';
+                                                                                                                                                modalContent.style.maxHeight = '';
+                                                                                                                                                modalContent.style.transform = '';
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DB: Datenverwaltung
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        zdbLoad() {
+                                                                                                                                            try {
+                                                                                                                                                const raw = localStorage.getItem(this.zdbKey);
+                                                                                                                                                if (!raw) return { version: '1.0', projects: [] };
+                                                                                                                                                const parsed = JSON.parse(raw);
+                                                                                                                                                if (!parsed.projects) parsed.projects = [];
+                                                                                                                                                return parsed;
+                                                                                                                                            } catch (e) {
+                                                                                                                                                return { version: '1.0', projects: [] };
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        zdbSave() {
+                                                                                                                                            localStorage.setItem(this.zdbKey, JSON.stringify(this.zdb));
+                                                                                                                                        }
+
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DB: Rendering & Anzeige
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        zdbRender() {
+                                                                                                                                            this.zdbRenderProjects();
+                                                                                                                                            this.zdbRenderVariants();
+                                                                                                                                            this.zdbRenderReferences();
+                                                                                                                                            this.zdbRenderProfiles();
+                                                                                                                                        }
+
+                                                                                                                                        zdbRenderProjects() {
+                                                                                                                                            if (!this.zdbProjectList) return;
+                                                                                                                                            this.zdbProjectList.innerHTML = '';
+                                                                                                                                            this.zdb.projects.forEach(p => {
+                                                                                                                                                const li = document.createElement('li');
+                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                const left = document.createElement('div');
+                                                                                                                                                left.textContent = p.name;
+                                                                                                                                                const del = document.createElement('button');
+                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.title = 'Projekt löschen';
+                                                                                                                                                del.textContent = '×';
+                                                                                                                                                del.addEventListener('click', (e) => {
+                                                                                                                                                    e.stopPropagation();
+                                                                                                                                                    this.zdbDeleteProject(p.id);
+                                                                                                                                                });
+                                                                                                                                                if (this.zdbSelectedProjectId === p.id) li.classList.add('active');
+                                                                                                                                                li.addEventListener('click', () => {
+                                                                                                                                                    this.zdbSelectedProjectId = p.id;
+                                                                                                                                                    this.zdbSelectedVariantId = null;
+                                                                                                                                                    this.zdbSelectedReferenceId = null;
+                                                                                                                                                    this.zdbRender();
+                                                                                                                                                });
+                                                                                                                                                li.appendChild(left);
+                                                                                                                                                li.appendChild(del);
+                                                                                                                                                this.zdbProjectList.appendChild(li);
+                                                                                                                                            });
+                                                                                                                                        }
+
+                                                                                                                                        zdbRenderVariants() {
+                                                                                                                                            if (!this.zdbVariantList) return;
+                                                                                                                                            this.zdbVariantList.innerHTML = '';
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            (project.varianten || []).forEach(v => {
+                                                                                                                                                const li = document.createElement('li');
+                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                const left = document.createElement('div');
+                                                                                                                                                left.textContent = v.name;
+                                                                                                                                                const del = document.createElement('button');
+                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.title = 'Variante löschen';
+                                                                                                                                                del.textContent = '×';
+                                                                                                                                                del.addEventListener('click', (e) => {
+                                                                                                                                                    e.stopPropagation();
+                                                                                                                                                    this.zdbDeleteVariant(v.id);
+                                                                                                                                                });
+                                                                                                                                                if (this.zdbSelectedVariantId === v.id) li.classList.add('active');
+                                                                                                                                                li.addEventListener('click', () => {
+                                                                                                                                                    this.zdbSelectedVariantId = v.id;
+                                                                                                                                                    this.zdbSelectedReferenceId = null;
+                                                                                                                                                    this.zdbRenderReferences();
+                                                                                                                                                    this.zdbRenderProfiles();
+                                                                                                                                                    this.zdbRenderVariants();
+                                                                                                                                                });
+                                                                                                                                                li.appendChild(left);
+                                                                                                                                                li.appendChild(del);
+                                                                                                                                                this.zdbVariantList.appendChild(li);
+                                                                                                                                            });
+                                                                                                                                        }
+
+                                                                                                                                        zdbRenderReferences() {
+                                                                                                                                            if (!this.zdbRefList) return;
+                                                                                                                                            this.zdbRefList.innerHTML = '';
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                            if (!variant) return;
+                                                                                                                                            // Migration: falls altes Schema (profiles) existiert, in Default-Referenz migrieren
+                                                                                                                                            if (variant.profiles && variant.profiles.length) {
+                                                                                                                                                variant.references = variant.references || [];
+                                                                                                                                                const def = { id: this.zdbUuid(), number: 'REF-1', createdAt: new Date().toISOString(), profiles: variant.profiles };
+                                                                                                                                                variant.references.push(def);
+                                                                                                                                                delete variant.profiles;
+                                                                                                                                                this.zdbSave();
+                                                                                                                                            }
+                                                                                                                                            (variant.references || []).forEach(ref => {
+                                                                                                                                                const li = document.createElement('li');
+                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                const left = document.createElement('div');
+                                                                                                                                                left.textContent = ref.number;
+                                                                                                                                                const del = document.createElement('button');
+                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.title = 'Bezügenummer löschen';
+                                                                                                                                                del.textContent = '×';
+                                                                                                                                                del.addEventListener('click', (e) => {
+                                                                                                                                                    e.stopPropagation();
+                                                                                                                                                    this.zdbDeleteReference(ref.id);
+                                                                                                                                                });
+                                                                                                                                                if (this.zdbSelectedReferenceId === ref.id) li.classList.add('active');
+                                                                                                                                                li.addEventListener('click', () => {
+                                                                                                                                                    this.zdbSelectedReferenceId = ref.id;
+                                                                                                                                                    this.zdbRenderProfiles();
+                                                                                                                                                    this.zdbRenderReferences();
+                                                                                                                                                });
+                                                                                                                                                li.appendChild(left);
+                                                                                                                                                li.appendChild(del);
+                                                                                                                                                this.zdbRefList.appendChild(li);
+                                                                                                                                            });
+                                                                                                                                        }
+
+                                                                                                                                        zdbRenderProfiles() {
+                                                                                                                                            if (!this.zdbProfileGrid) return;
+                                                                                                                                            this.zdbProfileGrid.innerHTML = '';
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                            if (!variant) return;
+                                                                                                                                            const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
+                                                                                                                                            const profiles = ref ? (ref.profiles || []) : [];
+                                                                                                                                            profiles.forEach(pr => {
+                                                                                                                                                const card = document.createElement('div');
+                                                                                                                                                card.className = 'profile-card';
+                                                                                                                                                const del = document.createElement('button');
+                                                                                                                                                del.className = 'delete-btn-small card-delete';
+                                                                                                                                                del.title = 'Profil löschen';
+                                                                                                                                                del.textContent = '×';
+                                                                                                                                                del.addEventListener('click', (e) => {
+                                                                                                                                                    e.stopPropagation();
+                                                                                                                                                    this.zdbDeleteProfile(pr.id);
+                                                                                                                                                });
+                                                                                                                                                const img = document.createElement('img');
+                                                                                                                                                img.src = pr.previewImage || '';
+                                                                                                                                                // Stelle sicher, dass das Bild immer klein dargestellt wird
+                                                                                                                                                img.style.maxWidth = '100%';
+                                                                                                                                                img.style.maxHeight = '50px';
+                                                                                                                                                img.style.objectFit = 'contain';
+                                                                                                                                                img.style.objectPosition = 'center';
+                                                                                                                                                const title = document.createElement('div');
+                                                                                                                                                title.className = 'title';
+                                                                                                                                                title.textContent = pr.name;
+                                                                                                                                                const meta = document.createElement('div');
+                                                                                                                                                meta.className = 'meta';
+                                                                                                                                                meta.textContent = pr.supplierNumber ? `Lieferant: ${pr.supplierNumber}` : '—';
+                                                                                                                                                card.appendChild(del);
+                                                                                                                                                card.appendChild(img);
+                                                                                                                                                card.appendChild(title);
+                                                                                                                                                card.appendChild(meta);
+                                                                                                                                                // Single-Click: visuelle Auswahl (optional)
+                                                                                                                                                card.addEventListener('click', () => {
+                                                                                                                                                    // Auswahlzustand setzen
+                                                                                                                                                    Array.from(this.zdbProfileGrid.children).forEach(el => el.classList.remove('active'));
+                                                                                                                                                    card.classList.add('active');
+                                                                                                                                                });
+                                                                                                                                                // Doppelklick: sofort öffnen
+                                                                                                                                                card.addEventListener('dblclick', () => this.zdbOpenProfile(pr));
+                                                                                                                                                this.zdbProfileGrid.appendChild(card);
+                                                                                                                                            });
+                                                                                                                                        }
+
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DB: CRUD-Operationen (Löschen)
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        zdbDeleteProject(projectId) {
+                                                                                                                                            const ix = this.zdb.projects.findIndex(p => p.id === projectId);
+                                                                                                                                            if (ix >= 0 && confirm('Projekt inklusive Varianten und Bezügenummern löschen?')) {
+                                                                                                                                                this.zdb.projects.splice(ix, 1);
+                                                                                                                                                this.zdbSelectedProjectId = null;
+                                                                                                                                                this.zdbSelectedVariantId = null;
+                                                                                                                                                this.zdbSelectedReferenceId = null;
+                                                                                                                                                this.zdbSave();
+                                                                                                                                                this.zdbRender();
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        zdbDeleteVariant(variantId) {
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            const ix = (project.varianten || []).findIndex(v => v.id === variantId);
+                                                                                                                                            if (ix >= 0 && confirm('Variante inklusive Bezügenummern löschen?')) {
+                                                                                                                                                project.varianten.splice(ix, 1);
+                                                                                                                                                this.zdbSelectedVariantId = null;
+                                                                                                                                                this.zdbSelectedReferenceId = null;
+                                                                                                                                                this.zdbSave();
+                                                                                                                                                this.zdbRender();
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        zdbDeleteReference(referenceId) {
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                            if (!variant) return;
+                                                                                                                                            const ix = (variant.references || []).findIndex(r => r.id === referenceId);
+                                                                                                                                            if (ix >= 0 && confirm('Bezügenummer und zugehörige Profile löschen?')) {
+                                                                                                                                                variant.references.splice(ix, 1);
+                                                                                                                                                this.zdbSelectedReferenceId = null;
+                                                                                                                                                this.zdbSave();
+                                                                                                                                                this.zdbRenderReferences();
+                                                                                                                                                this.zdbRenderProfiles();
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        zdbDeleteProfile(profileId) {
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return;
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                            if (!variant) return;
+                                                                                                                                            const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
+                                                                                                                                            if (!ref) return;
+                                                                                                                                            const ix = (ref.profiles || []).findIndex(pr => pr.id === profileId);
+                                                                                                                                            if (ix >= 0 && confirm('Profil löschen?')) {
+                                                                                                                                                ref.profiles.splice(ix, 1);
+                                                                                                                                                this.zdbSave();
+                                                                                                                                                this.zdbRenderProfiles();
+                                                                                                                                            }
+                                                                                                                                        }
+
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // ZEICHNUNGEN-DB: Helper-Funktionen
+                                                                                                                                        // ============================================================================
+                                                                                                                                        
+                                                                                                                                        zdbUuid() {
+                                                                                                                                            return 'id-' + Math.random().toString(36).slice(2, 10);
+                                                                                                                                        }
+
+                                                                                                                                        zdbEnsureDefault() {
+                                                                                                                                            if (!this.zdb.projects.length) {
+                                                                                                                                                this.zdb.projects.push({ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), varianten: [] });
+                                                                                                                                            }
+                                                                                                                                            const project = this.zdb.projects[0];
+                                                                                                                                            if (!project.varianten || !project.varianten.length) {
+                                                                                                                                                project.varianten = [{ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), profiles: [] }];
+                                                                                                                                            }
+                                                                                                                                            this.zdbSelectedProjectId = project.id;
+                                                                                                                                            this.zdbSelectedVariantId = project.varianten[0].id;
+                                                                                                                                        }
+
+                                                                                                                                        zdbAddProject() {
+                                                                                                                                            const name = prompt('Projektname eingeben:', 'Neues Projekt');
+                                                                                                                                            if (!name) return;
+                                                                                                                                            this.zdb.projects.push({ id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), varianten: [] });
+                                                                                                                                            this.zdbSave();
+                                                                                                                                            this.zdbSelectedProjectId = this.zdb.projects[this.zdb.projects.length - 1].id;
+                                                                                                                                            this.zdbSelectedVariantId = null;
+                                                                                                                                            this.zdbRender();
+                                                                                                                                        }
+
+                                                                                                                                        zdbAddVariant() {
+                                                                                                                                            if (!this.zdb.projects.length) this.zdbEnsureDefault();
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
+                                                                                                                                            const name = prompt('Variantenname eingeben:', 'Neue Variante');
+                                                                                                                                            if (!name) return;
+                                                                                                                                            project.varianten = project.varianten || [];
+                                                                                                                                            const v = { id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), references: [] };
+                                                                                                                                            project.varianten.push(v);
+                                                                                                                                            this.zdbSave();
+                                                                                                                                            this.zdbSelectedVariantId = v.id;
+                                                                                                                                            this.zdbRender();
+                                                                                                                                        }
+
+                                                                                                                                        zdbAddReference() {
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
+                                                                                                                                            if (!project) return alert('Bitte zuerst ein Projekt wählen.');
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
+                                                                                                                                            if (!variant) return alert('Bitte zuerst eine Variante wählen.');
+                                                                                                                                            const number = (this.zdbRefInput && this.zdbRefInput.value.trim()) || prompt('Bezügenummer eingeben:', 'REF-001');
+                                                                                                                                            if (!number) return;
+                                                                                                                                            variant.references = variant.references || [];
+                                                                                                                                            const ref = { id: this.zdbUuid(), number, createdAt: new Date().toISOString(), profiles: [] };
+                                                                                                                                            variant.references.push(ref);
+                                                                                                                                            this.zdbSave();
+                                                                                                                                            this.zdbSelectedReferenceId = ref.id;
+                                                                                                                                            if (this.zdbRefInput) this.zdbRefInput.value = '';
+                                                                                                                                            this.zdbRenderReferences();
+                                                                                                                                            this.zdbRenderProfiles();
+                                                                                                                                        }
+
+                                                                                                                                        async zdbSaveCurrentProfile() {
+                                                                                                                                            // Sicherstellen, dass Ziel existiert
+                                                                                                                                            if (!this.zdb.projects.length) this.zdbEnsureDefault();
+                                                                                                                                            const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
+                                                                                                                                            const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId) || project.varianten[0];
+                                                                                                                                            if (!variant.references || !variant.references.length) return alert('Bitte zuerst eine Bezügenummer anlegen und auswählen.');
+                                                                                                                                            const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId) || null;
+                                                                                                                                            if (!ref) return alert('Bitte eine Bezügenummer auswählen.');
+                                                                                                                                            const name = prompt('Profilname eingeben:', 'Neue Zeichnung');
+                                                                                                                                            if (!name) return;
+                                                                                                                                            const supplierNumber = prompt('Lieferantennummer (optional):', '') || '';
+
+                                                                                                                                            // Screenshot erzeugen (skaliertes Bild der sichtbaren Canvas)
+                                                                                                                                            const previewImage = this.canvas.toDataURL('image/png');
+
+                                                                                                                                            // Zustand speichern
+                                                                                                                                            const data = this.getCurrentStateForExport ? this.getCurrentStateForExport() : this.createStateSnapshotForExport();
+
+                                                                                                                                            const profile = {
+                                                                                                                                                id: this.zdbUuid(),
+                                                                                                                                                name,
+                                                                                                                                                supplierNumber,
+                                                                                                                                                previewImage,
+                                                                                                                                                data,
+                                                                                                                                                version: this.version,
+                                                                                                                                                createdAt: new Date().toISOString(),
+                                                                                                                                                updatedAt: new Date().toISOString()
+                                                                                                                                            };
+                                                                                                                                            ref.profiles = ref.profiles || [];
+                                                                                                                                            ref.profiles.push(profile);
+                                                                                                                                            this.zdbSave();
+                                                                                                                                            this.zdbRenderProfiles();
+                                                                                                                                            alert('Zeichnung gespeichert.');
+                                                                                                                                        }
+
+                                                                                                                                        // Export der aktuellen Zeichen-State-Struktur
+                                                                                                                                        createStateSnapshotForExport() {
+                                                                                                                                            // Reuse saveState logic without pushing to history
+                                                                                                                                            return {
+                                                                                                                                                currentRect: this.currentRect ? { ...this.currentRect } : null,
+                                                                                                                                                bohnen: this._deepClone(this.bohnen || []),
+                                                                                                                                                kerben: this._deepClone(this.kerben || []),
+                                                                                                                                                loecher: this._deepClone(this.loecher || []),
+                                                                                                                                                ausschnitte: this._deepClone(this.ausschnitte || []),
+                                                                                                                                                nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
+                                                                                                                                                crimping: this._deepClone(this.crimping || []),
+                                                                                                                                                titleBlock: this._deepClone(this.titleBlock || null),
+                                                                                                                                                zoom: this.zoom,
+                                                                                                                                                offsetX: this.offsetX,
+                                                                                                                                                offsetY: this.offsetY,
+                                                                                                                                            };
+                                                                                                                                        }
+
+                                                                                                                                        zdbOpenProfile(profile) {
+                                                                                                                                            if (!profile || !profile.data) return;
+                                                                                                                                            // Bestehendes auf dem Canvas entfernen und dann laden
+                                                                                                                                            this.clearCanvas();
+                                                                                                                                            this.saveState();
+                                                                                                                                            this.restoreState(profile.data);
+                                                                                                                                            this.updateProfileInputs(); // Aktualisiere Eingabefelder mit geladenen Werten
+                                                                                                                                            this.draw();
+                                                                                                                                            this.autoZoom();
+                                                                                                                                            this.closeZeichnungenDb();
+                                                                                                                                        }
+
+                                                                                                                                        // Import/Export
+                                                                                                                                        zdbExport() {
+                                                                                                                                            const blob = new Blob([JSON.stringify(this.zdb)], { type: 'application/json' });
+                                                                                                                                            const url = URL.createObjectURL(blob);
+                                                                                                                                            const a = document.createElement('a');
+                                                                                                                                            a.href = url;
+                                                                                                                                            const fileName = this.zdbFileName || 'Zeichnungen.json';
+                                                                                                                                            a.download = fileName;
+                                                                                                                                            a.click();
+                                                                                                                                            URL.revokeObjectURL(url);
+                                                                                                                                            // Anzeige aktualisieren
+                                                                                                                                            if (!this.zdbFileName) {
+                                                                                                                                                this.zdbFileName = 'Zeichnungen.json';
+                                                                                                                                            }
+                                                                                                                                            if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
+                                                                                                                                        }
+
+                                                                                                                                        zdbHandleImport(e) {
+                                                                                                                                            const file = e.target.files && e.target.files[0];
+                                                                                                                                            if (!file) return;
+                                                                                                                                            const reader = new FileReader();
+                                                                                                                                            reader.onload = () => {
+                                                                                                                                                try {
+                                                                                                                                                    const data = JSON.parse(reader.result);
+                                                                                                                                                    if (data && data.projects) {
+                                                                                                                                                        this.zdb = data;
+                                                                                                                                                        this.zdbSave();
+                                                                                                                                                        this.zdbSelectedProjectId = null;
+                                                                                                                                                        this.zdbSelectedVariantId = null;
+                                                                                                                                                        this.zdbRender();
+                                                                                                                                                        this.zdbFileName = file.name || 'Zeichnungen.json';
+                                                                                                                                                        if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
+                                                                                                                                                    } else {
+                                                                                                                                                        alert('Ungültiges Datei-Format.');
+                                                                                                                                                    }
+                                                                                                                                                } catch (err) {
+                                                                                                                                                    alert('Import fehlgeschlagen.');
+                                                                                                                                                }
+                                                                                                                                            };
+                                                                                                                                            reader.readAsText(file);
+                                                                                                                                            e.target.value = '';
+                                                                                                                                        }
+                                                                                                                                        // ============================================================================
+                                                                                                                                        // INITIALISIERUNG
+                                                                                                                                        // ============================================================================
     
-    // Zeichnungen-DB: Öffnen/Schließen
-    openZeichnungenDb() {
-        if (!this.zdb) this.zdb = { version: '1.0', projects: [] };
-        this.zeichnungsdbModal.style.display = 'block';
-        if (this.zdbFileInfo) {
-            this.zdbFileInfo.textContent = this.zdbFileName ? this.zdbFileName : 'Keine Datei geladen';
-        }
-        this.zdbRender();
-    }
-
-    // =============== DXF Export (R12, Geometrie) ===============
-    exportToDXF() {
-        if (!this.currentRect) {
-            alert('Bitte zuerst ein Profil erstellen.');
-            return;
-        }
-        const lines = [];
-        const arcs = [];
-        const circles = [];
-        const texts = [];
-
-        // Helper: push line
-        const addLine = (x1,y1,x2,y2,layer) => lines.push({x1,y1,x2,y2,layer});
-        const addArc = (cx,cy,r,startDeg,endDeg,layer) => arcs.push({cx,cy,r,startDeg,endDeg,layer});
-        const addCircle = (cx,cy,r,layer) => circles.push({cx,cy,r,layer});
-        const addText = (x,y,height,value,layer) => texts.push({x,y,height,value,layer});
-
-        // Profile (als Rechteck-Kontur)
-        const rect = this.currentRect;
-        const x1 = rect.x, y1 = rect.y, x2 = rect.x + rect.width, y2 = rect.y + rect.height;
-        addLine(x1,y1,x2,y1,'PROFILE');
-        addLine(x2,y1,x2,y2,'PROFILE');
-        addLine(x2,y2,x1,y2,'PROFILE');
-        addLine(x1,y2,x1,y1,'PROFILE');
-
-        // Nahtlinie (als Linie im Innenbereich)
-        if (this.nahtlinie) {
-            const nx = rect.x + (this.nahtlinie.distance || 0) * this.mmToPx; // distance ist von links in mm; falls px, bitte anpassen
-            addLine(nx, y1, nx, y2, 'NAHT');
-        }
-
-        // Ausschnitte (Rechtecke)
-        (this.ausschnitte || []).forEach(a => {
-            const top = a.positionType === 'oben';
-            const ax = rect.x + a.position * this.mmToPx;
-            const aw = a.length * this.mmToPx;
-            const ah = a.height * this.mmToPx;
-            const ay = top ? rect.y : (rect.y + rect.height - ah);
-            addLine(ax,ay,ax+aw,ay,'CUTOUTS');
-            addLine(ax+aw,ay,ax+aw,ay+ah,'CUTOUTS');
-            addLine(ax+aw,ay+ah,ax,ay+ah,'CUTOUTS');
-            addLine(ax,ay+ah,ax,ay,'CUTOUTS');
-        });
-
-        // Crimping (Rechtecke)
-        (this.crimping || []).forEach(c => {
-            if (!this.bohnen || this.bohnen.length === 0) return;
-            const b = this.bohnen[0];
-            const totalWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-            const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-            const bohneY = rect.y - (b.height * this.mmToPx);
-            const x = bohneX + c.position * this.mmToPx;
-            const w = c.length * this.mmToPx;
-            const h = b.height * this.mmToPx;
-            addLine(x,bohneY,x+w,bohneY,'CRIMPING');
-            addLine(x+w,bohneY,x+w,bohneY+h,'CRIMPING');
-            addLine(x+w,bohneY+h,x,bohneY+h,'CRIMPING');
-            addLine(x,bohneY+h,x,bohneY,'CRIMPING');
-        });
-
-        // Bohne (als horizontale Kapsel: 2 Linien + 2 Bögen)
-        if (this.bohnen && this.bohnen.length > 0) {
-            const b = this.bohnen[0];
-            const R = (b.height * this.mmToPx) / 2;
-            const bohneWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-            const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-            const bohneY = rect.y - (b.height * this.mmToPx);
-            const leftCx = bohneX + R;
-            const rightCx = bohneX + bohneWidth - R;
-            const cy = bohneY + R;
-            const topY = bohneY;
-            const bottomY = bohneY + 2*R;
-            // horizontale Geraden
-            addLine(leftCx, topY, rightCx, topY, 'BOHNE');
-            addLine(leftCx, bottomY, rightCx, bottomY, 'BOHNE');
-            // linke Halbkreis-Bögen (oben->unten)
-            addArc(leftCx, cy, R, 90, 270, 'BOHNE');
-            // rechte Halbkreis-Bögen (unten->oben)
-            addArc(rightCx, cy, R, 270, 90, 'BOHNE');
-        }
-
-        // Löcher
-        (this.loecher || []).forEach(loch => {
-            const cx = rect.x + loch.distance * this.mmToPx;
-            const w = loch.width * this.mmToPx;
-            const h = loch.height * this.mmToPx;
-            const topY = rect.y - (loch.positionFromTop ? loch.positionFromTop * this.mmToPx : (2 * this.mmToPx));
-            const cy = topY + h/2;
-            if (Math.abs(w - h) < 1e-6) {
-                // rund
-                addCircle(cx, cy, w/2, 'LOECHER');
-            } else {
-                // Kapsel (rounded rect) via 4 Lines + 2 Arcs
-                const R = Math.min(w,h)/2;
-                const left = cx - w/2 + R;
-                const right = cx + w/2 - R;
-                const top = cy - h/2 + R;
-                const bottom = cy + h/2 - R;
-                // Seitenlinien
-                addLine(left, top - R, left, bottom + R, 'LOECHER');
-                addLine(right, top - R, right, bottom + R, 'LOECHER');
-                // horizontale Linien oben/unten (zwischen den Bogenenden)
-                addLine(left, top - R, right, top - R, 'LOECHER');
-                addLine(left, bottom + R, right, bottom + R, 'LOECHER');
-                // obere/untere Halbkreise (ARC)
-                addArc(cx, top, R, 180, 360, 'LOECHER');
-                addArc(cx, bottom, R, 0, 180, 'LOECHER');
-            }
-        });
-
-        // Kerben
-        const kerbeDepthMm = parseFloat(this.kerbeDepthInput ? this.kerbeDepthInput.value : '4') || 4;
-        const kerbeWidthMm = parseFloat(this.kerbeWidthInput ? this.kerbeWidthInput.value : '6') || 6;
-        (this.kerben || []).forEach(k => {
-            const xCenter = rect.x + k.distance * this.mmToPx;
-            const depth = kerbeDepthMm * this.mmToPx;
-            const halfW = (kerbeWidthMm * this.mmToPx) / 2;
-            if (k.type === 'triangle') {
-                if (k.position === 'oben') {
-                    // Dreieck mit Basis auf der oberen Profilkante
-                    const yBase = rect.y;
-                    const yApex = rect.y + depth;
-                    const xL = xCenter - halfW;
-                    const xR = xCenter + halfW;
-                    addLine(xL, yBase, xR, yBase, 'KERBEN');
-                    addLine(xL, yBase, xCenter, yApex, 'KERBEN');
-                    addLine(xCenter, yApex, xR, yBase, 'KERBEN');
-                } else {
-                    // Dreieck mit Basis auf der unteren Profilkante
-                    const yBase = rect.y + rect.height;
-                    const yApex = yBase - depth;
-                    const xL = xCenter - halfW;
-                    const xR = xCenter + halfW;
-                    addLine(xL, yBase, xR, yBase, 'KERBEN');
-                    addLine(xL, yBase, xCenter, yApex, 'KERBEN');
-                    addLine(xCenter, yApex, xR, yBase, 'KERBEN');
-                }
-            } else {
-                // Strichmarkierung (kurze Linie)
-                const len = depth;
-                if (k.position === 'oben') {
-                    addLine(xCenter, rect.y, xCenter, rect.y - len, 'KERBEN');
-                } else {
-                    addLine(xCenter, rect.y + rect.height, xCenter, rect.y + rect.height + len, 'KERBEN');
-                }
-            }
-        });
-
-        // Texte (nur einfache TEXT Entities)
-        (this.texts || []).forEach(t => {
-            addText(t.x, t.y, (t.size || 16) * 0.264583, t.content || '', 'TEXT'); // 16px ~ 4.23mm
-        });
-
-        // Bounding Box bestimmen (für Y-Invert & Verschiebung ins positive)
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        const considerPoint = (x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
-        lines.forEach(l=>{considerPoint(l.x1,l.y1);considerPoint(l.x2,l.y2);});
-        circles.forEach(c=>{considerPoint(c.cx-c.r,c.cy-c.r);considerPoint(c.cx+c.r,c.cy+c.r);});
-        arcs.forEach(a=>{considerPoint(a.cx-a.r,a.cy-a.r);considerPoint(a.cx+a.r,a.cy+a.r);});
-        texts.forEach(tx=>considerPoint(tx.x,tx.y));
-        if (!isFinite(minX)) { minX = 0; minY = 0; maxX = 0; maxY = 0; }
-
-        // Koordinaten transformieren: DXF-Y nach oben: y' = (maxY - y); und nach 0,0 verschieben
-        const TX = -minX;
-        const TY = 0; // wir nutzen y' = (maxY - (y + 0))
-        const toDXF = (x,y)=>({x: x+TX, y: (maxY - y)});
-
-        // DXF Builder
-        const sec = [];
-        const push = (...args)=>sec.push(...args.map(String));
-        const layer = (name)=>(['8',name]);
-
-        // Header (mm Einheiten)
-        push('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC');
-        // Tables (nur Layer)
-        push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70','7');
-        const layers = ['PROFILE','CUTOUTS','KERBEN','LOECHER','NAHT','CRIMPING','TEXT','BOHNE'];
-        layers.forEach((ln,i)=>{
-            push('0','LAYER','2',ln,'70','0','62', String((i%7)+1),'6','CONTINUOUS');
-        });
-        push('0','ENDTAB','0','ENDSEC');
-
-        // ENTITIES
-        push('0','SECTION','2','ENTITIES');
-        // Linien
-        lines.forEach(l=>{
-            const p1 = toDXF(l.x1,l.y1); const p2 = toDXF(l.x2,l.y2);
-            push('0','LINE',...layer(l.layer),'10',p1.x,'20',p1.y,'11',p2.x,'21',p2.y);
-        });
-        // Kreise
-        circles.forEach(c=>{
-            const p = toDXF(c.cx,c.cy);
-            push('0','CIRCLE',...layer(c.layer),'10',p.x,'20',p.y,'40',c.r);
-        });
-        // Bögen
-        arcs.forEach(a=>{
-            const p = toDXF(a.cx,a.cy);
-            push('0','ARC',...layer(a.layer),'10',p.x,'20',p.y,'40',a.r,'50',a.startDeg,'51',a.endDeg);
-        });
-        // Texte
-        texts.forEach(t=>{
-            const p = toDXF(t.x,t.y);
-            push('0','TEXT',...layer(t.layer),'10',p.x,'20',p.y,'40',t.height,'1',t.value||'');
-        });
-        push('0','ENDSEC','0','EOF');
-
-        const blob = new Blob([sec.join('\n')], { type: 'application/dxf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'Zeichnung.dxf';
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-    closeZeichnungenDb() {
-        if (this.zeichnungsdbModal) this.zeichnungsdbModal.style.display = 'none';
-    }
-
-    toggleZeichnungenDbMaximize() {
-        if (!this.zeichnungsdbModal) return;
-        this.zeichnungsdbModal.classList.add('maximized');
-        const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.style.width = '100%';
-            modalContent.style.maxWidth = '100%';
-            modalContent.style.height = '100%';
-            modalContent.style.maxHeight = '100%';
-            modalContent.style.transform = 'none';
-        }
-    }
-
-    restoreZeichnungenDbSize() {
-        if (!this.zeichnungsdbModal) return;
-        this.zeichnungsdbModal.classList.remove('maximized');
-        const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
-        if (modalContent) {
-            modalContent.style.width = '90%';
-            modalContent.style.maxWidth = '1200px';
-            modalContent.style.height = '';
-            modalContent.style.maxHeight = '';
-            modalContent.style.transform = '';
-        }
-    }
-
-    // Zeichnungen-DB: Storage
-    zdbLoad() {
-        try {
-            const raw = localStorage.getItem(this.zdbKey);
-            if (!raw) return { version: '1.0', projects: [] };
-            const parsed = JSON.parse(raw);
-            if (!parsed.projects) parsed.projects = [];
-            return parsed;
-        } catch (e) {
-            return { version: '1.0', projects: [] };
-        }
-    }
-
-    zdbSave() {
-        localStorage.setItem(this.zdbKey, JSON.stringify(this.zdb));
-    }
-
-    // Zeichnungen-DB: Render
-    zdbRender() {
-        this.zdbRenderProjects();
-        this.zdbRenderVariants();
-        this.zdbRenderReferences();
-        this.zdbRenderProfiles();
-    }
-
-    zdbRenderProjects() {
-        if (!this.zdbProjectList) return;
-        this.zdbProjectList.innerHTML = '';
-        this.zdb.projects.forEach(p => {
-            const li = document.createElement('li');
-            li.className = 'list-item-row';
-            const left = document.createElement('div');
-            left.textContent = p.name;
-            const del = document.createElement('button');
-            del.className = 'delete-btn-small';
-            del.title = 'Projekt löschen';
-            del.textContent = '×';
-            del.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.zdbDeleteProject(p.id);
-            });
-            if (this.zdbSelectedProjectId === p.id) li.classList.add('active');
-            li.addEventListener('click', () => {
-                this.zdbSelectedProjectId = p.id;
-                this.zdbSelectedVariantId = null;
-                this.zdbSelectedReferenceId = null;
-                this.zdbRender();
-            });
-            li.appendChild(left);
-            li.appendChild(del);
-            this.zdbProjectList.appendChild(li);
-        });
-    }
-
-    zdbRenderVariants() {
-        if (!this.zdbVariantList) return;
-        this.zdbVariantList.innerHTML = '';
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        (project.varianten || []).forEach(v => {
-            const li = document.createElement('li');
-            li.className = 'list-item-row';
-            const left = document.createElement('div');
-            left.textContent = v.name;
-            const del = document.createElement('button');
-            del.className = 'delete-btn-small';
-            del.title = 'Variante löschen';
-            del.textContent = '×';
-            del.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.zdbDeleteVariant(v.id);
-            });
-            if (this.zdbSelectedVariantId === v.id) li.classList.add('active');
-            li.addEventListener('click', () => {
-                this.zdbSelectedVariantId = v.id;
-                this.zdbSelectedReferenceId = null;
-                this.zdbRenderReferences();
-                this.zdbRenderProfiles();
-                this.zdbRenderVariants();
-            });
-            li.appendChild(left);
-            li.appendChild(del);
-            this.zdbVariantList.appendChild(li);
-        });
-    }
-
-    zdbRenderReferences() {
-        if (!this.zdbRefList) return;
-        this.zdbRefList.innerHTML = '';
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
-        if (!variant) return;
-        // Migration: falls altes Schema (profiles) existiert, in Default-Referenz migrieren
-        if (variant.profiles && variant.profiles.length) {
-            variant.references = variant.references || [];
-            const def = { id: this.zdbUuid(), number: 'REF-1', createdAt: new Date().toISOString(), profiles: variant.profiles };
-            variant.references.push(def);
-            delete variant.profiles;
-            this.zdbSave();
-        }
-        (variant.references || []).forEach(ref => {
-            const li = document.createElement('li');
-            li.className = 'list-item-row';
-            const left = document.createElement('div');
-            left.textContent = ref.number;
-            const del = document.createElement('button');
-            del.className = 'delete-btn-small';
-            del.title = 'Bezügenummer löschen';
-            del.textContent = '×';
-            del.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.zdbDeleteReference(ref.id);
-            });
-            if (this.zdbSelectedReferenceId === ref.id) li.classList.add('active');
-            li.addEventListener('click', () => {
-                this.zdbSelectedReferenceId = ref.id;
-                this.zdbRenderProfiles();
-                this.zdbRenderReferences();
-            });
-            li.appendChild(left);
-            li.appendChild(del);
-            this.zdbRefList.appendChild(li);
-        });
-    }
-
-    zdbRenderProfiles() {
-        if (!this.zdbProfileGrid) return;
-        this.zdbProfileGrid.innerHTML = '';
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
-        if (!variant) return;
-        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
-        const profiles = ref ? (ref.profiles || []) : [];
-        profiles.forEach(pr => {
-            const card = document.createElement('div');
-            card.className = 'profile-card';
-            const del = document.createElement('button');
-            del.className = 'delete-btn-small card-delete';
-            del.title = 'Profil löschen';
-            del.textContent = '×';
-            del.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.zdbDeleteProfile(pr.id);
-            });
-            const img = document.createElement('img');
-            img.src = pr.previewImage || '';
-            const title = document.createElement('div');
-            title.className = 'title';
-            title.textContent = pr.name;
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            meta.textContent = pr.supplierNumber ? `Lieferant: ${pr.supplierNumber}` : '—';
-            card.appendChild(del);
-            card.appendChild(img);
-            card.appendChild(title);
-            card.appendChild(meta);
-            // Single-Click: visuelle Auswahl (optional)
-            card.addEventListener('click', () => {
-                // Auswahlzustand setzen
-                Array.from(this.zdbProfileGrid.children).forEach(el => el.classList.remove('active'));
-                card.classList.add('active');
-            });
-            // Doppelklick: sofort öffnen
-            card.addEventListener('dblclick', () => this.zdbOpenProfile(pr));
-            this.zdbProfileGrid.appendChild(card);
-        });
-    }
-
-    // Löschfunktionen
-    zdbDeleteProject(projectId) {
-        const ix = this.zdb.projects.findIndex(p => p.id === projectId);
-        if (ix >= 0 && confirm('Projekt inklusive Varianten und Bezügenummern löschen?')) {
-            this.zdb.projects.splice(ix, 1);
-            this.zdbSelectedProjectId = null;
-            this.zdbSelectedVariantId = null;
-            this.zdbSelectedReferenceId = null;
-            this.zdbSave();
-            this.zdbRender();
-        }
-    }
-
-    zdbDeleteVariant(variantId) {
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        const ix = (project.varianten || []).findIndex(v => v.id === variantId);
-        if (ix >= 0 && confirm('Variante inklusive Bezügenummern löschen?')) {
-            project.varianten.splice(ix, 1);
-            this.zdbSelectedVariantId = null;
-            this.zdbSelectedReferenceId = null;
-            this.zdbSave();
-            this.zdbRender();
-        }
-    }
-
-    zdbDeleteReference(referenceId) {
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
-        if (!variant) return;
-        const ix = (variant.references || []).findIndex(r => r.id === referenceId);
-        if (ix >= 0 && confirm('Bezügenummer und zugehörige Profile löschen?')) {
-            variant.references.splice(ix, 1);
-            this.zdbSelectedReferenceId = null;
-            this.zdbSave();
-            this.zdbRenderReferences();
-            this.zdbRenderProfiles();
-        }
-    }
-
-    zdbDeleteProfile(profileId) {
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return;
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
-        if (!variant) return;
-        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId);
-        if (!ref) return;
-        const ix = (ref.profiles || []).findIndex(pr => pr.id === profileId);
-        if (ix >= 0 && confirm('Profil löschen?')) {
-            ref.profiles.splice(ix, 1);
-            this.zdbSave();
-            this.zdbRenderProfiles();
-        }
-    }
-
-    // Helpers
-    zdbUuid() {
-        return 'id-' + Math.random().toString(36).slice(2, 10);
-    }
-
-    // CRUD
-    zdbEnsureDefault() {
-        if (!this.zdb.projects.length) {
-            this.zdb.projects.push({ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), varianten: [] });
-        }
-        const project = this.zdb.projects[0];
-        if (!project.varianten || !project.varianten.length) {
-            project.varianten = [{ id: this.zdbUuid(), name: 'Allgemein', createdAt: new Date().toISOString(), profiles: [] }];
-        }
-        this.zdbSelectedProjectId = project.id;
-        this.zdbSelectedVariantId = project.varianten[0].id;
-    }
-
-    zdbAddProject() {
-        const name = prompt('Projektname eingeben:', 'Neues Projekt');
-        if (!name) return;
-        this.zdb.projects.push({ id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), varianten: [] });
-        this.zdbSave();
-        this.zdbSelectedProjectId = this.zdb.projects[this.zdb.projects.length - 1].id;
-        this.zdbSelectedVariantId = null;
-        this.zdbRender();
-    }
-
-    zdbAddVariant() {
-        if (!this.zdb.projects.length) this.zdbEnsureDefault();
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
-        const name = prompt('Variantenname eingeben:', 'Neue Variante');
-        if (!name) return;
-        project.varianten = project.varianten || [];
-        const v = { id: this.zdbUuid(), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), references: [] };
-        project.varianten.push(v);
-        this.zdbSave();
-        this.zdbSelectedVariantId = v.id;
-        this.zdbRender();
-    }
-
-    zdbAddReference() {
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId);
-        if (!project) return alert('Bitte zuerst ein Projekt wählen.');
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId);
-        if (!variant) return alert('Bitte zuerst eine Variante wählen.');
-        const number = (this.zdbRefInput && this.zdbRefInput.value.trim()) || prompt('Bezügenummer eingeben:', 'REF-001');
-        if (!number) return;
-        variant.references = variant.references || [];
-        const ref = { id: this.zdbUuid(), number, createdAt: new Date().toISOString(), profiles: [] };
-        variant.references.push(ref);
-        this.zdbSave();
-        this.zdbSelectedReferenceId = ref.id;
-        if (this.zdbRefInput) this.zdbRefInput.value = '';
-        this.zdbRenderReferences();
-        this.zdbRenderProfiles();
-    }
-
-    async zdbSaveCurrentProfile() {
-        // Sicherstellen, dass Ziel existiert
-        if (!this.zdb.projects.length) this.zdbEnsureDefault();
-        const project = this.zdb.projects.find(p => p.id === this.zdbSelectedProjectId) || this.zdb.projects[0];
-        const variant = (project.varianten || []).find(v => v.id === this.zdbSelectedVariantId) || project.varianten[0];
-        if (!variant.references || !variant.references.length) return alert('Bitte zuerst eine Bezügenummer anlegen und auswählen.');
-        const ref = (variant.references || []).find(r => r.id === this.zdbSelectedReferenceId) || null;
-        if (!ref) return alert('Bitte eine Bezügenummer auswählen.');
-        const name = prompt('Profilname eingeben:', 'Neue Zeichnung');
-        if (!name) return;
-        const supplierNumber = prompt('Lieferantennummer (optional):', '') || '';
-
-        // Screenshot erzeugen (skaliertes Bild der sichtbaren Canvas)
-        const previewImage = this.canvas.toDataURL('image/png');
-
-        // Zustand speichern
-        const data = this.getCurrentStateForExport ? this.getCurrentStateForExport() : this.createStateSnapshotForExport();
-
-        const profile = {
-            id: this.zdbUuid(),
-            name,
-            supplierNumber,
-            previewImage,
-            data,
-            version: this.version,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-        };
-        ref.profiles = ref.profiles || [];
-        ref.profiles.push(profile);
-        this.zdbSave();
-        this.zdbRenderProfiles();
-        alert('Zeichnung gespeichert.');
-    }
-
-    // Export der aktuellen Zeichen-State-Struktur
-    createStateSnapshotForExport() {
-        // Reuse saveState logic without pushing to history
-        return {
-            currentRect: this.currentRect ? { ...this.currentRect } : null,
-            bohnen: JSON.parse(JSON.stringify(this.bohnen || [])),
-            kerben: JSON.parse(JSON.stringify(this.kerben || [])),
-            loecher: JSON.parse(JSON.stringify(this.loecher || [])),
-            ausschnitte: JSON.parse(JSON.stringify(this.ausschnitte || [])),
-            nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
-            crimping: JSON.parse(JSON.stringify(this.crimping || [])),
-            zoom: this.zoom,
-            offsetX: this.offsetX,
-            offsetY: this.offsetY,
-        };
-    }
-
-    zdbOpenProfile(profile) {
-        if (!profile || !profile.data) return;
-        // Bestehendes auf dem Canvas entfernen und dann laden
-        this.clearCanvas();
-        this.saveState();
-        this.restoreState(profile.data);
-        this.draw();
-        this.autoZoom();
-        this.closeZeichnungenDb();
-    }
-
-    // Import/Export
-    zdbExport() {
-        const blob = new Blob([JSON.stringify(this.zdb)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const fileName = this.zdbFileName || 'Zeichnungen.json';
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-        // Anzeige aktualisieren
-        if (!this.zdbFileName) {
-            this.zdbFileName = 'Zeichnungen.json';
-        }
-        if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
-    }
-
-    zdbHandleImport(e) {
-        const file = e.target.files && e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-            try {
-                const data = JSON.parse(reader.result);
-                if (data && data.projects) {
-                    this.zdb = data;
-                    this.zdbSave();
-                    this.zdbSelectedProjectId = null;
-                    this.zdbSelectedVariantId = null;
-                    this.zdbRender();
-                    this.zdbFileName = file.name || 'Zeichnungen.json';
-                    if (this.zdbFileInfo) this.zdbFileInfo.textContent = this.zdbFileName;
-                } else {
-                    alert('Ungültiges Datei-Format.');
-                }
-            } catch (err) {
-                alert('Import fehlgeschlagen.');
-            }
-        };
-        reader.readAsText(file);
-        e.target.value = '';
-    }
     init() {
         // Canvas-Elemente
         this.canvas = document.getElementById('main-canvas');
@@ -657,10 +915,10 @@ class ProfilZeichner {
         this.heightInput = document.getElementById('height-input');
         this.drawButton = document.getElementById('draw-button');
         this.clearButton = document.getElementById('clear-button');
-        this.undoButton = document.getElementById('undo-button');
-        this.redoButton = document.getElementById('redo-button');
+                                                                                                                                            this.undoButton = document.getElementById('undo-button');
+                                                                                                                                            this.redoButton = document.getElementById('redo-button');
         this.zoomLevel = document.getElementById('zoom-level');
-        this.zoomSlider = document.getElementById('zoom-slider');
+                                                                                                                                            this.zoomSlider = document.getElementById('zoom-slider');
         
         // Profil-Element Buttons
         this.bohneButton = document.getElementById('bohne-button');
@@ -672,14 +930,23 @@ class ProfilZeichner {
         this.crimpingButton = document.getElementById('crimping-button');
         this.bemaßungButton = document.getElementById('bemaßung-button');
         this.textButton = document.getElementById('text-button');
+        this.bildButton = document.getElementById('bild-button');
         this.databaseButton = document.getElementById('database-button');
-        this.zeichnungsdbButton = document.getElementById('zeichnungsdb-button');
+                                                                                                                                            this.zeichnungsdbButton = document.getElementById('zeichnungsdb-button');
+                                                                                                                                            this.titleblockButton = document.getElementById('titleblock-button');
+        
+        // File Input für Bild-Upload (versteckt)
+        this.bildFileInput = document.createElement('input');
+        this.bildFileInput.type = 'file';
+        this.bildFileInput.accept = 'image/*';
+        this.bildFileInput.style.display = 'none';
+        document.body.appendChild(this.bildFileInput);
         
         // Untere Button-Leiste
         this.autoZoomButton = document.getElementById('auto-zoom-button');
         this.panButton = document.getElementById('pan-button');
         this.pdfButton = document.getElementById('pdf-button');
-        this.dxfButton = document.getElementById('dxf-button');
+                                                                                                                                            this.dxfButton = document.getElementById('dxf-button');
         
         
         // Modal-Elemente
@@ -687,14 +954,14 @@ class ProfilZeichner {
         this.bohneHeightInput = document.getElementById('bohne-height');
         this.bohneCancelButton = document.getElementById('bohne-cancel');
         this.bohneConfirmButton = document.getElementById('bohne-confirm');
-        this.bohneRemoveButton = document.getElementById('bohne-remove');
+                                                                                                                                            this.bohneRemoveButton = document.getElementById('bohne-remove');
         
         this.cutoutModal = document.getElementById('cutout-modal');
         this.cutoutWidthInput = document.getElementById('cutout-width');
         this.cutoutHeightInput = document.getElementById('cutout-height');
         this.cutoutCancelButton = document.getElementById('cutout-cancel');
         this.cutoutConfirmButton = document.getElementById('cutout-confirm');
-        this.cutoutRemoveButton = document.getElementById('cutout-remove');
+                                                                                                                                            this.cutoutRemoveButton = document.getElementById('cutout-remove');
         
         this.kerbeModal = document.getElementById('kerbe-modal');
         this.kerbeTypeSelect = document.getElementById('kerbe-type');
@@ -706,13 +973,20 @@ class ProfilZeichner {
         this.kerbeTable = document.getElementById('kerbe-table');
         this.kerbeTbody = document.getElementById('kerbe-tbody');
         this.addKerbeBtn = document.getElementById('add-kerbe-btn');
+                                                                                                                                            this.kerbenTypesList = document.getElementById('kerben-types-list');
+                                                                                                                                            this.addKerbenTypeBtn = document.getElementById('add-kerben-type-btn');
+                                                                                                                                            this.openKerbenTypesModalBtn = document.getElementById('open-kerben-types-modal-btn');
+                                                                                                                                            this.kerbenTypesModal = document.getElementById('kerben-types-modal');
+                                                                                                                                            this.kerbenTypesModalClose = document.getElementById('kerben-types-modal-close');
+                                                                                                                                            this.kerbenTypesCancel = document.getElementById('kerben-types-cancel');
+                                                                                                                                            this.kerbenTypesConfirm = document.getElementById('kerben-types-confirm');
         
         this.nahtlinieModal = document.getElementById('nahtlinie-modal');
         this.nahtlinieDistanceInput = document.getElementById('nahtlinie-distance');
         this.nahtlinieTypeSelect = document.getElementById('nahtlinie-type');
         this.nahtlinieCancelButton = document.getElementById('nahtlinie-cancel');
         this.nahtlinieConfirmButton = document.getElementById('nahtlinie-confirm');
-        this.nahtlinieRemoveButton = document.getElementById('nahtlinie-remove');
+                                                                                                                                            this.nahtlinieRemoveButton = document.getElementById('nahtlinie-remove');
         
         this.lochModal = document.getElementById('loch-modal');
         this.lochWidthInput = document.getElementById('loch-width');
@@ -723,8 +997,8 @@ class ProfilZeichner {
         this.lochTable = document.getElementById('loch-table');
         this.lochTbody = document.getElementById('loch-tbody');
         this.addLochBtn = document.getElementById('add-loch-btn');
-        this.lochUseKerbenPositionsCheckbox = document.getElementById('loch-use-kerben-positions');
-        this.lochKerbenCheckboxGroup = document.getElementById('loch-kerben-checkbox-group');
+                                                                                                                                            this.lochUseKerbenPositionsCheckbox = document.getElementById('loch-use-kerben-positions');
+                                                                                                                                            this.lochKerbenCheckboxGroup = document.getElementById('loch-kerben-checkbox-group');
         
         // Ausschnitt Modal
         this.ausschnittModal = document.getElementById('ausschnitt-modal');
@@ -734,16 +1008,16 @@ class ProfilZeichner {
         this.ausschnittTable = document.getElementById('ausschnitt-table');
         this.ausschnittTbody = document.getElementById('ausschnitt-tbody');
         this.addAusschnittRowBtn = document.getElementById('add-ausschnitt-row');
-        
-        // Crimping Modal
-        this.crimpingModal = document.getElementById('crimping-modal');
-        this.crimpingModalClose = document.getElementById('crimping-modal-close');
-        this.crimpingCancelButton = document.getElementById('crimping-cancel');
-        this.crimpingConfirmButton = document.getElementById('crimping-confirm');
-        this.crimpingTable = document.getElementById('crimping-table');
-        this.crimpingTbody = document.getElementById('crimping-tbody');
-        this.addCrimpingRowBtn = document.getElementById('add-crimping-row');
-        this.crimpingNoBohneWarning = document.getElementById('crimping-no-bohne-warning');
+                                                                                                                                            
+                                                                                                                                            // Crimping Modal
+                                                                                                                                            this.crimpingModal = document.getElementById('crimping-modal');
+                                                                                                                                            this.crimpingModalClose = document.getElementById('crimping-modal-close');
+                                                                                                                                            this.crimpingCancelButton = document.getElementById('crimping-cancel');
+                                                                                                                                            this.crimpingConfirmButton = document.getElementById('crimping-confirm');
+                                                                                                                                            this.crimpingTable = document.getElementById('crimping-table');
+                                                                                                                                            this.crimpingTbody = document.getElementById('crimping-tbody');
+                                                                                                                                            this.addCrimpingRowBtn = document.getElementById('add-crimping-row');
+                                                                                                                                            this.crimpingNoBohneWarning = document.getElementById('crimping-no-bohne-warning');
         
         this.textModal = document.getElementById('text-modal');
         this.textContentInput = document.getElementById('text-content');
@@ -760,50 +1034,108 @@ class ProfilZeichner {
         
         this.canvasContainer = document.querySelector('.canvas-container');
 
-        // Zeichnungen-DB Elemente
-        this.zeichnungsdbModal = document.getElementById('zeichnungsdb-modal');
-        this.zeichnungsdbModalClose = document.getElementById('zeichnungsdb-modal-close');
-        this.zeichnungsdbClose = document.getElementById('zeichnungsdb-close');
-        this.zdbAddProjectBtn = document.getElementById('zeichnungsdb-add-project');
-        this.zdbAddVariantBtn = document.getElementById('zeichnungsdb-add-variant');
-        this.zdbSaveCurrentBtn = document.getElementById('zeichnungsdb-save-current');
-        this.zdbExportBtn = document.getElementById('zeichnungsdb-export');
-        this.zdbImportBtn = document.getElementById('zeichnungsdb-import');
-        this.zdbFileInput = document.getElementById('zeichnungsdb-file-input');
-        this.zdbProjectList = document.getElementById('zeichnungsdb-project-list');
-        this.zdbVariantList = document.getElementById('zeichnungsdb-variant-list');
-        this.zdbRefList = document.getElementById('zeichnungsdb-ref-list');
-        this.zdbRefInput = document.getElementById('zeichnungsdb-ref-input');
-        this.zdbAddRefBtn = document.getElementById('zeichnungsdb-add-ref');
-        this.zdbProfileGrid = document.getElementById('zeichnungsdb-profile-grid');
-        this.zdbFileInfo = document.getElementById('zeichnungsdb-file-info');
+                                                                                                                                            // Titelblock Modal
+                                                                                                                                            this.titleblockModal = document.getElementById('titleblock-modal');
+                                                                                                                                            this.titleblockModalClose = document.getElementById('titleblock-modal-close');
+                                                                                                                                            this.titleblockCancel = document.getElementById('titleblock-cancel');
+                                                                                                                                            this.titleblockConfirm = document.getElementById('titleblock-confirm');
+                                                                                                                                            this.tbProject = document.getElementById('tb-project');
+                                                                                                                                            this.tbVariant = document.getElementById('tb-variant');
+                                                                                                                                            this.tbReference = document.getElementById('tb-reference');
+                                                                                                                                            this.tbZeichnungsnummer = document.getElementById('tb-zeichnungsnummer');
+                                                                                                                                            this.tbRevision = document.getElementById('tb-revision');
+                                                                                                                                            this.tbSpsNummer = document.getElementById('tb-spsnummer');
+                                                                                                                                            this.tbMaterial = document.getElementById('tb-material');
+                                                                                                                                            this.tbSupplier = document.getElementById('tb-supplier');
+                                                                                                                                            this.tbDate = document.getElementById('tb-date');
+                                                                                                                                            this.tbFillFromDb = document.getElementById('tb-fill-from-db');
+                                                                                                                                            this.tbSaveToDb = document.getElementById('tb-save-to-db');
+
+                                                                                                                                            // Zeichnungen-DB Elemente
+                                                                                                                                            this.zeichnungsdbModal = document.getElementById('zeichnungsdb-modal');
+                                                                                                                                            this.zeichnungsdbModalClose = document.getElementById('zeichnungsdb-modal-close');
+                                                                                                                                            this.zeichnungsdbClose = document.getElementById('zeichnungsdb-close');
+                                                                                                                                            this.zdbAddProjectBtn = document.getElementById('zeichnungsdb-add-project');
+                                                                                                                                            this.zdbAddVariantBtn = document.getElementById('zeichnungsdb-add-variant');
+                                                                                                                                            this.zdbSaveCurrentBtn = document.getElementById('zeichnungsdb-save-current');
+                                                                                                                                            this.zdbExportBtn = document.getElementById('zeichnungsdb-export');
+                                                                                                                                            this.zdbImportBtn = document.getElementById('zeichnungsdb-import');
+                                                                                                                                            this.zdbFileInput = document.getElementById('zeichnungsdb-file-input');
+                                                                                                                                            this.zdbProjectList = document.getElementById('zeichnungsdb-project-list');
+                                                                                                                                            this.zdbVariantList = document.getElementById('zeichnungsdb-variant-list');
+                                                                                                                                            this.zdbRefList = document.getElementById('zeichnungsdb-ref-list');
+                                                                                                                                            this.zdbRefInput = document.getElementById('zeichnungsdb-ref-input');
+                                                                                                                                            this.zdbAddRefBtn = document.getElementById('zeichnungsdb-add-ref');
+                                                                                                                                            this.zdbProfileGrid = document.getElementById('zeichnungsdb-profile-grid');
+                                                                                                                                            this.zdbFileInfo = document.getElementById('zeichnungsdb-file-info');
         
         // Canvas-Einstellungen
         this.canvasWidth = window.innerWidth;
-        this.canvasHeight = window.innerHeight - 80; // Abzug für Menüleiste
-        this.zoom = 1;
+                                                                                                                                            this.canvasHeight = window.innerHeight - this.CONFIG.menuBarHeight;
+                                                                                                                                            this.zoom = this.CONFIG.zoomDefault / 100; // Konvertiere % zu Faktor (100% = 1.0)
         this.offsetX = this.canvasWidth / 2; // Koordinatensystem in der Mitte
         this.offsetY = this.canvasHeight / 2; // Koordinatensystem in der Mitte
-        this.mmToPx = 96 / 25.4; // Standard 96 DPI
+                                                                                                                                            // Umrechnung Millimeter zu Pixel aus CONFIG
+                                                                                                                                            this.mmToPx = this.CONFIG.mmToPx;
         
         // Zeichenzustand
         this.currentRect = null;
         this.bohnen = [];
         this.kerben = [];
+                                                                                                                                            this.kerbenTypes = []; // Verschiedene Kerben-Typen mit eigenen Maßen
         this.loecher = [];
         this.ausschnitte = [];
-        this.crimping = [];
+                                                                                                                                            this.crimping = [];
         this.nahtlinie = null;
         this.texts = [];
         this.showDimensions = false;
+                                                                                                                                            // Titelblock State
+                                                                                                                                            this.titleBlock = {
+                                                                                                                                                x: null,
+                                                                                                                                                y: null,
+                                                                                                                                                width: this.CONFIG.titleBlockWidth * this.mmToPx,
+                                                                                                                                                height: this.CONFIG.titleBlockHeight * this.mmToPx,
+                                                                                                                                                locked: false,
+                                                                                                                                                dragging: false,
+                                                                                                                                                fields: {
+                                                                                                                                                    project: '', variant: '', reference: '', zeichnungsnummer: '',
+                                                                                                                                                    revision: '', spsNummer: '', material: '', supplierNumber: '', date: ''
+                                                                                                                                                },
+                                                                                                                                                layout: [
+                                                                                                                                                    // Linke Spalte
+                                                                                                                                                    [
+                                                                                                                                                        { label: 'Projekt', field: 'project', suffix: '' },
+                                                                                                                                                        { label: 'Variante', field: 'variant', suffix: '' },
+                                                                                                                                                        { label: 'Bezug', field: 'reference', suffix: '' },
+                                                                                                                                                        { label: 'Zeichnungsnummer', field: 'zeichnungsnummer', suffix: '' }
+                                                                                                                                                    ],
+                                                                                                                                                    // Rechte Spalte
+                                                                                                                                                    [
+                                                                                                                                                        { label: 'Revision', field: 'revision', suffix: '' },
+                                                                                                                                                        { label: 'SPS Nummer', field: 'spsNummer', suffix: '' },
+                                                                                                                                                        { label: 'Material', field: 'material', suffix: '' },
+                                                                                                                                                        { label: 'Lieferant', field: 'supplierNumber', suffix: '' },
+                                                                                                                                                        { label: 'Datum', field: 'date', suffix: '' }
+                                                                                                                                                    ]
+                                                                                                                                                ]
+                                                                                                                                            };
+                                                                                                                                            this.hoveredTitleBlock = false;
+                                                                                                                                            this.titleBlockDragOffset = { x: 0, y: 0 };
         this.selectedFormat = 'a4';
         this.showFormatBorder = false;
         this.loadedProfileSkizze = null;
         this.loadedSkizzeImage = null;
-        this.skizzeX = null; // Position der Skizze (X)
-        this.skizzeY = null; // Position der Skizze (Y)
-        this.skizzeWidth = 40 * this.mmToPx; // Standard-Breite der Skizze
-        this.skizzeHeight = 30 * this.mmToPx; // Standard-Höhe der Skizze
+                                                                                                                                            this.skizzeX = null; // Position der Skizze (X)
+                                                                                                                                            this.skizzeY = null; // Position der Skizze (Y)
+                                                                                                                                            this.skizzeWidth = this.CONFIG.skizzeDefaultWidth * this.mmToPx;
+        this.skizzeHeight = this.CONFIG.skizzeDefaultHeight * this.mmToPx;
+        
+        // Bild-Einfügen (vom Rechner)
+        this.bildImage = null; // Das geladene Bild
+        this.bildX = null; // Position des Bildes (X)
+        this.bildY = null; // Position des Bildes (Y)
+        this.bildWidth = 60 * this.mmToPx; // Standard-Breite
+        this.bildHeight = 40 * this.mmToPx; // Standard-Höhe
         
         // Drag-and-Drop für Modals
         this.draggedModal = null;
@@ -820,6 +1152,20 @@ class ProfilZeichner {
         this.kerbeDragOffset = { x: 0, y: 0 };
         this.hoveredKerbe = null; // Aktueller Kerbe über dem die Maus schwebt
         
+        // Löcher-Drag-and-Drop
+        this.draggedLoch = null;
+        this.lochDragOffset = { x: 0, y: 0 };
+        this.hoveredLoch = null; // Aktuelles Loch über dem die Maus schwebt
+        
+        // Bemaßungslinien-Drag-and-Drop
+        this.draggedDimension = null; // { type: 'horizontal'|'vertical', index: number }
+        this.dimensionDragOffset = { x: 0, y: 0 };
+        this.hoveredDimension = null; // Aktuelle Bemaßungslinie über der die Maus schwebt
+        this.dimensionOffsets = {
+            horizontal: [], // Array von Y-Offsets für horizontale Linien (oben/unten)
+            vertical: []   // Array von X-Offsets für vertikale Linien (rechts)
+        };
+        
         // Skizze-Drag-and-Resize
         this.draggedSkizze = false;
         this.skizzeDragOffset = { x: 0, y: 0 };
@@ -829,6 +1175,16 @@ class ProfilZeichner {
         this.resizeStartSize = { width: 0, height: 0 };
         this.resizeStartPosSkizze = { x: 0, y: 0 };
         this.hoveredSkizze = false;
+        
+        // Bild-Drag-and-Resize
+        this.draggedBild = false;
+        this.bildDragOffset = { x: 0, y: 0 };
+        this.resizingBild = false;
+        this.bildResizeHandle = null; // 'nw', 'ne', 'sw', 'se' für die Ecken
+        this.bildResizeStartPos = { x: 0, y: 0 };
+        this.bildResizeStartSize = { width: 0, height: 0 };
+        this.bildResizeStartPosBild = { x: 0, y: 0 };
+        this.hoveredBild = false;
         
         // Pan-Modus
         this.panMode = false;
@@ -841,7 +1197,7 @@ class ProfilZeichner {
         // Undo/Redo-History
         this.history = [];
         this.historyIndex = -1;
-        this.maxHistorySize = 50; // Maximale Anzahl von Undo-Schritten
+        this.maxHistorySize = this.CONFIG.maxHistorySize; // Maximale Anzahl von Undo-Schritten
         
         
         this.setupCanvas();
@@ -861,6 +1217,10 @@ class ProfilZeichner {
         }
     }
     
+    // ============================================================================
+    // CANVAS SETUP & RESIZE
+    // ============================================================================
+    
     setupCanvas() {
         // Setze die Canvas-Auflösung für scharfe Darstellung
         const dpr = window.devicePixelRatio || 1;
@@ -873,10 +1233,17 @@ class ProfilZeichner {
         this.draw();
     }
     
+    // ============================================================================
+    // EVENT LISTENER SETUP
+    // ============================================================================
+    
     setupEventListeners() {
         // Canvas Event Listeners
         this.canvas.addEventListener('dblclick', (e) => this.handleCanvasDoubleClick(e));
         this.canvas.addEventListener('click', (e) => this.handleCanvasClick(e));
+        
+        // Tastatur-Events für Bild-Löschen
+        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
         this.canvas.addEventListener('wheel', (e) => this.handleWheel(e));
         this.canvas.addEventListener('mousedown', (e) => this.handleMouseDown(e));
         this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
@@ -910,10 +1277,12 @@ class ProfilZeichner {
         this.ausschnittButton.addEventListener('click', () => this.openAusschnittModal());
         this.crimpingButton.addEventListener('click', () => this.openCrimpingModal());
         this.textButton.addEventListener('click', () => this.openTextModal());
+        this.bildButton.addEventListener('click', () => this.openBildDialog());
         this.databaseButton.addEventListener('click', () => this.openDatabaseModal());
         if (this.zeichnungsdbButton) {
             this.zeichnungsdbButton.addEventListener('click', () => this.openZeichnungenDb());
         }
+        if (this.titleblockButton) this.titleblockButton.addEventListener('click', () => this.openTitleBlockModal());
 
         // Zeichnungen-DB Events
         if (this.zeichnungsdbModalClose) this.zeichnungsdbModalClose.addEventListener('click', () => this.closeZeichnungenDb());
@@ -976,6 +1345,13 @@ class ProfilZeichner {
             this.bohneRemoveButton.addEventListener('click', () => this.removeBohne());
         }
         this.bohneModalClose.addEventListener('click', () => this.closeBohneModal());
+
+        // Titelblock Events
+        if (this.titleblockModalClose) this.titleblockModalClose.addEventListener('click', () => this.closeTitleBlockModal());
+        if (this.titleblockCancel) this.titleblockCancel.addEventListener('click', () => this.closeTitleBlockModal());
+        if (this.titleblockConfirm) this.titleblockConfirm.addEventListener('click', () => this.confirmTitleBlock());
+        if (this.tbFillFromDb) this.tbFillFromDb.addEventListener('click', () => this.titleBlockFillFromDb());
+        if (this.tbSaveToDb) this.tbSaveToDb.addEventListener('click', () => this.titleBlockSaveToDb());
         
         this.cutoutCancelButton.addEventListener('click', () => this.closeCutoutModal());
         this.cutoutConfirmButton.addEventListener('click', () => this.confirmCutout());
@@ -996,6 +1372,21 @@ class ProfilZeichner {
         // Kerben-Tabelle Event Listeners
         if (this.addKerbeBtn) {
             this.addKerbeBtn.addEventListener('click', () => this.addKerbeRow());
+        }
+        if (this.openKerbenTypesModalBtn) {
+            this.openKerbenTypesModalBtn.addEventListener('click', () => this.openKerbenTypesModal());
+        }
+        if (this.addKerbenTypeBtn) {
+            this.addKerbenTypeBtn.addEventListener('click', () => this.addKerbenType());
+        }
+        if (this.kerbenTypesModalClose) {
+            this.kerbenTypesModalClose.addEventListener('click', () => this.closeKerbenTypesModal());
+        }
+        if (this.kerbenTypesCancel) {
+            this.kerbenTypesCancel.addEventListener('click', () => this.closeKerbenTypesModal());
+        }
+        if (this.kerbenTypesConfirm) {
+            this.kerbenTypesConfirm.addEventListener('click', () => this.confirmKerbenTypes());
         }
         
         this.nahtlinieCancelButton.addEventListener('click', () => this.closeNahtlinieModal());
@@ -1129,6 +1520,10 @@ class ProfilZeichner {
         }
     }
     
+    // ============================================================================
+    // EVENT HANDLING (Maus & Tastatur)
+    // ============================================================================
+    
     handleWheel(e) {
         e.preventDefault();
         
@@ -1145,7 +1540,7 @@ class ProfilZeichner {
     }
     
     handleMouseDown(e) {
-        if (this.draggedText || this.draggedSkizze || this.resizingSkizze || this.draggedKerbe) {
+        if (this.draggedText || this.draggedSkizze || this.resizingSkizze || this.draggedKerbe || this.draggedLoch || this.draggedDimension || this.draggedBild || this.resizingBild) {
             // Element wird bereits gedraggt
             return;
         }
@@ -1208,6 +1603,49 @@ class ProfilZeichner {
             }
         }
         
+        // Prüfe ob auf Bild geklickt wurde (Resize-Handles oder Drag)
+        if (this.bildImage && this.bildImage.complete && this.bildX !== null && this.bildY !== null) {
+            const screenBildX = this.bildX * this.zoom + this.offsetX;
+            const screenBildY = this.bildY * this.zoom + this.offsetY;
+            const screenBildWidth = this.bildWidth * this.zoom;
+            const screenBildHeight = this.bildHeight * this.zoom;
+            
+            const handleSize = 8;
+            const handles = [
+                { x: screenBildX, y: screenBildY, type: 'nw' },
+                { x: screenBildX + screenBildWidth, y: screenBildY, type: 'ne' },
+                { x: screenBildX, y: screenBildY + screenBildHeight, type: 'sw' },
+                { x: screenBildX + screenBildWidth, y: screenBildY + screenBildHeight, type: 'se' }
+            ];
+            
+            for (const handle of handles) {
+                if (mouseX >= handle.x - handleSize/2 && mouseX <= handle.x + handleSize/2 &&
+                    mouseY >= handle.y - handleSize/2 && mouseY <= handle.y + handleSize/2) {
+                    this.resizingBild = true;
+                    this.bildResizeHandle = handle.type;
+                    this.bildResizeStartPos = { x: mouseX, y: mouseY };
+                    this.bildResizeStartSize = { width: this.bildWidth, height: this.bildHeight };
+                    this.bildResizeStartPosBild = { x: this.bildX, y: this.bildY };
+                    e.preventDefault();
+                    this.canvas.style.cursor = this.getResizeCursor(handle.type);
+                    this.draw();
+                    return;
+                }
+            }
+            
+            // Prüfe ob auf Bild geklickt wurde (zum Verschieben)
+            if (mouseX >= screenBildX - 5 && mouseX <= screenBildX + screenBildWidth + 5 &&
+                mouseY >= screenBildY - 5 && mouseY <= screenBildY + screenBildHeight + 5) {
+                this.draggedBild = true;
+                this.bildDragOffset.x = mouseX - screenBildX;
+                this.bildDragOffset.y = mouseY - screenBildY;
+                e.preventDefault();
+                this.canvas.style.cursor = 'grabbing';
+                this.draw();
+                return;
+            }
+        }
+        
         // Prüfe ob auf Text geklickt wurde (mit erweiterter Hitbox)
         for (let i = this.texts.length - 1; i >= 0; i--) {
             const text = this.texts[i];
@@ -1231,13 +1669,65 @@ class ProfilZeichner {
             }
         }
         
+        // Prüfe ob auf Loch geklickt wurde (vor Kerben, da Löcher kleiner sind)
+        if (this.currentRect && this.loecher.length > 0) {
+            for (let i = this.loecher.length - 1; i >= 0; i--) {
+                const loch = this.loecher[i];
+                const distancePx = loch.distance * this.mmToPx;
+                const widthPx = loch.width * this.mmToPx;
+                const heightPx = loch.height * this.mmToPx;
+                const positionPx = (loch.position || this.CONFIG.defaultLochPositionFromTop) * this.mmToPx;
+                
+                const rect = this.currentRect;
+                const lochX = rect.x + distancePx;
+                const lochY = rect.y + positionPx + (heightPx / 2); // Mittelpunkt des Lochs
+                
+                // Berechne die Bildschirmposition (mit Zoom und Offset)
+                const screenX = lochX * this.zoom + this.offsetX;
+                const screenY = lochY * this.zoom + this.offsetY;
+                const screenWidth = widthPx * this.zoom;
+                const screenHeight = heightPx * this.zoom;
+                
+                // Erweiterte Hitbox (ca. 10 Pixel in alle Richtungen für besseres Greifen)
+                const hitboxSize = 10;
+                const minX = screenX - screenWidth/2 - hitboxSize;
+                const maxX = screenX + screenWidth/2 + hitboxSize;
+                const minY = screenY - screenHeight/2 - hitboxSize;
+                const maxY = screenY + screenHeight/2 + hitboxSize;
+                
+                if (mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY) {
+                    this.draggedLoch = loch;
+                    this.lochDragOffset.x = mouseX - screenX;
+                    this.hoveredLoch = null; // Reset hover beim Dragging
+                    e.preventDefault();
+                    this.canvas.style.cursor = 'grabbing';
+                    this.draw();
+                    return;
+                }
+            }
+        }
+
         // Prüfe ob auf Kerbe geklickt wurde
         if (this.currentRect && this.kerben.length > 0) {
             for (let i = this.kerben.length - 1; i >= 0; i--) {
                 const kerbe = this.kerben[i];
                 const distancePx = kerbe.distance * this.mmToPx;
-                const widthPx = kerbe.width * this.mmToPx;
-                const depthPx = kerbe.depth * this.mmToPx;
+                
+                // Hole Maße aus dem Kerben-Typ (Rückwärtskompatibilität für alte Kerben)
+                let widthPx, depthPx, type;
+                if (kerbe.kerbenTypeId) {
+                    // Neue Struktur: Hole Maße aus Kerben-Typ
+                    const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                    if (!kerbenType) continue; // Überspringe wenn Typ nicht gefunden
+                    widthPx = kerbenType.width * this.mmToPx;
+                    depthPx = kerbenType.depth * this.mmToPx;
+                    type = kerbenType.type || 'triangle';
+                } else {
+                    // Alte Struktur: Direkt aus Kerbe (für Rückwärtskompatibilität)
+                    widthPx = (kerbe.width || 6) * this.mmToPx;
+                    depthPx = (kerbe.depth || 4) * this.mmToPx;
+                    type = kerbe.type || 'triangle';
+                }
                 
                 const rect = this.currentRect;
                 const kerbeX = rect.x + distancePx;
@@ -1257,10 +1747,13 @@ class ProfilZeichner {
                 const screenDepth = depthPx * this.zoom;
                 
                 // Erweiterte Hitbox (ca. 15 Pixel in alle Richtungen)
+                // Für Strichmarkierung: kleinere Hitbox (nur Höhe relevant)
                 const hitboxSize = 15;
+                const hitboxWidth = (type === 'marker') ? 10 : screenWidth/2; // Bei Marker: kleinere Breite
+                
                 if (kerbe.position === 'oben') {
                     // Kerbe oben - Hitbox geht von Kerbe nach unten
-                    if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                    if (mouseX >= screenX - hitboxWidth - hitboxSize && mouseX <= screenX + hitboxWidth + hitboxSize &&
                         mouseY >= screenY - hitboxSize && mouseY <= screenY + screenDepth + hitboxSize) {
                         this.draggedKerbe = kerbe;
                         this.kerbeDragOffset.x = mouseX - screenX;
@@ -1272,7 +1765,7 @@ class ProfilZeichner {
                     }
                 } else {
                     // Kerbe unten - Hitbox geht von Kerbe nach oben
-                    if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                    if (mouseX >= screenX - hitboxWidth - hitboxSize && mouseX <= screenX + hitboxWidth + hitboxSize &&
                         mouseY >= screenY - screenDepth - hitboxSize && mouseY <= screenY + hitboxSize) {
                         this.draggedKerbe = kerbe;
                         this.kerbeDragOffset.x = mouseX - screenX;
@@ -1283,6 +1776,95 @@ class ProfilZeichner {
                         return;
                     }
                 }
+            }
+        }
+
+        // Prüfe ob auf Bemaßungslinie geklickt wurde (nur wenn Bemaßungen aktiv)
+        if (this.showDimensions && this.currentRect) {
+            // Konvertiere Mausposition zu Weltkoordinaten
+            const worldX = (mouseX - this.offsetX) / this.zoom;
+            const worldY = (mouseY - this.offsetY) / this.zoom;
+            
+            const hitboxSize = 5 * this.mmToPx; // 5mm Hitbox um die Linie
+            
+            // Prüfe horizontale Bemaßungen (oben)
+            if (this.horizontalDimensionsTop && this.horizontalDimensionsTop.length > 0) {
+                for (let i = this.horizontalDimensionsTop.length - 1; i >= 0; i--) {
+                    const dim = this.horizontalDimensionsTop[i];
+                    const minX = Math.min(dim.startX, dim.endX) - hitboxSize;
+                    const maxX = Math.max(dim.startX, dim.endX) + hitboxSize;
+                    const minY = dim.y - hitboxSize;
+                    const maxY = dim.y + hitboxSize;
+                    
+                    if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                        this.draggedDimension = { type: 'horizontal', index: dim.index, location: 'top' };
+                        this.dimensionDragOffset.y = mouseY - (dim.y * this.zoom + this.offsetY);
+                        this.hoveredDimension = null;
+                        e.preventDefault();
+                        this.canvas.style.cursor = 'ns-resize'; // Vertikaler Resize-Cursor
+                        this.draw();
+                        return;
+                    }
+                }
+            }
+            
+            // Prüfe horizontale Bemaßungen (unten)
+            if (this.horizontalDimensionsBottom && this.horizontalDimensionsBottom.length > 0) {
+                for (let i = this.horizontalDimensionsBottom.length - 1; i >= 0; i--) {
+                    const dim = this.horizontalDimensionsBottom[i];
+                    const minX = Math.min(dim.startX, dim.endX) - hitboxSize;
+                    const maxX = Math.max(dim.startX, dim.endX) + hitboxSize;
+                    const minY = dim.y - hitboxSize;
+                    const maxY = dim.y + hitboxSize;
+                    
+                    if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                        this.draggedDimension = { type: 'horizontal', index: dim.index, location: 'bottom' };
+                        this.dimensionDragOffset.y = mouseY - (dim.y * this.zoom + this.offsetY);
+                        this.hoveredDimension = null;
+                        e.preventDefault();
+                        this.canvas.style.cursor = 'ns-resize'; // Vertikaler Resize-Cursor
+                        this.draw();
+                        return;
+                    }
+                }
+            }
+            
+            // Prüfe vertikale Bemaßungen (rechts)
+            if (this.verticalDimensions && this.verticalDimensions.length > 0) {
+                for (let i = this.verticalDimensions.length - 1; i >= 0; i--) {
+                    const dim = this.verticalDimensions[i];
+                    const minX = dim.x - hitboxSize;
+                    const maxX = dim.x + hitboxSize;
+                    const minY = Math.min(dim.startY, dim.endY) - hitboxSize;
+                    const maxY = Math.max(dim.startY, dim.endY) + hitboxSize;
+                    
+                    if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                        this.draggedDimension = { type: 'vertical', index: dim.index, location: 'right' };
+                        this.dimensionDragOffset.x = mouseX - (dim.x * this.zoom + this.offsetX);
+                        this.hoveredDimension = null;
+                        e.preventDefault();
+                        this.canvas.style.cursor = 'ew-resize'; // Horizontaler Resize-Cursor
+                        this.draw();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Prüfe Titelblock-Klick (Drag)
+        if (this.titleBlock && this.titleBlock.x != null) {
+            const tbX1 = this.titleBlock.x * this.zoom + this.offsetX;
+            const tbY1 = this.titleBlock.y * this.zoom + this.offsetY;
+            const tbX2 = (this.titleBlock.x + this.titleBlock.width) * this.zoom + this.offsetX;
+            const tbY2 = (this.titleBlock.y + this.titleBlock.height) * this.zoom + this.offsetY;
+            if (mouseX >= tbX1 && mouseX <= tbX2 && mouseY >= tbY1 && mouseY <= tbY2) {
+                this.titleBlock.dragging = true;
+                this.titleBlockDragOffset.x = (mouseX - this.offsetX) / this.zoom - this.titleBlock.x;
+                this.titleBlockDragOffset.y = (mouseY - this.offsetY) / this.zoom - this.titleBlock.y;
+                e.preventDefault();
+                this.canvas.style.cursor = 'grabbing';
+                this.draw();
+                return;
             }
         }
     }
@@ -1302,7 +1884,41 @@ class ProfilZeichner {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             
-        if (this.resizingSkizze) {
+        if (this.resizingBild) {
+            // Resize-Modus für Bild
+            const deltaX = (mouseX - this.bildResizeStartPos.x) / this.zoom;
+            const deltaY = (mouseY - this.bildResizeStartPos.y) / this.zoom;
+            
+            const minSize = 10 * this.mmToPx; // Minimale Größe
+            
+            switch(this.bildResizeHandle) {
+                case 'nw':
+                    this.bildWidth = Math.max(minSize, this.bildResizeStartSize.width - deltaX);
+                    this.bildHeight = Math.max(minSize, this.bildResizeStartSize.height - deltaY);
+                    this.bildX = this.bildResizeStartPosBild.x + (this.bildResizeStartSize.width - this.bildWidth);
+                    this.bildY = this.bildResizeStartPosBild.y + (this.bildResizeStartSize.height - this.bildHeight);
+                    break;
+                case 'ne':
+                    this.bildWidth = Math.max(minSize, this.bildResizeStartSize.width + deltaX);
+                    this.bildHeight = Math.max(minSize, this.bildResizeStartSize.height - deltaY);
+                    this.bildX = this.bildResizeStartPosBild.x;
+                    this.bildY = this.bildResizeStartPosBild.y + (this.bildResizeStartSize.height - this.bildHeight);
+                    break;
+                case 'sw':
+                    this.bildWidth = Math.max(minSize, this.bildResizeStartSize.width - deltaX);
+                    this.bildHeight = Math.max(minSize, this.bildResizeStartSize.height + deltaY);
+                    this.bildX = this.bildResizeStartPosBild.x + (this.bildResizeStartSize.width - this.bildWidth);
+                    this.bildY = this.bildResizeStartPosBild.y;
+                    break;
+                case 'se':
+                    this.bildWidth = Math.max(minSize, this.bildResizeStartSize.width + deltaX);
+                    this.bildHeight = Math.max(minSize, this.bildResizeStartSize.height + deltaY);
+                    this.bildX = this.bildResizeStartPosBild.x;
+                    this.bildY = this.bildResizeStartPosBild.y;
+                    break;
+            }
+            this.draw();
+        } else if (this.resizingSkizze) {
             // Resize-Modus
             const deltaX = (mouseX - this.resizeStartPos.x) / this.zoom;
             const deltaY = (mouseY - this.resizeStartPos.y) / this.zoom;
@@ -1336,6 +1952,13 @@ class ProfilZeichner {
                     break;
             }
             this.draw();
+        } else if (this.draggedBild) {
+            // Verschiebe Bild
+            const newX = (mouseX - this.bildDragOffset.x - this.offsetX) / this.zoom;
+            const newY = (mouseY - this.bildDragOffset.y - this.offsetY) / this.zoom;
+            this.bildX = newX;
+            this.bildY = newY;
+            this.draw();
         } else if (this.draggedSkizze) {
             // Verschiebe Skizze
             const newX = (mouseX - this.skizzeDragOffset.x - this.offsetX) / this.zoom;
@@ -1352,6 +1975,26 @@ class ProfilZeichner {
             this.draggedText.y = newY;
             
             this.draw();
+        } else if (this.draggedLoch) {
+            // Berechne neue X-Position in Weltkoordinaten (nur X, nicht Y)
+            const worldX = (mouseX - this.offsetX - this.lochDragOffset.x) / this.zoom;
+            
+            // Berechne neue Distance basierend auf Profil-Start
+            if (this.currentRect) {
+                let newDistance = (worldX - this.currentRect.x) / this.mmToPx;
+                
+                // Begrenze auf sinnvolle Werte (0 bis Profilbreite)
+                const maxDistance = this.currentRect.width / this.mmToPx;
+                newDistance = Math.max(0, Math.min(maxDistance, newDistance));
+                
+                // Runde auf 5mm-Schritte (Snapping)
+                newDistance = Math.round(newDistance / this.CONFIG.kerbeSnapStep) * this.CONFIG.kerbeSnapStep;
+                newDistance = Math.max(0, Math.min(maxDistance, newDistance)); // Nochmal begrenzen nach Runden
+                
+                this.draggedLoch.distance = newDistance;
+            }
+            
+            this.draw();
         } else if (this.draggedKerbe) {
             // Berechne neue X-Position in Weltkoordinaten (nur X, nicht Y)
             const worldX = (mouseX - this.offsetX - this.kerbeDragOffset.x) / this.zoom;
@@ -1365,12 +2008,67 @@ class ProfilZeichner {
                 newDistance = Math.max(0, Math.min(maxDistance, newDistance));
                 
                 // Runde auf 5mm-Schritte (Snapping)
-                newDistance = Math.round(newDistance / 5) * 5;
+                newDistance = Math.round(newDistance / this.CONFIG.kerbeSnapStep) * this.CONFIG.kerbeSnapStep;
                 newDistance = Math.max(0, Math.min(maxDistance, newDistance)); // Nochmal begrenzen nach Runden
                 
                 this.draggedKerbe.distance = newDistance;
             }
             
+            this.draw();
+        } else if (this.draggedDimension) {
+            // Bemaßungslinie wird verschoben
+            if (this.draggedDimension.type === 'horizontal') {
+                // Horizontale Linie: Verschiebe in Y-Richtung
+                const worldY = (mouseY - this.offsetY - this.dimensionDragOffset.y) / this.zoom;
+                
+                // Finde die ursprüngliche Y-Position (ohne Offset)
+                let baseY;
+                if (this.draggedDimension.location === 'top') {
+                    const dim = this.horizontalDimensionsTop && this.horizontalDimensionsTop.find(d => d.index === this.draggedDimension.index);
+                    if (dim) {
+                        // Berechne baseY ohne Offset (subtract current offset)
+                        const currentOffset = this.dimensionOffsets.horizontal[this.draggedDimension.index] || 0;
+                        baseY = dim.y - currentOffset;
+                    } else {
+                        this.draw();
+                        return;
+                    }
+                } else {
+                    const dim = this.horizontalDimensionsBottom && this.horizontalDimensionsBottom.find(d => d.index === this.draggedDimension.index);
+                    if (dim) {
+                        const currentOffset = this.dimensionOffsets.horizontal[this.draggedDimension.index] || 0;
+                        baseY = dim.y - currentOffset;
+                    } else {
+                        this.draw();
+                        return;
+                    }
+                }
+                
+                // Setze neuen Offset direkt (nicht kumulativ)
+                this.dimensionOffsets.horizontal[this.draggedDimension.index] = worldY - baseY;
+            } else if (this.draggedDimension.type === 'vertical') {
+                // Vertikale Linie: Verschiebe in X-Richtung
+                const worldX = (mouseX - this.offsetX - this.dimensionDragOffset.x) / this.zoom;
+                
+                // Finde die ursprüngliche X-Position (ohne Offset)
+                const dim = this.verticalDimensions && this.verticalDimensions.find(d => d.index === this.draggedDimension.index);
+                if (dim) {
+                    const currentOffset = this.dimensionOffsets.vertical[this.draggedDimension.index] || 0;
+                    const baseX = dim.x - currentOffset;
+                    
+                    // Setze neuen Offset direkt (nicht kumulativ)
+                    this.dimensionOffsets.vertical[this.draggedDimension.index] = worldX - baseX;
+                }
+            }
+            
+            this.draw();
+        } else if (this.titleBlock && this.titleBlock.dragging) {
+            // Titelblock drag
+            const worldX = (mouseX - this.offsetX) / this.zoom;
+            const worldY = (mouseY - this.offsetY) / this.zoom;
+            this.titleBlock.x = worldX - this.titleBlockDragOffset.x;
+            this.titleBlock.y = worldY - this.titleBlockDragOffset.y;
+            this.canvas.style.cursor = 'grabbing';
             this.draw();
         } else if (this.isPanning) {
             const rect = this.canvas.getBoundingClientRect();
@@ -1419,6 +2117,52 @@ class ProfilZeichner {
                 this.draw();
             }
             
+            // Hover-Tracking für Löcher
+            if (this.currentRect && this.loecher.length > 0 && !this.draggedLoch) {
+                let foundLochHover = false;
+                
+                for (let i = this.loecher.length - 1; i >= 0; i--) {
+                    const loch = this.loecher[i];
+                    const distancePx = loch.distance * this.mmToPx;
+                    const widthPx = loch.width * this.mmToPx;
+                    const heightPx = loch.height * this.mmToPx;
+                    const positionPx = (loch.position || this.CONFIG.defaultLochPositionFromTop) * this.mmToPx;
+                    
+                    const rect = this.currentRect;
+                    const lochX = rect.x + distancePx;
+                    const lochY = rect.y + positionPx + (heightPx / 2); // Mittelpunkt des Lochs
+                    
+                    // Berechne die Bildschirmposition (mit Zoom und Offset)
+                    const screenX = lochX * this.zoom + this.offsetX;
+                    const screenY = lochY * this.zoom + this.offsetY;
+                    const screenWidth = widthPx * this.zoom;
+                    const screenHeight = heightPx * this.zoom;
+                    
+                    // Erweiterte Hitbox (ca. 10 Pixel in alle Richtungen)
+                    const hitboxSize = 10;
+                    const minX = screenX - screenWidth/2 - hitboxSize;
+                    const maxX = screenX + screenWidth/2 + hitboxSize;
+                    const minY = screenY - screenHeight/2 - hitboxSize;
+                    const maxY = screenY + screenHeight/2 + hitboxSize;
+                    
+                    if (mouseX >= minX && mouseX <= maxX && mouseY >= minY && mouseY <= maxY) {
+                        if (this.hoveredLoch !== loch) {
+                            this.hoveredLoch = loch;
+                            this.draw();
+                        }
+                        foundLochHover = true;
+                        this.canvas.style.cursor = 'grab';
+                        break;
+                    }
+                }
+                
+                if (!foundLochHover && this.hoveredLoch) {
+                    this.hoveredLoch = null;
+                    this.canvas.style.cursor = 'default';
+                    this.draw();
+                }
+            }
+            
             // Hover-Tracking für Kerben
             if (this.currentRect && this.kerben.length > 0 && !this.draggedKerbe) {
                 let foundKerbeHover = false;
@@ -1426,8 +2170,20 @@ class ProfilZeichner {
                 for (let i = this.kerben.length - 1; i >= 0; i--) {
                     const kerbe = this.kerben[i];
                     const distancePx = kerbe.distance * this.mmToPx;
-                    const widthPx = kerbe.width * this.mmToPx;
-                    const depthPx = kerbe.depth * this.mmToPx;
+                    
+                    // Hole Maße aus dem Kerben-Typ (Rückwärtskompatibilität für alte Kerben)
+                    let widthPx, depthPx;
+                    if (kerbe.kerbenTypeId) {
+                        // Neue Struktur: Hole Maße aus Kerben-Typ
+                        const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                        if (!kerbenType) continue; // Überspringe wenn Typ nicht gefunden
+                        widthPx = kerbenType.width * this.mmToPx;
+                        depthPx = kerbenType.depth * this.mmToPx;
+                    } else {
+                        // Alte Struktur: Direkt aus Kerbe (für Rückwärtskompatibilität)
+                        widthPx = (kerbe.width || 6) * this.mmToPx;
+                        depthPx = (kerbe.depth || 4) * this.mmToPx;
+                    }
                     
                     const rect = this.currentRect;
                     const kerbeX = rect.x + distancePx;
@@ -1446,11 +2202,21 @@ class ProfilZeichner {
                     const screenWidth = widthPx * this.zoom;
                     const screenDepth = depthPx * this.zoom;
                     
+                    // Hole Typ für Hitbox-Anpassung
+                    let kerbenType;
+                    if (kerbe.kerbenTypeId) {
+                        kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                    }
+                    const kerbenTypeType = kerbenType ? (kerbenType.type || 'triangle') : (kerbe.type || 'triangle');
+                    
                     // Erweiterte Hitbox (ca. 15 Pixel in alle Richtungen)
+                    // Für Strichmarkierung: kleinere Hitbox (nur Höhe relevant)
                     const hitboxSize = 15;
+                    const hitboxWidth = (kerbenTypeType === 'marker') ? 10 : screenWidth/2; // Bei Marker: kleinere Breite
+                    
                     if (kerbe.position === 'oben') {
                         // Kerbe oben - Hitbox geht von Kerbe nach unten
-                        if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                        if (mouseX >= screenX - hitboxWidth - hitboxSize && mouseX <= screenX + hitboxWidth + hitboxSize &&
                             mouseY >= screenY - hitboxSize && mouseY <= screenY + screenDepth + hitboxSize) {
                             if (this.hoveredKerbe !== kerbe) {
                                 this.hoveredKerbe = kerbe;
@@ -1462,7 +2228,7 @@ class ProfilZeichner {
                         }
                     } else {
                         // Kerbe unten - Hitbox geht von Kerbe nach oben
-                        if (mouseX >= screenX - screenWidth/2 - hitboxSize && mouseX <= screenX + screenWidth/2 + hitboxSize &&
+                        if (mouseX >= screenX - hitboxWidth - hitboxSize && mouseX <= screenX + hitboxWidth + hitboxSize &&
                             mouseY >= screenY - screenDepth - hitboxSize && mouseY <= screenY + hitboxSize) {
                             if (this.hoveredKerbe !== kerbe) {
                                 this.hoveredKerbe = kerbe;
@@ -1477,6 +2243,136 @@ class ProfilZeichner {
                 
                 if (!foundKerbeHover && this.hoveredKerbe) {
                     this.hoveredKerbe = null;
+                    this.canvas.style.cursor = 'default';
+                    this.draw();
+                }
+            }
+            
+            // Hover-Tracking für Bemaßungslinien (nur wenn Bemaßungen aktiv)
+            if (this.showDimensions && this.currentRect && !this.draggedDimension) {
+                const worldX = (mouseX - this.offsetX) / this.zoom;
+                const worldY = (mouseY - this.offsetY) / this.zoom;
+                const hitboxSize = 5 * this.mmToPx;
+                let foundDimensionHover = false;
+                
+                // Prüfe horizontale Bemaßungen (oben)
+                if (this.horizontalDimensionsTop && this.horizontalDimensionsTop.length > 0) {
+                    for (let i = this.horizontalDimensionsTop.length - 1; i >= 0; i--) {
+                        const dim = this.horizontalDimensionsTop[i];
+                        const minX = Math.min(dim.startX, dim.endX) - hitboxSize;
+                        const maxX = Math.max(dim.startX, dim.endX) + hitboxSize;
+                        const minY = dim.y - hitboxSize;
+                        const maxY = dim.y + hitboxSize;
+                        
+                        if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                            const hoverKey = `horizontal-top-${dim.index}`;
+                            if (this.hoveredDimension !== hoverKey) {
+                                this.hoveredDimension = hoverKey;
+                                this.canvas.style.cursor = 'ns-resize';
+                                this.draw();
+                            }
+                            foundDimensionHover = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Prüfe horizontale Bemaßungen (unten)
+                if (!foundDimensionHover && this.horizontalDimensionsBottom && this.horizontalDimensionsBottom.length > 0) {
+                    for (let i = this.horizontalDimensionsBottom.length - 1; i >= 0; i--) {
+                        const dim = this.horizontalDimensionsBottom[i];
+                        const minX = Math.min(dim.startX, dim.endX) - hitboxSize;
+                        const maxX = Math.max(dim.startX, dim.endX) + hitboxSize;
+                        const minY = dim.y - hitboxSize;
+                        const maxY = dim.y + hitboxSize;
+                        
+                        if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                            const hoverKey = `horizontal-bottom-${dim.index}`;
+                            if (this.hoveredDimension !== hoverKey) {
+                                this.hoveredDimension = hoverKey;
+                                this.canvas.style.cursor = 'ns-resize';
+                                this.draw();
+                            }
+                            foundDimensionHover = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Prüfe vertikale Bemaßungen (rechts)
+                if (!foundDimensionHover && this.verticalDimensions && this.verticalDimensions.length > 0) {
+                    for (let i = this.verticalDimensions.length - 1; i >= 0; i--) {
+                        const dim = this.verticalDimensions[i];
+                        const minX = dim.x - hitboxSize;
+                        const maxX = dim.x + hitboxSize;
+                        const minY = Math.min(dim.startY, dim.endY) - hitboxSize;
+                        const maxY = Math.max(dim.startY, dim.endY) + hitboxSize;
+                        
+                        if (worldX >= minX && worldX <= maxX && worldY >= minY && worldY <= maxY) {
+                            const hoverKey = `vertical-right-${dim.index}`;
+                            if (this.hoveredDimension !== hoverKey) {
+                                this.hoveredDimension = hoverKey;
+                                this.canvas.style.cursor = 'ew-resize';
+                                this.draw();
+                            }
+                            foundDimensionHover = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!foundDimensionHover && this.hoveredDimension) {
+                    this.hoveredDimension = null;
+                    this.canvas.style.cursor = 'default';
+                    this.draw();
+                }
+            }
+            
+            // Hover-Tracking für Bild
+            if (this.bildImage && this.bildImage.complete && this.bildX !== null && this.bildY !== null && !this.draggedBild && !this.resizingBild) {
+                const screenBildX = this.bildX * this.zoom + this.offsetX;
+                const screenBildY = this.bildY * this.zoom + this.offsetY;
+                const screenBildWidth = this.bildWidth * this.zoom;
+                const screenBildHeight = this.bildHeight * this.zoom;
+                
+                if (mouseX >= screenBildX - 5 && mouseX <= screenBildX + screenBildWidth + 5 &&
+                    mouseY >= screenBildY - 5 && mouseY <= screenBildY + screenBildHeight + 5) {
+                    if (!this.hoveredBild) {
+                        this.hoveredBild = true;
+                        this.draw();
+                    }
+                    
+                    // Cursor für Resize-Handles
+                    const handleSize = 8;
+                    const handles = [
+                        { x: screenBildX, y: screenBildY, type: 'nw' },
+                        { x: screenBildX + screenBildWidth, y: screenBildY, type: 'ne' },
+                        { x: screenBildX, y: screenBildY + screenBildHeight, type: 'sw' },
+                        { x: screenBildX + screenBildWidth, y: screenBildY + screenBildHeight, type: 'se' }
+                    ];
+                    
+                    let overHandle = false;
+                    for (const handle of handles) {
+                        if (mouseX >= handle.x - handleSize/2 && mouseX <= handle.x + handleSize/2 &&
+                            mouseY >= handle.y - handleSize/2 && mouseY <= handle.y + handleSize/2) {
+                            this.canvas.style.cursor = this.getResizeCursor(handle.type);
+                            overHandle = true;
+                            break;
+                        }
+                    }
+                    if (!overHandle) {
+                        this.canvas.style.cursor = 'move';
+                    }
+                } else {
+                    if (this.hoveredBild) {
+                        this.hoveredBild = false;
+                        this.canvas.style.cursor = 'default';
+                        this.draw();
+                    }
+                }
+            } else {
+                if (this.hoveredBild) {
+                    this.hoveredBild = false;
                     this.canvas.style.cursor = 'default';
                     this.draw();
                 }
@@ -1534,10 +2430,41 @@ class ProfilZeichner {
                     this.draw();
                 }
             }
+            // Hover-Tracking für Titelblock
+            this.hoveredTitleBlock = false;
+            if (this.titleBlock && this.titleBlock.x != null) {
+                const tbX1 = this.titleBlock.x * this.zoom + this.offsetX;
+                const tbY1 = this.titleBlock.y * this.zoom + this.offsetY;
+                const tbX2 = (this.titleBlock.x + this.titleBlock.width) * this.zoom + this.offsetX;
+                const tbY2 = (this.titleBlock.y + this.titleBlock.height) * this.zoom + this.offsetY;
+                if (mouseX >= tbX1 && mouseX <= tbX2 && mouseY >= tbY1 && mouseY <= tbY2) {
+                    this.hoveredTitleBlock = true;
+                    if (!this.draggedKerbe && !this.draggedLoch && !this.draggedSkizze && !this.resizingSkizze && !this.draggedBild && !this.resizingBild) {
+                        this.canvas.style.cursor = 'grab';
+                    }
+                    this.draw();
+                }
+            }
         }
     }
     
     handleMouseUp(e) {
+        if (this.resizingBild) {
+            this.resizingBild = false;
+            this.bildResizeHandle = null;
+            this.canvas.style.cursor = 'default';
+            this.saveState();
+            this.draw();
+        }
+        
+        if (this.draggedBild) {
+            this.draggedBild = false;
+            this.bildDragOffset = { x: 0, y: 0 };
+            this.canvas.style.cursor = 'default';
+            this.saveState();
+            this.draw();
+        }
+        
         if (this.resizingSkizze) {
             this.resizingSkizze = false;
             this.resizeHandle = null;
@@ -1551,6 +2478,22 @@ class ProfilZeichner {
             this.skizzeDragOffset = { x: 0, y: 0 };
             this.canvas.style.cursor = 'default';
             this.saveState();
+            this.draw();
+        }
+        
+        if (this.draggedLoch) {
+            // Speichere State nach Verschiebung
+            this.saveState();
+            
+            // Aktualisiere Tabelle im Modal, wenn es geöffnet ist
+            if (this.lochModal && this.lochModal.style.display === 'block') {
+                this.refreshLochTable();
+            }
+            
+            this.draggedLoch = null;
+            this.lochDragOffset = { x: 0, y: 0 };
+            this.hoveredLoch = null; // Reset hover beim Loslassen
+            this.canvas.style.cursor = 'default';
             this.draw();
         }
         
@@ -1571,6 +2514,17 @@ class ProfilZeichner {
             this.draw();
         }
         
+        if (this.draggedDimension) {
+            // Speichere State nach Verschiebung der Bemaßungslinie
+            this.saveState();
+            
+            this.draggedDimension = null;
+            this.dimensionDragOffset = { x: 0, y: 0 };
+            this.hoveredDimension = null;
+            this.canvas.style.cursor = 'default';
+            this.draw();
+        }
+        
         if (this.draggedText) {
         this.draggedText = null;
         this.textDragOffset = { x: 0, y: 0 };
@@ -1585,11 +2539,19 @@ class ProfilZeichner {
                 this.canvas.style.cursor = 'grab';
             }
         }
+
+        if (this.titleBlock && this.titleBlock.dragging) {
+            this.titleBlock.dragging = false;
+            this.titleBlockDragOffset = { x: 0, y: 0 };
+            this.canvas.style.cursor = 'default';
+            this.saveState();
+            this.draw();
+        }
     }
     
     resizeCanvas() {
         this.canvasWidth = window.innerWidth;
-        this.canvasHeight = window.innerHeight - 80;
+        this.canvasHeight = window.innerHeight - this.CONFIG.menuBarHeight;
         
         // Stelle sicher, dass die Canvas-Größe gleichmäßig ist
         this.canvas.width = this.canvasWidth;
@@ -1616,6 +2578,10 @@ class ProfilZeichner {
         }
     }
     
+    // ============================================================================
+    // PROFIL-ERSTELLUNG & LÖSCHEN
+    // ============================================================================
+    
     drawRectangle() {
         const width = parseFloat(this.widthInput.value);
         const height = parseFloat(this.heightInput.value);
@@ -1631,7 +2597,25 @@ class ProfilZeichner {
         const widthPx = width * this.mmToPx;
         const heightPx = height * this.mmToPx;
         
-        // Positioniere das Rechteck so dass es bei x=0 startet (für korrekte Bemaßungen)
+        // Prüfe ob bereits ein Profil existiert
+        const hasExistingProfile = this.currentRect !== null;
+        
+        // Aktualisiere oder erstelle das Rechteck
+        if (hasExistingProfile) {
+            // Aktualisiere das bestehende Profil
+            // Speichere die alten Werte
+            const oldY = this.currentRect.y;
+            const oldHeightPx = this.currentRect.height;
+            
+            // Aktualisiere Breite und Höhe
+            this.currentRect.width = widthPx;
+            this.currentRect.height = heightPx;
+            
+            // Y-Position anpassen, wenn sich die Höhe ändert, um Zentrierung beizubehalten
+            const heightDiff = heightPx - oldHeightPx;
+            this.currentRect.y = oldY - (heightDiff / 2);
+        } else {
+            // Erstelle neues Profil
         this.currentRect = {
             x: 0, // Start bei x=0 für korrekte Bemaßungen
             y: -heightPx / 2, // Zentriert in Y-Richtung
@@ -1639,10 +2623,29 @@ class ProfilZeichner {
             height: heightPx,
             scale: 1
         };
+        }
         
         this.updateZoomLevel();
         this.draw();
         this.autoZoom();
+        
+        // Aktualisiere die Eingabefelder NACH draw() und autoZoom()
+        // damit die Werte nicht überschrieben werden
+        this.widthInput.value = width;
+        this.heightInput.value = height;
+    }
+    
+    // Aktualisiere die Eingabefelder mit den aktuellen Profilwerten
+    // WICHTIG: Diese Funktion sollte nur aufgerufen werden, wenn ein Profil geladen wird,
+    // nicht nach dem Ändern der Werte durch den Benutzer
+    updateProfileInputs() {
+        if (this.currentRect && this.widthInput && this.heightInput) {
+            const widthMm = this.currentRect.width / this.mmToPx;
+            const heightMm = this.currentRect.height / this.mmToPx;
+            // Verwende die exakten Werte ohne Rundung, um Benutzereingaben nicht zu überschreiben
+            this.widthInput.value = widthMm;
+            this.heightInput.value = heightMm;
+        }
     }
     
     clearCanvas() {
@@ -1650,6 +2653,7 @@ class ProfilZeichner {
         this.currentRect = null;
         this.bohnen = [];
         this.kerben = [];
+        this.kerbenTypes = [];
         this.loecher = [];
         this.ausschnitte = [];
         this.crimping = [];
@@ -1661,20 +2665,39 @@ class ProfilZeichner {
         this.loadedSkizzeImage = null;
         this.skizzeX = null;
         this.skizzeY = null;
+        this.bildImage = null;
+        this.bildX = null;
+        this.bildY = null;
         this.draw();
     }
+    
+    // Hilfsfunktion für tiefe Kopie (Deep Clone)
+    // Verwendet structuredClone() wenn verfügbar (moderne Browser), sonst JSON-Fallback
+    _deepClone(obj) {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (typeof structuredClone !== 'undefined') {
+            return structuredClone(obj);
+        }
+        // Fallback für ältere Browser
+        return JSON.parse(JSON.stringify(obj));
+    }
+    
+    // ============================================================================
+    // STATE MANAGEMENT (Undo/Redo)
+    // ============================================================================
     
     // Speichert den aktuellen Zustand in die History
     saveState() {
         const state = {
             currentRect: this.currentRect ? { ...this.currentRect } : null,
-            bohnen: JSON.parse(JSON.stringify(this.bohnen)),
-            kerben: JSON.parse(JSON.stringify(this.kerben)),
-            loecher: JSON.parse(JSON.stringify(this.loecher)),
-            ausschnitte: JSON.parse(JSON.stringify(this.ausschnitte)),
-            crimping: JSON.parse(JSON.stringify(this.crimping)),
+            bohnen: this._deepClone(this.bohnen),
+            kerben: this._deepClone(this.kerben),
+            kerbenTypes: this._deepClone(this.kerbenTypes),
+            loecher: this._deepClone(this.loecher),
+            ausschnitte: this._deepClone(this.ausschnitte),
+            crimping: this._deepClone(this.crimping),
             nahtlinie: this.nahtlinie ? { ...this.nahtlinie } : null,
-            texts: JSON.parse(JSON.stringify(this.texts)),
+            texts: this._deepClone(this.texts),
             showDimensions: this.showDimensions,
             showFormatBorder: this.showFormatBorder,
             zoom: this.zoom,
@@ -1683,7 +2706,14 @@ class ProfilZeichner {
             skizzeX: this.skizzeX,
             skizzeY: this.skizzeY,
             skizzeWidth: this.skizzeWidth,
-            skizzeHeight: this.skizzeHeight
+            skizzeHeight: this.skizzeHeight,
+            bildX: this.bildX,
+            bildY: this.bildY,
+            bildWidth: this.bildWidth,
+            bildHeight: this.bildHeight,
+            bildImageSrc: this.bildImage && this.bildImage.src ? this.bildImage.src : null,
+            titleBlock: this._deepClone(this.titleBlock),
+            dimensionOffsets: this._deepClone(this.dimensionOffsets)
         };
         
         // Lösche alle Zustände nach dem aktuellen Index (wenn wir nach einem Undo neue Aktionen machen)
@@ -1696,7 +2726,7 @@ class ProfilZeichner {
         this.historyIndex++;
         
         // Begrenze die History-Größe
-        if (this.history.length > this.maxHistorySize) {
+        if (this.history.length > this.CONFIG.maxHistorySize) {
             this.history.shift();
             this.historyIndex--;
         }
@@ -1707,13 +2737,15 @@ class ProfilZeichner {
     // Stellt einen gespeicherten Zustand wieder her
     restoreState(state) {
         this.currentRect = state && state.currentRect ? { ...state.currentRect } : null;
-        this.bohnen = state && state.bohnen ? JSON.parse(JSON.stringify(state.bohnen)) : [];
-        this.kerben = state && state.kerben ? JSON.parse(JSON.stringify(state.kerben)) : [];
-        this.loecher = state && state.loecher ? JSON.parse(JSON.stringify(state.loecher)) : [];
-        this.ausschnitte = state && state.ausschnitte ? JSON.parse(JSON.stringify(state.ausschnitte)) : [];
-        this.crimping = state && state.crimping ? JSON.parse(JSON.stringify(state.crimping)) : [];
+        this.bohnen = state && state.bohnen ? this._deepClone(state.bohnen) : [];
+        this.kerben = state && state.kerben ? this._deepClone(state.kerben) : [];
+        this.kerbenTypes = state && state.kerbenTypes ? this._deepClone(state.kerbenTypes) : [];
+        this.loecher = state && state.loecher ? this._deepClone(state.loecher) : [];
+        this.ausschnitte = state && state.ausschnitte ? this._deepClone(state.ausschnitte) : [];
+        this.crimping = state && state.crimping ? this._deepClone(state.crimping) : [];
         this.nahtlinie = state && state.nahtlinie ? { ...state.nahtlinie } : null;
-        this.texts = state && state.texts ? JSON.parse(JSON.stringify(state.texts)) : [];
+        this.texts = state && state.texts ? this._deepClone(state.texts) : [];
+        this.titleBlock = state && state.titleBlock ? this._deepClone(state.titleBlock) : this.titleBlock;
         this.showDimensions = state && typeof state.showDimensions === 'boolean' ? state.showDimensions : this.showDimensions || false;
         this.showFormatBorder = state && typeof state.showFormatBorder === 'boolean' ? state.showFormatBorder : false;
         this.zoom = state && typeof state.zoom === 'number' ? state.zoom : this.zoom || 1;
@@ -1723,6 +2755,25 @@ class ProfilZeichner {
         this.skizzeY = state.skizzeY !== undefined ? state.skizzeY : null;
         this.skizzeWidth = state.skizzeWidth !== undefined ? state.skizzeWidth : (40 * this.mmToPx);
         this.skizzeHeight = state.skizzeHeight !== undefined ? state.skizzeHeight : (30 * this.mmToPx);
+        this.bildX = state.bildX !== undefined ? state.bildX : null;
+        this.bildY = state.bildY !== undefined ? state.bildY : null;
+        this.bildWidth = state.bildWidth !== undefined ? state.bildWidth : (60 * this.mmToPx);
+        this.bildHeight = state.bildHeight !== undefined ? state.bildHeight : (40 * this.mmToPx);
+        // Lade Bild neu wenn vorhanden
+        if (state.bildImageSrc) {
+            const img = new Image();
+            img.onload = () => {
+                this.bildImage = img;
+                this.draw();
+            };
+            img.src = state.bildImageSrc;
+        } else {
+            this.bildImage = null;
+        }
+        this.dimensionOffsets = state.dimensionOffsets ? this._deepClone(state.dimensionOffsets) : { horizontal: [], vertical: [] };
+        
+        // Aktualisiere die Eingabefelder mit den wiederhergestellten Werten
+        this.updateProfileInputs();
         
         this.draw();
     }
@@ -1772,6 +2823,10 @@ class ProfilZeichner {
         }
     }
     
+    // ============================================================================
+    // CANVAS & ZEICHNUNGEN (Haupt-Zeichenfunktionen)
+    // ============================================================================
+    
     draw() {
         this.ctx.clearRect(0, 0, this.canvasWidth, this.canvasHeight);
         
@@ -1810,6 +2865,9 @@ class ProfilZeichner {
             // Zeichne Profil-Skizze (falls geladen)
             this.drawSkizze();
             
+            // Zeichne Bild (falls geladen)
+            this.drawBild();
+            
             // Zeichne Bemaßungen
             if (this.showDimensions) {
                 this.drawDimensions();
@@ -1821,6 +2879,8 @@ class ProfilZeichner {
         
         // Zeichne Texte am Ende (immer im Vordergrund)
         this.drawTexts();
+        // Zeichne Titelblock (immer im Vordergrund)
+        this.drawTitleBlock();
         
         this.ctx.restore();
         
@@ -1830,7 +2890,7 @@ class ProfilZeichner {
     
     drawGrid() {
         // Immer weißer Hintergrund
-        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillStyle = this.CONFIG.colors.background;
         this.ctx.fillRect(0, 0, this.canvasWidth, this.canvasHeight);
     }
     
@@ -2063,9 +3123,24 @@ class ProfilZeichner {
         
         this.kerben.forEach(kerbe => {
             const distancePx = kerbe.distance * this.mmToPx;
-            const widthPx = kerbe.width * this.mmToPx;
-            const depthPx = kerbe.depth * this.mmToPx;
-            const type = kerbe.type || 'triangle'; // Standard: Dreieck
+            
+            // Hole Maße aus dem Kerben-Typ (Rückwärtskompatibilität für alte Kerben)
+            let widthPx, depthPx, type;
+            
+            if (kerbe.kerbenTypeId) {
+                // Neue Struktur: Hole Maße aus Kerben-Typ
+                const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                if (!kerbenType) return; // Überspringe wenn Typ nicht gefunden
+                widthPx = kerbenType.width * this.mmToPx;
+                depthPx = kerbenType.depth * this.mmToPx;
+                // WICHTIG: Hole den Typ explizit, mit Fallback
+                type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+            } else {
+                // Alte Struktur: Direkt aus Kerbe (für Rückwärtskompatibilität)
+                widthPx = (kerbe.width || 6) * this.mmToPx;
+                depthPx = (kerbe.depth || 4) * this.mmToPx;
+                type = kerbe.type || 'triangle';
+            }
             
             // Hervorhebung wenn gehovered oder gedraggt
             const isHovered = this.hoveredKerbe === kerbe;
@@ -2176,12 +3251,37 @@ class ProfilZeichner {
             const distancePx = loch.distance * this.mmToPx;
             const widthPx = loch.width * this.mmToPx;
             const heightPx = loch.height * this.mmToPx;
-            const positionPx = loch.position * this.mmToPx;
+            const positionPx = (loch.position || this.CONFIG.defaultLochPositionFromTop) * this.mmToPx;
             
             const lochX = rect.x + distancePx;
             // Position ist Abstand von oben (Standard 2mm)
             // lochY ist Mittelpunkt des Lochs
             const lochY = rect.y + positionPx + (heightPx / 2);
+            
+            // Hervorhebung wenn gehovered oder gedraggt
+            const isHovered = this.hoveredLoch === loch;
+            const isDragged = this.draggedLoch === loch;
+            
+            // Zeichne Highlight-Rahmen wenn gehovered oder gedraggt
+            if (isHovered || isDragged) {
+                this.ctx.strokeStyle = isDragged ? this.CONFIG.colors.drag : this.CONFIG.colors.highlight;
+                this.ctx.lineWidth = 2;
+                this.ctx.setLineDash([]);
+                const highlightSize = 5;
+                const x = lochX - widthPx/2 - highlightSize;
+                const y = lochY - heightPx/2 - highlightSize;
+                const w = widthPx + 2*highlightSize;
+                const h = heightPx + 2*highlightSize;
+                this.ctx.beginPath();
+                if (Math.abs(widthPx - heightPx) < 0.1) {
+                    // Kreis
+                    this.ctx.arc(lochX, lochY, widthPx/2 + highlightSize, 0, 2 * Math.PI);
+                } else {
+                    // Kapsel - rechteckiger Rahmen
+                    this.ctx.rect(x, y, w, h);
+                }
+                this.ctx.stroke();
+            }
             
             this.ctx.strokeStyle = '#333';
             this.ctx.lineWidth = 1;
@@ -2395,18 +3495,145 @@ class ProfilZeichner {
         this.ctx.drawImage(this.loadedSkizzeImage, centerX, centerY, drawWidth, drawHeight);
     }
     
+    // Bild-Einfügen Funktionen
+    openBildDialog() {
+        // Öffne File-Dialog
+        this.bildFileInput.click();
+        this.bildFileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    this.loadBild(event.target.result);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+    }
+    
+    loadBild(imageDataUrl) {
+        // Erstelle neues Image-Objekt
+        if (this.bildImage) {
+            this.bildImage.onload = null;
+        }
+        
+        this.bildImage = new Image();
+        this.bildImage.onload = () => {
+            // Initialisiere Position wenn noch nicht gesetzt
+            if (this.bildX === null || this.bildY === null) {
+                // Zentriere auf Canvas
+                const centerX = this.canvas.width / 2 / this.zoom - (this.bildWidth / 2);
+                const centerY = this.canvas.height / 2 / this.zoom - (this.bildHeight / 2);
+                this.bildX = centerX;
+                this.bildY = centerY;
+            }
+            
+            // Berechne Seitenverhältnis basierend auf Original-Bild
+            const aspectRatio = this.bildImage.width / this.bildImage.height;
+            if (aspectRatio > this.bildWidth / this.bildHeight) {
+                // Bild ist breiter
+                this.bildHeight = this.bildWidth / aspectRatio;
+            } else {
+                // Bild ist höher
+                this.bildWidth = this.bildHeight * aspectRatio;
+            }
+            
+            this.saveState();
+            this.draw();
+            this.autoZoom();
+        };
+        this.bildImage.src = imageDataUrl;
+    }
+    
+    drawBild() {
+        if (!this.bildImage || !this.bildImage.complete || this.bildX === null || this.bildY === null) return;
+        
+        // Zeichne Hintergrund-Frame (erweitert für Hover-Effekt)
+        if (this.hoveredBild && !this.draggedBild && !this.resizingBild) {
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.1)'; // Gelber Hintergrund beim Hover
+            this.ctx.fillRect(this.bildX - 5, this.bildY - 5, this.bildWidth + 10, this.bildHeight + 10);
+        }
+        
+        // Zeichne Rahmen um das Bild
+        this.ctx.strokeStyle = (this.hoveredBild || this.draggedBild || this.resizingBild) ? '#ffaa00' : '#666';
+        this.ctx.lineWidth = (this.hoveredBild || this.draggedBild || this.resizingBild) ? 2 : 1;
+        this.ctx.strokeRect(this.bildX, this.bildY, this.bildWidth, this.bildHeight);
+        
+        // Zeichne das Bild
+        this.ctx.drawImage(this.bildImage, this.bildX, this.bildY, this.bildWidth, this.bildHeight);
+        
+        // Zeichne Resize-Handles an den Ecken (wenn gehovered oder während Resize)
+        if (this.hoveredBild || this.resizingBild) {
+            const handleSize = 8;
+            this.ctx.fillStyle = this.resizingBild ? '#ff6600' : '#0066cc';
+            this.ctx.strokeStyle = '#fff';
+            this.ctx.lineWidth = 1.5;
+            
+            // Ecken: oben links (nw), oben rechts (ne), unten links (sw), unten rechts (se)
+            const handles = [
+                { x: this.bildX, y: this.bildY, type: 'nw' },
+                { x: this.bildX + this.bildWidth, y: this.bildY, type: 'ne' },
+                { x: this.bildX, y: this.bildY + this.bildHeight, type: 'sw' },
+                { x: this.bildX + this.bildWidth, y: this.bildY + this.bildHeight, type: 'se' }
+            ];
+            
+            handles.forEach((handle) => {
+                // Highlight aktives Handle
+                if (this.resizingBild && this.bildResizeHandle === handle.type) {
+                    this.ctx.fillStyle = '#ff6600';
+                } else {
+                    this.ctx.fillStyle = '#0066cc';
+                }
+                this.ctx.beginPath();
+                this.ctx.rect(handle.x - handleSize/2, handle.y - handleSize/2, handleSize, handleSize);
+                this.ctx.fill();
+                this.ctx.stroke();
+            });
+        }
+    }
+    
+    // Tastatur-Event-Handler
+    handleKeyDown(e) {
+        // Entf oder Backspace zum Löschen des Bildes - nur wenn Hover-Effekt aktiv ist
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.bildImage && this.bildImage.complete && this.hoveredBild) {
+            // Prüfe ob ein Modal offen ist - dann nicht löschen
+            const openModals = document.querySelectorAll('.modal[style*="display: block"]');
+            if (openModals.length > 0) return;
+            
+            // Prüfe ob ein Input-Feld aktiv ist - dann nicht löschen
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                return;
+            }
+            
+            // Lösche das Bild
+            this.bildImage = null;
+            this.bildX = null;
+            this.bildY = null;
+            this.hoveredBild = false;
+            this.draggedBild = false;
+            this.resizingBild = false;
+            
+            this.saveState();
+            this.draw();
+            e.preventDefault();
+        }
+    }
+    
     drawDimensions() {
         if (!this.currentRect) return;
         
+        this.ctx.save(); // Canvas-Status isolieren
+        
         const rect = this.currentRect;
-        const dimensionOffset = 7 * this.mmToPx; // 7mm Abstand zwischen Linien
-        let currentYOffset = 10 * this.mmToPx; // Erste Linie bei +10mm (unter Ecke 4)
+        const dimensionOffset = this.CONFIG.dimensionLineSpacing * this.mmToPx;
+        let currentYOffset = this.CONFIG.dimensionOffset * this.mmToPx;
         
         // Stil für Bemaßungen
-        this.ctx.strokeStyle = '#333';
-        this.ctx.fillStyle = '#333';
-        this.ctx.lineWidth = 1;
-        this.ctx.font = `${12}px Arial`;
+        this.ctx.strokeStyle = this.CONFIG.colors.dimension;
+        this.ctx.fillStyle = this.CONFIG.colors.dimension;
+        this.ctx.lineWidth = this.CONFIG.dimensionLineWidth;
+        this.ctx.font = `${this.CONFIG.dimensionFontSize}px ${this.CONFIG.dimensionFontFamily}`;
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
@@ -2422,6 +3649,7 @@ class ProfilZeichner {
             allElements.push({
                 type: 'kerbe',
                 position: kerbe.distance,
+                positionType: kerbe.position, // 'oben' oder 'unten'
                 element: kerbe
             });
         });
@@ -2460,17 +3688,20 @@ class ProfilZeichner {
         
         // Trenne nach oben/unten für separate Bemaßungsbereiche
         const elementsOben = allElements.filter(el => 
+            (el.type === 'kerbe' && el.positionType === 'oben') ||
             (el.type === 'ausschnitt' && el.positionType === 'oben') ||
             el.type === 'loch' ||
             el.type === 'crimping'
         );
         const elementsUnten = allElements.filter(el => 
-            el.type === 'kerbe' ||
+            (el.type === 'kerbe' && el.positionType === 'unten') ||
             (el.type === 'ausschnitt' && el.positionType === 'unten')
         );
         
         // Bemaßung oberhalb des Profils (Löcher + Ausschnitte oben)
         let obenOffset = 0;
+        // Initialisiere Arrays für horizontale Bemaßungen (oben)
+        this.horizontalDimensionsTop = [];
         if (elementsOben.length > 0) {
             // Berechne Y-Position für obere Bemaßungen
             let obenDimensionY;
@@ -2483,7 +3714,17 @@ class ProfilZeichner {
             
             elementsOben.forEach((element, index) => {
                 const positionPx = element.position * this.mmToPx;
-                const dimensionY = obenDimensionY - obenOffset;
+                // Nutze Offset aus dimensionOffsets falls vorhanden
+                const customOffset = this.dimensionOffsets.horizontal[index] || 0;
+                const dimensionY = obenDimensionY - obenOffset + customOffset;
+                
+                // Speichere Dimension für Hit-Detection
+                this.horizontalDimensionsTop.push({
+                    y: dimensionY,
+                    startX: corner4X,
+                    endX: rect.x + positionPx,
+                    index: index
+                });
                 
                 // Für Cutouts und Crimping nur Pfeil auf der linken Seite
                 if (element.type === 'ausschnitt') {
@@ -2529,9 +3770,22 @@ class ProfilZeichner {
         }
         
         // Bemaßung unterhalb des Profils (Kerben + Ausschnitte unten)
+        // Initialisiere Array für horizontale Bemaßungen (unten)
+        this.horizontalDimensionsBottom = [];
+        const baseIndexBottom = elementsOben.length; // Startindex für unten
         elementsUnten.forEach((element, index) => {
             const positionPx = element.position * this.mmToPx;
-            const dimensionY = corner4Y + currentYOffset;
+            // Nutze Offset aus dimensionOffsets falls vorhanden
+            const customOffset = this.dimensionOffsets.horizontal[baseIndexBottom + index] || 0;
+            const dimensionY = corner4Y + currentYOffset + customOffset;
+            
+            // Speichere Dimension für Hit-Detection
+            this.horizontalDimensionsBottom.push({
+                y: dimensionY,
+                startX: corner4X,
+                endX: rect.x + positionPx,
+                index: baseIndexBottom + index
+            });
             
             // Für Cutouts nur Pfeil auf der linken Seite
             if (element.type === 'ausschnitt') {
@@ -2559,6 +3813,10 @@ class ProfilZeichner {
         let rightDimensionX = rect.x + rect.width + (20 * this.mmToPx); // Startposition rechts vom Profil
         const rightDimensionSpacing = 7 * this.mmToPx; // 7mm Abstand zwischen Bemaßungen
         
+        // Initialisiere Array für vertikale Bemaßungen
+        this.verticalDimensions = [];
+        let verticalIndex = 0;
+        
         // Höhenbemaßungen als Kettenbemaßung (nebeneinander)
         if (this.bohnen.length > 0) {
             const bohne = this.bohnen[0];
@@ -2566,33 +3824,63 @@ class ProfilZeichner {
             
             // Teil 1: Bohne-Höhe (von Bohne-Oberkante bis Profil-Oberkante)
             const bohneTopY = rect.y - bohneHeight;
+            const customOffsetX1 = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX1 = rightDimensionX + customOffsetX1;
             this.drawVerticalDimensionFromZero(
                 bohneTopY, // Start oben bei der Bohne
-                rightDimensionX,
+                dimensionX1,
                 rect.y, // Ende oben beim Profil
-                rightDimensionX,
+                dimensionX1,
                 `${bohne.height}mm` // Bohne-Höhe anzeigen
             );
+            
+            // Speichere Dimension für Hit-Detection
+            this.verticalDimensions.push({
+                x: dimensionX1,
+                startY: bohneTopY,
+                endY: rect.y,
+                index: verticalIndex++
+            });
             
             rightDimensionX += rightDimensionSpacing; // Nächste Bemaßung
             
             // Teil 2: Profil-Höhe (von Profil-Oberkante bis Profil-Unterkante)
+            const customOffsetX2 = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX2 = rightDimensionX + customOffsetX2;
             this.drawVerticalDimensionFromZero(
                 rect.y, // Start oben beim Profil
-                rightDimensionX,
+                dimensionX2,
                 rect.y + rect.height, // Ende unten beim Profil
-                rightDimensionX,
+                dimensionX2,
                 `${(rect.height / this.mmToPx).toFixed(1)}mm` // Profil-Höhe anzeigen
             );
+            
+            // Speichere Dimension für Hit-Detection
+            this.verticalDimensions.push({
+                x: dimensionX2,
+                startY: rect.y,
+                endY: rect.y + rect.height,
+                index: verticalIndex++
+            });
         } else {
             // Nur Gesamthöhe (wenn keine Bohne)
+            const customOffsetX = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX = rightDimensionX + customOffsetX;
             this.drawVerticalDimensionFromZero(
                 rect.y, // Start oben beim Profil
-                rightDimensionX,
+                dimensionX,
                 rect.y + rect.height, // Ende unten beim Profil
-                rightDimensionX,
+                dimensionX,
                 `${(rect.height / this.mmToPx).toFixed(1)}mm` // Gesamthöhe anzeigen
             );
+            
+            // Speichere Dimension für Hit-Detection
+            this.verticalDimensions.push({
+                x: dimensionX,
+                startY: rect.y,
+                endY: rect.y + rect.height,
+                index: verticalIndex++
+            });
         }
         
         rightDimensionX += rightDimensionSpacing; // Nächste Position für weitere Bemaßungen
@@ -2615,6 +3903,11 @@ class ProfilZeichner {
                 } else {
                     cutoutDimY = rect.y - (8 * this.mmToPx); // Oberhalb des Profils
                 }
+                
+                // Nutze Offset falls vorhanden (Cutout-Bemaßung oben ist zusätzliche Dimension)
+                const cutoutIndex = elementsOben.length; // Index nach allen oberen Elementen
+                const customOffsetCutout = this.dimensionOffsets.horizontal[cutoutIndex] || 0;
+                cutoutDimY += customOffsetCutout;
             
             this.drawHorizontalDimensionFromZero(
                     rect.x, // Start bei Ecke 4 (oben links)
@@ -2623,20 +3916,38 @@ class ProfilZeichner {
                     cutoutDimY,
                     `${this.cutoutWidth}mm`
                 );
+                
+                // Speichere auch Cutout-Bemaßung für Hit-Detection
+                this.horizontalDimensionsTop.push({
+                    y: cutoutDimY,
+                    startX: rect.x,
+                    endX: cutoutX1,
+                    index: cutoutIndex
+                });
             }
             
             // Cutout-Höhe bemaßen (von unten bis Cutout-Höhe, rechts)
             if (this.cutoutHeight > 0) {
                 const cutoutBottomY = rect.y + rect.height; // Unten beim Profil
                 const cutoutTopY = cutoutBottomY - cutoutHeightPx; // Cutout-Höhe nach oben
+                const customOffsetX = this.dimensionOffsets.vertical[verticalIndex] || 0;
+                const dimensionX = rightDimensionX + customOffsetX;
                 
             this.drawVerticalDimensionFromZero(
                     cutoutTopY, // Start oben bei Cutout-Höhe
-                rightDimensionX,
+                dimensionX,
                     cutoutBottomY, // Ende unten beim Profil
-                rightDimensionX,
+                dimensionX,
                     `${this.cutoutHeight}mm`
             );
+            
+            // Speichere Dimension für Hit-Detection
+            this.verticalDimensions.push({
+                x: dimensionX,
+                startY: cutoutTopY,
+                endY: cutoutBottomY,
+                index: verticalIndex++
+            });
             
             rightDimensionX += rightDimensionSpacing; // Nächste Position
             }
@@ -2657,7 +3968,11 @@ class ProfilZeichner {
         }
         
         // Gesamtbreite bemaßen (ganz unten, ganz außen)
-        const totalWidthY = corner4Y + currentYOffset + (elementsUnten.length * dimensionOffset) + (this.nahtlinie && this.nahtlinie.distance > 0 ? dimensionOffset : 0);
+        const totalWidthYOffset = (elementsUnten.length * dimensionOffset) + (this.nahtlinie && this.nahtlinie.distance > 0 ? dimensionOffset : 0);
+        const totalWidthIndex = baseIndexBottom + elementsUnten.length;
+        const customOffsetTotalWidth = this.dimensionOffsets.horizontal[totalWidthIndex] || 0;
+        const totalWidthY = corner4Y + currentYOffset + totalWidthYOffset + customOffsetTotalWidth;
+        
         this.drawHorizontalDimensionFromZero(
             corner4X,
             totalWidthY,
@@ -2666,18 +3981,28 @@ class ProfilZeichner {
             `${(rect.width / this.mmToPx).toFixed(1)}mm`
         );
         
+        // Speichere auch Gesamtbreite für Hit-Detection
+        this.horizontalDimensionsBottom.push({
+            y: totalWidthY,
+            startX: corner4X,
+            endX: rect.x + rect.width,
+            index: totalWidthIndex
+        });
+        
         // Beschriftungsfeld wird nicht mehr automatisch bei Bemaßungen gezeichnet
         // Es wird nur noch als verschiebbares Element angezeigt, wenn es hinzugefügt wurde
         
         // Detailzeichnungen
         const startY = totalWidthY + (40 * this.mmToPx); // 40mm unter der letzten Bemaßungslinie für mehr Abstand
         this.drawDetailDrawings(rect, startY);
+        
+        this.ctx.restore(); // Canvas-Status wiederherstellen
     }
     
     
     drawHorizontalDimensionFromZero(startX, y, endX, dimensionY, text) {
-        const arrowSize = 6;
-        const lineWidth = 0.5; // Dünnere Linie
+        const arrowSize = this.CONFIG.dimensionArrowSize;
+        const lineWidth = this.CONFIG.dimensionLineWidth;
         
         // Berechne den Abstand der Bemaßungslinie vom Profil
         const rect = this.currentRect;
@@ -2699,7 +4024,7 @@ class ProfilZeichner {
         // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
         if (rect) {
             this.ctx.setLineDash([5, 5]);
-            this.ctx.strokeStyle = '#0066cc'; // Blau
+            this.ctx.strokeStyle = this.CONFIG.colors.highlight; // Blau für gestrichelte Hilfslinien
             this.ctx.lineWidth = lineWidth;
             
             // Gestrichelte Linie am Anfang (zum Element)
@@ -2808,8 +4133,8 @@ class ProfilZeichner {
     }
     
     drawVerticalDimensionFromZero(startY, x, endY, dimensionX, text) {
-        const arrowSize = 6;
-        const lineWidth = 0.5; // Dünnere Linie
+        const arrowSize = this.CONFIG.dimensionArrowSize;
+        const lineWidth = this.CONFIG.dimensionLineWidth; // Dünnere Linie
         
         // Berechne den Abstand der Bemaßungslinie vom Profil
         const rect = this.currentRect;
@@ -2820,7 +4145,7 @@ class ProfilZeichner {
         // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
         if (rect) {
             this.ctx.setLineDash([5, 5]);
-            this.ctx.strokeStyle = '#0066cc'; // Blau
+            this.ctx.strokeStyle = this.CONFIG.colors.highlight; // Blau für gestrichelte Hilfslinien
             this.ctx.lineWidth = lineWidth;
             
             // Gestrichelte Linie am Anfang (oben) - horizontal bis zum Profil
@@ -2947,12 +4272,21 @@ class ProfilZeichner {
         this.ctx.textAlign = 'center';
         this.ctx.textBaseline = 'middle';
         
-        // Kerbe Detailzeichnung
-        if (this.kerben.length > 0) {
-            const kerbe = this.kerben[0]; // Erste Kerbe als Beispiel
-            const type = kerbe.type || 'triangle'; // Standard: Dreieck
-            const kerbeWidth = kerbe.width * this.mmToPx * scale;
-            const kerbeDepth = kerbe.depth * this.mmToPx * scale;
+        // Kerbe Detailzeichnung - Zeige alle verschiedenen Kerben-Typen
+        const usedKerbenTypes = [];
+        this.kerben.forEach(kerbe => {
+            const kerbenTypeId = kerbe.kerbenTypeId || (this.kerbenTypes.length > 0 ? this.kerbenTypes[0].id : null);
+            const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbenTypeId);
+            if (kerbenType && !usedKerbenTypes.find(ukt => ukt.id === kerbenType.id)) {
+                usedKerbenTypes.push(kerbenType);
+            }
+        });
+        
+        usedKerbenTypes.forEach(kerbenType => {
+            // WICHTIG: Hole den Typ explizit, mit Fallback
+            const type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+            const kerbeWidth = kerbenType.width * this.mmToPx * scale;
+            const kerbeDepth = kerbenType.depth * this.mmToPx * scale;
             const labelOffset = 40 * this.mmToPx; // Abstand für Bemaßungen rechts
             
             if (type === 'marker') {
@@ -2974,7 +4308,7 @@ class ProfilZeichner {
                 );
                 // Text für Höhe
                 this.ctx.fillStyle = '#555';
-                this.ctx.fillText(`${kerbe.depth}mm`, currentX + 15, startY + kerbeDepth/2 + 15);
+                this.ctx.fillText(`${kerbenType.depth}mm`, currentX + 15, startY + kerbeDepth/2 + 15);
             } else {
                 // Dreieck-Kerbe zeichnen - zentriert auf startY
             this.ctx.beginPath();
@@ -2996,7 +4330,7 @@ class ProfilZeichner {
                     startY + kerbeDepth/2 + 15 // Label position
                 );
                 this.ctx.fillStyle = '#555';
-                this.ctx.fillText(`${kerbe.width}mm`, currentX + kerbeWidth/2, startY + kerbeDepth/2 + 25);
+                this.ctx.fillText(`${kerbenType.width}mm`, currentX + kerbeWidth/2, startY + kerbeDepth/2 + 25);
                 
                 // Bemaßung für Tiefe - seitlich mit Pfeillinien
                 this.drawDetailDimensionLine(
@@ -3007,11 +4341,16 @@ class ProfilZeichner {
                     startY // Label position
                 );
                 this.ctx.fillStyle = '#555';
-                this.ctx.fillText(`${kerbe.depth}mm`, currentX + kerbeWidth + 25, startY);
+                this.ctx.fillText(`${kerbenType.depth}mm`, currentX + kerbeWidth + 25, startY);
             }
             
+            // Label für Kerben-Typ-Name
+            this.ctx.fillStyle = '#555';
+            this.ctx.font = `${9}px Arial`;
+            this.ctx.fillText(kerbenType.name, currentX + kerbeWidth/2, startY + kerbeDepth/2 + 25);
+            
             currentX += Math.max(kerbeWidth, 10) + detailSpacing; // Minimum Breite für Strich
-        }
+        });
         
         // Loch Detailzeichnung
         if (this.loecher.length > 0) {
@@ -4041,10 +5380,367 @@ class ProfilZeichner {
     
     // Kerbe Modal
     openKerbeModal() {
+        // Erstelle Standard-Kerben-Typ, falls keiner vorhanden
+        if (this.kerbenTypes.length === 0) {
+            this.kerbenTypes.push({
+                id: 'kerbe1',
+                name: 'Kerbe 1',
+                type: 'triangle',
+                depth: 4,
+                width: 6
+            });
+        } else {
+            // Stelle sicher, dass alle Kerben-Typen fortlaufend nummeriert sind (1, 2, 3)
+            // Maximal 3 Kerben-Typen
+            this.kerbenTypes = this.kerbenTypes.slice(0, 3); // Begrenze auf max. 3
+            this.kerbenTypes.forEach((kt, idx) => {
+                kt.name = `Kerbe ${idx + 1}`;
+            });
+        }
+        
         // Aktualisiere die Tabelle mit den aktuellen Werten aus this.kerben
         // (inklusive verschobene Positionen)
         this.kerbeModal.style.display = 'block';
+        this.refreshKerbeTable(false); // Keine User-Inputs übernehmen beim Öffnen
+    }
+    
+    openKerbenTypesModal() {
+        // Öffne das separate Modal für Kerben-Typ-Verwaltung
+        if (this.kerbenTypesModal) {
+            // Stelle sicher, dass alle Typen-Werte korrekt sind
+            this.saveCurrentKerbenTypesInputs();
+            this.refreshKerbenTypesList();
+            this.kerbenTypesModal.style.display = 'block';
+        }
+    }
+    
+    closeKerbenTypesModal() {
+        if (this.kerbenTypesModal) {
+            this.kerbenTypesModal.style.display = 'none';
+        }
+    }
+    
+    confirmKerbenTypes() {
+        // Die Werte werden bereits durch Event-Listener gespeichert, aber zur Sicherheit nochmal speichern
+        // Speichere alle aktuellen Werte aus den Input-Feldern (falls noch nicht gespeichert)
+        this.saveCurrentKerbenTypesInputs();
+        
+        // Stelle sicher, dass alle Typen korrekt gespeichert sind
+        const typeDivs = this.kerbenTypesList.querySelectorAll('div');
+        typeDivs.forEach((div, index) => {
+            if (this.kerbenTypes[index]) {
+                const typeSelect = div.querySelector('.kerben-type-select');
+                if (typeSelect) {
+                    const selectedType = typeSelect.value || 'triangle';
+                    // WICHTIG: Speichere den Typ explizit
+                    this.kerbenTypes[index].type = selectedType;
+                    
+                    // Bei Strichmarkierung: Breite auf 0.1 setzen
+                    if (selectedType === 'marker') {
+                        this.kerbenTypes[index].width = 0.1;
+                    } else if (this.kerbenTypes[index].width === 0.1) {
+                        // Wenn von Marker zu Dreieck gewechselt wird, setze Standard-Breite
+                        this.kerbenTypes[index].width = 6;
+                    }
+                }
+            }
+        });
+        
+        // WICHTIG: Speichere den State, damit die Änderungen persistent sind
+        this.saveState();
+        
+        // Zeichne neu, damit die Änderungen sofort sichtbar werden
+        this.draw();
+        
+        // Aktualisiere die Kerben-Tabelle, damit neue Typen angezeigt werden
+        this.refreshKerbeTable(false);
+        
+        this.closeKerbenTypesModal();
+    }
+    
+    refreshKerbenTypesList() {
+        if (!this.kerbenTypesList) return;
+        
+        this.kerbenTypesList.innerHTML = '';
+        
+        // Begrenze auf maximal 3 Kerben-Typen
+        const limitedKerbenTypes = this.kerbenTypes.slice(0, 3);
+        
+        // Deaktiviere den "Hinzufügen"-Button, wenn bereits 3 Typen vorhanden sind
+        if (this.addKerbenTypeBtn) {
+            if (this.kerbenTypes.length >= 3) {
+                this.addKerbenTypeBtn.disabled = true;
+                this.addKerbenTypeBtn.style.opacity = '0.5';
+                this.addKerbenTypeBtn.style.cursor = 'not-allowed';
+            } else {
+                this.addKerbenTypeBtn.disabled = false;
+                this.addKerbenTypeBtn.style.opacity = '1';
+                this.addKerbenTypeBtn.style.cursor = 'pointer';
+            }
+        }
+        
+        limitedKerbenTypes.forEach((kerbenType, index) => {
+            const typeDiv = document.createElement('div');
+            typeDiv.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 8px; background: white; border-radius: 6px; border: 1px solid #e0e0e0;';
+            
+            const isMarker = kerbenType.type === 'marker';
+            const depthValue = (kerbenType.depth !== undefined && kerbenType.depth !== null) ? kerbenType.depth : 4;
+            const widthValue = (kerbenType.width !== undefined && kerbenType.width !== null && kerbenType.width !== 0.1) ? kerbenType.width : 6;
+            
+            typeDiv.innerHTML = `
+                <input type="text" class="kerben-type-name" value="${kerbenType.name || `Kerbe ${index + 1}`}" data-index="${index}" readonly style="flex: 1; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background-color: #f0f0f0; cursor: default;">
+                <select class="kerben-type-select" data-index="${index}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                    <option value="triangle" ${kerbenType.type === 'triangle' ? 'selected' : ''}>Dreieck</option>
+                    <option value="marker" ${kerbenType.type === 'marker' ? 'selected' : ''}>Strichmarkierung</option>
+                </select>
+                <input type="number" class="kerben-type-depth" value="${depthValue}" data-index="${index}" step="0.1" min="0.1" style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                <span style="font-size: 12px; color: #666;">mm Tiefe/Höhe</span>
+                <div class="kerben-type-width-container" style="display: ${isMarker ? 'none' : 'flex'}; align-items: center; gap: 5px;">
+                    <input type="number" class="kerben-type-width" value="${widthValue}" data-index="${index}" step="0.1" min="0.1" style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                    <span style="font-size: 12px; color: #666;">mm Breite</span>
+                </div>
+                <button class="remove-kerben-type-btn" onclick="profilZeichner.removeKerbenType(${index})" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✕</button>
+            `;
+            
+            this.kerbenTypesList.appendChild(typeDiv);
+            
+            // Event-Listener für sofortiges Speichern beim Tippen
+            const nameInput = typeDiv.querySelector('.kerben-type-name');
+            const typeSelect = typeDiv.querySelector('.kerben-type-select');
+            const depthInput = typeDiv.querySelector('.kerben-type-depth');
+            const widthInput = typeDiv.querySelector('.kerben-type-width');
+            
+            // Name speichern - aber nur wenn manuell geändert (nicht automatisch)
+            if (nameInput) {
+                // Entferne die Möglichkeit, den Namen manuell zu ändern, da er automatisch vergeben wird
+                nameInput.readOnly = true;
+                nameInput.style.backgroundColor = '#f0f0f0';
+                nameInput.style.cursor = 'default';
+            }
+            
+            // Typ speichern - sofort beim Ändern
+            if (typeSelect) {
+                typeSelect.addEventListener('change', () => {
+                    if (this.kerbenTypes[index]) {
+                        const selectedType = typeSelect.value || 'triangle';
+                        // WICHTIG: Speichere den Typ explizit
+                        this.kerbenTypes[index].type = selectedType;
+                        
+                        // Bei Strichmarkierung: Breite auf 0.1 setzen
+                        if (selectedType === 'marker') {
+                            this.kerbenTypes[index].width = 0.1;
+                        } else if (this.kerbenTypes[index].width === 0.1) {
+                            // Wenn von Marker zu Dreieck gewechselt wird, setze Standard-Breite
+                            this.kerbenTypes[index].width = 6;
+                        }
+                        
+                        // Aktualisiere Breite-Anzeige sofort
+                        const widthContainer = typeDiv.querySelector('.kerben-type-width-container');
+                        if (widthContainer) {
+                            widthContainer.style.display = (selectedType === 'marker') ? 'none' : 'flex';
+                        }
+                        
+                        // Speichere State sofort
+                        this.saveState();
+                        
+                        // Zeichne neu, damit die Änderung sofort sichtbar wird
+                        this.draw();
+                    }
+                });
+            }
+            
+            // Tiefe/Höhe speichern
+            if (depthInput) {
+                depthInput.addEventListener('input', () => {
+                    if (this.kerbenTypes[index]) {
+                        const depthValue = parseFloat(depthInput.value);
+                        if (!isNaN(depthValue) && depthValue > 0) {
+                            this.kerbenTypes[index].depth = depthValue;
+                        }
+                    }
+                });
+                depthInput.addEventListener('blur', () => {
+                    if (this.kerbenTypes[index]) {
+                        const depthValue = parseFloat(depthInput.value);
+                        if (!isNaN(depthValue) && depthValue > 0) {
+                            this.kerbenTypes[index].depth = depthValue;
+                        } else {
+                            // Wenn ungültig, setze auf Standard oder aktuellen Wert
+                            depthInput.value = this.kerbenTypes[index].depth || 4;
+                        }
+                    }
+                });
+            }
+            
+            // Breite speichern
+            if (widthInput && typeSelect && typeSelect.value !== 'marker') {
+                widthInput.addEventListener('input', () => {
+                    if (this.kerbenTypes[index] && typeSelect.value !== 'marker') {
+                        const widthValue = parseFloat(widthInput.value);
+                        if (!isNaN(widthValue) && widthValue > 0) {
+                            this.kerbenTypes[index].width = widthValue;
+                        }
+                    }
+                });
+                widthInput.addEventListener('blur', () => {
+                    if (this.kerbenTypes[index] && typeSelect.value !== 'marker') {
+                        const widthValue = parseFloat(widthInput.value);
+                        if (!isNaN(widthValue) && widthValue > 0) {
+                            this.kerbenTypes[index].width = widthValue;
+                        } else {
+                            // Wenn ungültig, setze auf Standard oder aktuellen Wert
+                            widthInput.value = this.kerbenTypes[index].width || 6;
+                        }
+                    }
+                });
+            }
+        });
+    }
+    
+    addKerbenType() {
+        // Maximal 3 Kerben-Typen erlauben
+        if (this.kerbenTypes.length >= 3) {
+            alert('Maximal 3 Kerben-Typen sind möglich!');
+            return;
+        }
+        
+        // Die Werte werden bereits durch Event-Listener gespeichert, aber zur Sicherheit nochmal speichern
+        // WICHTIG: Speichere zuerst alle aktuellen Werte aus den Input-Feldern, bevor die Liste neu gerendert wird
+        this.saveCurrentKerbenTypesInputs();
+        
+        // Finde die nächste verfügbare Nummer für den Namen
+        let nextNumber = 1;
+        const existingNumbers = this.kerbenTypes.map(kt => {
+            const match = kt.name.match(/^Kerbe (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+        }).filter(n => n > 0);
+        
+        if (existingNumbers.length > 0) {
+            nextNumber = Math.max(...existingNumbers) + 1;
+        }
+        
+        const newId = 'kerbe' + nextNumber;
+        this.kerbenTypes.push({
+            id: newId,
+            name: `Kerbe ${nextNumber}`,
+            type: 'triangle',
+            depth: 4,
+            width: 6
+        });
+        this.refreshKerbenTypesList();
+    }
+    
+    // Speichere alle aktuellen Werte aus den Input-Feldern in this.kerbenTypes
+    saveCurrentKerbenTypesInputs() {
+        if (!this.kerbenTypesList) return;
+        
+        const typeDivs = this.kerbenTypesList.querySelectorAll('div');
+        typeDivs.forEach((div, index) => {
+            if (this.kerbenTypes[index]) {
+                const nameInput = div.querySelector('.kerben-type-name');
+                const typeSelect = div.querySelector('.kerben-type-select');
+                const depthInput = div.querySelector('.kerben-type-depth');
+                const widthInput = div.querySelector('.kerben-type-width');
+                
+                // Name wird automatisch vergeben, nicht manuell speichern
+                // Der Name wird beim Erstellen des Kerben-Typs gesetzt und bleibt unverändert
+                
+                // Speichere Typ - IMMER, auch wenn nicht geändert
+                if (typeSelect) {
+                    const selectedType = typeSelect.value || 'triangle';
+                    this.kerbenTypes[index].type = selectedType;
+                    
+                    // Bei Strichmarkierung: Breite auf 0.1 setzen
+                    if (selectedType === 'marker') {
+                        this.kerbenTypes[index].width = 0.1;
+                    } else if (this.kerbenTypes[index].width === 0.1) {
+                        // Wenn von Marker zu Dreieck gewechselt wird, setze Standard-Breite
+                        this.kerbenTypes[index].width = 6;
+                    }
+                }
+                
+                // Speichere Tiefe/Höhe - IMMER wenn Input vorhanden
+                if (depthInput) {
+                    // Prüfe ob ein Wert eingegeben wurde (auch wenn gerade getippt wird)
+                    const inputValue = depthInput.value.trim();
+                    if (inputValue !== '') {
+                        const depthValue = parseFloat(inputValue);
+                        if (!isNaN(depthValue) && depthValue > 0) {
+                            // Speichere den eingegebenen Wert - IMMER, auch während des Tippens
+                            this.kerbenTypes[index].depth = depthValue;
+                        }
+                    }
+                    // Wenn leer, behalte den aktuellen Wert (nicht überschreiben)
+                    // Der Wert wird nur gesetzt, wenn tatsächlich etwas eingegeben wurde
+                }
+                
+                // Speichere Breite - nur wenn nicht Strichmarkierung
+                if (typeSelect && typeSelect.value !== 'marker' && widthInput) {
+                    // Prüfe ob ein Wert eingegeben wurde (auch wenn gerade getippt wird)
+                    const inputValue = widthInput.value.trim();
+                    if (inputValue !== '') {
+                        const widthValue = parseFloat(inputValue);
+                        if (!isNaN(widthValue) && widthValue > 0) {
+                            // Speichere den eingegebenen Wert - IMMER, auch während des Tippens
+                            this.kerbenTypes[index].width = widthValue;
+                        }
+                    }
+                    // Wenn leer, behalte den aktuellen Wert (nicht überschreiben)
+                    // Der Wert wird nur gesetzt, wenn tatsächlich etwas eingegeben wurde
+                }
+            }
+        });
+    }
+    
+    removeKerbenType(index) {
+        if (this.kerbenTypes.length <= 1) {
+            alert('Mindestens ein Kerben-Typ muss vorhanden sein!');
+            return;
+        }
+        
+        // Maximal 3 Kerben-Typen - diese Prüfung ist hier nicht nötig, da wir bereits prüfen dass mindestens 1 vorhanden ist
+        
+        // Speichere zuerst alle aktuellen Werte aus den Input-Feldern
+        this.saveCurrentKerbenTypesInputs();
+        
+        const removedType = this.kerbenTypes[index];
+        
+        // Entferne alle Kerben, die diesen Typ verwenden
+        this.kerben = this.kerben.filter(kerbe => kerbe.kerbenTypeId !== removedType.id);
+        
+        // Entferne den Typ
+        this.kerbenTypes.splice(index, 1);
+        
+        // Aktualisiere die Namen, damit sie fortlaufend sind (1, 2, 3, ...)
+        this.kerbenTypes.forEach((kt, idx) => {
+            kt.name = `Kerbe ${idx + 1}`;
+        });
+        
+        this.refreshKerbenTypesList();
         this.refreshKerbeTable(true);
+    }
+    
+    updateKerbenTypeWidthDisplay(index) {
+        // Aktualisiere die Breite-Anzeige basierend auf dem Typ
+        const typeDivs = this.kerbenTypesList.querySelectorAll('div');
+        if (typeDivs[index]) {
+            const typeSelect = typeDivs[index].querySelector('.kerben-type-select');
+            const widthContainer = typeDivs[index].querySelector('.kerben-type-width-container');
+            
+            if (typeSelect && widthContainer) {
+                const isMarker = typeSelect.value === 'marker';
+                widthContainer.style.display = isMarker ? 'none' : 'flex';
+                
+                // Aktualisiere auch den Typ im Array
+                if (this.kerbenTypes[index]) {
+                    this.kerbenTypes[index].type = typeSelect.value;
+                    // Bei Strichmarkierung: Breite auf 0.1 setzen
+                    if (isMarker) {
+                        this.kerbenTypes[index].width = 0.1;
+                    }
+                }
+            }
+        }
     }
     
     closeKerbeModal() {
@@ -4060,29 +5756,29 @@ class ProfilZeichner {
         // Nur Typ und Position (oben/unten) werden aus der Tabelle übernommen, wenn keepUserInputs = true
         const existingRows = this.kerbeTbody.querySelectorAll('tr');
         if (keepUserInputs && existingRows.length > 0 && this.kerbeModal.style.display === 'block') {
-            // Finde die aktuelle Kerbe anhand der Position (da die Tabelle sortiert ist)
-            existingRows.forEach((row) => {
-                const distanceInput = row.querySelector('.kerbe-distance-input');
-                const typeSelect = row.querySelector('.kerbe-type-select');
-                const positionSelect = row.querySelector('.kerbe-position-select');
-                
-                if (distanceInput) {
-                    const tableDistance = parseFloat(distanceInput.value);
-                    if (!isNaN(tableDistance)) {
-                        // Finde die Kerbe in this.kerben anhand der Position (mit Toleranz wegen Rundung)
-                        const matchingKerbe = this.kerben.find(kerbe => 
-                            Math.abs(kerbe.distance - tableDistance) < 0.1
-                        );
-                        
-                        if (matchingKerbe) {
-                            // Nur Typ und Position (oben/unten) aus Tabelle übernehmen
-                            // Die distance wird NICHT überschrieben, da sie möglicherweise verschoben wurde!
-                            if (typeSelect) {
-                                matchingKerbe.type = typeSelect.value;
-                            }
-                            if (positionSelect) {
-                                matchingKerbe.position = positionSelect.value;
-                            }
+            // Aktualisiere die Werte basierend auf der Reihenfolge (Index)
+            // WICHTIG: Verwende Index, damit die Positionen nicht zurückgesetzt werden
+            existingRows.forEach((row, rowIndex) => {
+                if (rowIndex < this.kerben.length) {
+                    const kerbe = this.kerben[rowIndex];
+                    const distanceInput = row.querySelector('.kerbe-distance-input');
+                    const kerbenTypeSelect = row.querySelector('.kerbe-kerben-type-select');
+                    const positionSelect = row.querySelector('.kerbe-position-select');
+                    
+                    // Aktualisiere Typ und Position aus der Tabelle
+                    if (kerbenTypeSelect) {
+                        kerbe.kerbenTypeId = kerbenTypeSelect.value;
+                    }
+                    if (positionSelect) {
+                        kerbe.position = positionSelect.value;
+                    }
+                    // Die distance wird NICHT überschrieben, da sie möglicherweise verschoben wurde!
+                    // Nur wenn explizit geändert wurde, übernehme den Wert
+                    if (distanceInput) {
+                        const tableDistance = parseFloat(distanceInput.value);
+                        if (!isNaN(tableDistance) && Math.abs(kerbe.distance - tableDistance) > 0.1) {
+                            // Nur wenn der Wert tatsächlich geändert wurde, übernehme ihn
+                            kerbe.distance = tableDistance;
                         }
                     }
                 }
@@ -4095,20 +5791,24 @@ class ProfilZeichner {
         const defaultType = this.kerbeTypeSelect ? this.kerbeTypeSelect.value : 'triangle';
         
         // Zeige immer die aktuellen Werte aus this.kerben an (inklusive verschobene Positionen)
-        // Sortiere Kerben nach Position für Anzeige, aber behalte Original-Index
-        const sortedKerben = this.kerben.map((kerbe, originalIndex) => ({ kerbe, originalIndex }))
-            .sort((a, b) => a.kerbe.distance - b.kerbe.distance);
-        
-        sortedKerben.forEach((item, displayIndex) => {
-            const kerbe = item.kerbe;
-            const originalIndex = item.originalIndex;
+        // NICHT sortieren - neue Kerben erscheinen immer als nächste in der Liste
+        this.kerben.forEach((kerbe, originalIndex) => {
             const row = document.createElement('tr');
-            const currentType = kerbe.type || defaultType;
+            
+            // Finde den Kerben-Typ für diese Kerbe
+            const kerbenTypeId = kerbe.kerbenTypeId || (this.kerbenTypes.length > 0 ? this.kerbenTypes[0].id : null);
+            const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbenTypeId);
+            
+            // Erstelle Dropdown für Kerben-Typen
+            let kerbenTypeOptions = '';
+            this.kerbenTypes.forEach(kt => {
+                kerbenTypeOptions += `<option value="${kt.id}" ${kerbenTypeId === kt.id ? 'selected' : ''}>${kt.name}</option>`;
+            });
+            
             row.innerHTML = `
                 <td>
-                    <select class="kerbe-type-select">
-                        <option value="triangle" ${currentType === 'triangle' ? 'selected' : ''}>Dreieck</option>
-                        <option value="marker" ${currentType === 'marker' ? 'selected' : ''}>Strichmarkierung</option>
+                    <select class="kerbe-kerben-type-select">
+                        ${kerbenTypeOptions}
                     </select>
                 </td>
                 <td><input type="number" value="${kerbe.distance}" min="0" step="5" class="kerbe-distance-input"></td>
@@ -4125,6 +5825,33 @@ class ProfilZeichner {
     }
     
     addKerbeRow() {
+        // WICHTIG: Speichere zuerst alle aktuellen Werte aus der Tabelle, bevor eine neue Zeile hinzugefügt wird
+        // Dies verhindert, dass Positionen zurückgesetzt werden
+        const rows = this.kerbeTbody.querySelectorAll('tr');
+        
+        // Speichere alle Werte in einem temporären Array, um sie zu erhalten
+        const savedValues = [];
+        rows.forEach((row, rowIndex) => {
+            if (rowIndex < this.kerben.length) {
+                const distanceInput = row.querySelector('.kerbe-distance-input');
+                const kerbenTypeSelect = row.querySelector('.kerbe-kerben-type-select');
+                const positionSelect = row.querySelector('.kerbe-position-select');
+                
+                if (distanceInput && kerbenTypeSelect && positionSelect) {
+                    const tableDistance = parseFloat(distanceInput.value);
+                    if (!isNaN(tableDistance)) {
+                        // Aktualisiere die Werte in this.kerben direkt über den Index
+                        const kerbe = this.kerben[rowIndex];
+                        if (kerbe) {
+                            kerbe.distance = tableDistance;
+                            kerbe.kerbenTypeId = kerbenTypeSelect.value;
+                            kerbe.position = positionSelect.value;
+                        }
+                    }
+                }
+            }
+        });
+        
         // Berechne automatisch eine Position (Mitte des Profils oder nach der letzten Kerbe)
         let suggestedDistance = 0;
         
@@ -4135,31 +5862,30 @@ class ProfilZeichner {
             suggestedDistance = Math.round((profileLengthMm / 2) * 10) / 10;
         } else if (this.kerben.length > 0) {
             // Falls schon Kerben existieren, nimm den letzten Wert + 20mm
-            const lastDistance = this.kerben[this.kerben.length - 1].distance;
+            const sortedKerben = [...this.kerben].sort((a, b) => a.distance - b.distance);
+            const lastDistance = sortedKerben[sortedKerben.length - 1].distance;
             suggestedDistance = lastDistance + 20;
         }
         
-        // Neue Kerbe mit Vorschlag hinzufügen
-        const depth = parseFloat(this.kerbeDepthInput.value) || 4;
-        const width = parseFloat(this.kerbeWidthInput.value) || 6;
-        
-        // Typ aus dem oberen Dropdown übernehmen
-        const defaultType = this.kerbeTypeSelect ? this.kerbeTypeSelect.value : 'triangle';
+        // Verwende den ersten Kerben-Typ als Standard
+        const defaultKerbenTypeId = this.kerbenTypes.length > 0 ? this.kerbenTypes[0].id : null;
         
         this.kerben.push({
             distance: suggestedDistance,
             position: 'unten',
-            depth: depth,
-            width: width,
-            type: defaultType
+            kerbenTypeId: defaultKerbenTypeId
         });
         
-        this.refreshKerbeTable(true);
+        // Aktualisiere die Tabelle, OHNE die Werte zu überschreiben
+        // Die gespeicherten Werte bleiben erhalten
+        this.refreshKerbeTable(false);
     }
     
     removeKerbeRow(index) {
+        // Entferne die Kerbe
         this.kerben.splice(index, 1);
-        this.refreshKerbeTable(true);
+        // Aktualisiere die Tabelle ohne User-Inputs zu übernehmen
+        this.refreshKerbeTable(false);
     }
     
     updateKerbeTypeDisplay() {
@@ -4188,24 +5914,20 @@ class ProfilZeichner {
         this.kerben = [];
         
         rows.forEach(row => {
-            const typeSelect = row.querySelector('.kerbe-type-select');
+            const kerbenTypeSelect = row.querySelector('.kerbe-kerben-type-select');
             const distanceInput = row.querySelector('.kerbe-distance-input');
             const positionSelect = row.querySelector('.kerbe-position-select');
             
-            if (distanceInput && positionSelect && typeSelect) {
+            if (distanceInput && positionSelect && kerbenTypeSelect) {
                 const distance = parseFloat(distanceInput.value);
                 const position = positionSelect.value;
-                const type = typeSelect.value; // Typ aus jeder Zeile einzeln lesen
-                const depth = parseFloat(this.kerbeDepthInput.value) || 4;
-                const width = parseFloat(this.kerbeWidthInput.value) || 6;
+                const kerbenTypeId = kerbenTypeSelect.value;
                 
                 if (!isNaN(distance) && distance >= 0) {
                     this.kerben.push({
                         distance: distance,
                         position: position,
-                        depth: depth,
-                        width: width,
-                        type: type // Typ aus der Zeile übernehmen
+                        kerbenTypeId: kerbenTypeId
                     });
                 }
             }
