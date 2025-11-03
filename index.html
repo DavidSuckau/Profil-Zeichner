@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProfilZeichner</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.min.css">
 </head>
 <body>
     <div class="container">
@@ -15,6 +15,7 @@
             <div class="menu-bar">
             <!-- Logo -->
             <div class="logo">
+                <!-- WebP mit PNG-Fallback für bessere Performance -->
                 <img src="Logo.png" alt="Profil Zeichner" class="logo-image">
             </div>
             
@@ -52,7 +53,7 @@
         <div class="canvas-container">
             <canvas id="main-canvas"></canvas>
             
-            <!-- Canvas Overlay Buttons -->
+            <!-- Canvas Overlay Buttons (rechts) -->
             <div class="canvas-overlay">
                 <button id="bohne-button" class="icon-button profile-button" title="Bohne hinzufügen - Ein rundes Element oben am Profil">●</button>
                 <button id="cutout-button" class="icon-button profile-button" title="Cut out - Profileck abtrennen">└</button>
@@ -63,8 +64,10 @@
                 <button id="crimping-button" class="icon-button profile-button" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
                 <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
                 <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">T</button>
-                <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">🗃️</button>
-                <button id="zeichnungsdb-button" class="icon-button profile-button" title="Zeichnungen öffnen - Fertige Zeichnungen verwalten">🖼️</button>
+                <button id="bild-button" class="icon-button profile-button" title="Bild einfügen - Bild vom Rechner auf das Canvas laden">🖼️</button>
+                <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">📁</button>
+                <button id="zeichnungsdb-button" class="icon-button profile-button" title="Zeichnungen öffnen - Fertige Zeichnungen verwalten">📋</button>
+                <button id="titleblock-button" class="icon-button profile-button" title="Titelblock anzeigen/bearbeiten">🏷️</button>
             </div>
             
             <!-- Untere Button-Leiste -->
@@ -75,6 +78,64 @@
                 <button id="dxf-button" class="format-button" title="Als DXF exportieren - CAD-Geometrie exportieren">DXF</button>
             </div>
         </div>
+        </div>
+    </div>
+
+    <!-- Titelblock Modal -->
+    <div id="titleblock-modal" class="modal">
+        <div class="modal-content" style="width: 520px;">
+            <div class="modal-header">
+                <h3>Titelblock</h3>
+                <button id="titleblock-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Projekt</label>
+                        <input type="text" id="tb-project" placeholder="Projekt">
+                    </div>
+                    <div class="input-group">
+                        <label>Variante</label>
+                        <input type="text" id="tb-variant" placeholder="Variante">
+                    </div>
+                    <div class="input-group">
+                        <label>Bezügenummer</label>
+                        <input type="text" id="tb-reference" placeholder="Bezügenummer">
+                    </div>
+                    <div class="input-group">
+                        <label>Zeichnungsnummer</label>
+                        <input type="text" id="tb-zeichnungsnummer" placeholder="Zeichnungsnummer">
+                    </div>
+                    <div class="input-group">
+                        <label>Revision</label>
+                        <input type="text" id="tb-revision" placeholder="Revision">
+                    </div>
+                    <div class="input-group">
+                        <label>SPS Nummer</label>
+                        <input type="text" id="tb-spsnummer" placeholder="SPS Nummer">
+                    </div>
+                    <div class="input-group">
+                        <label>Material</label>
+                        <input type="text" id="tb-material" placeholder="Material">
+                    </div>
+                    <div class="input-group">
+                        <label>Lieferantennummer</label>
+                        <input type="text" id="tb-supplier" placeholder="Lieferantennr.">
+                    </div>
+                    <div class="input-group">
+                        <label>Datum</label>
+                        <input type="date" id="tb-date">
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; margin-top:10px;">
+                    <button id="tb-fill-from-db" class="icon-btn" title="Aus DB übernehmen">↻</button>
+                    <button id="tb-save-to-db" class="icon-btn" title="In DB speichern">💾</button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="titleblock-cancel" class="btn-cancel" title="Abbrechen">✕</button>
+                <button id="titleblock-confirm" class="btn-confirm" title="Übernehmen">✓</button>
+            </div>
         </div>
     </div>
 
@@ -92,13 +153,13 @@
             <div class="modal-body">
                 <div class="zeichnungsdb-toolbar">
                     <div class="zeichnungsdb-left">
-                        <button id="zeichnungsdb-add-project" class="btn-confirm" title="Projekt hinzufügen">+ Projekt</button>
-                        <button id="zeichnungsdb-add-variant" class="btn-confirm" title="Variante hinzufügen">+ Variante</button>
-                        <button id="zeichnungsdb-save-current" class="btn-confirm" style="background:#28a745" title="Aktuelle Zeichnung in Datenbank speichern">💾 Speichern</button>
+                        <button id="zeichnungsdb-add-project" class="icon-btn" title="Projekt hinzufügen" aria-label="Projekt hinzufügen">➕</button>
+                        <button id="zeichnungsdb-add-variant" class="icon-btn" title="Variante hinzufügen" aria-label="Variante hinzufügen">➕</button>
+                        <button id="zeichnungsdb-save-current" class="icon-btn" title="Aktuelle Zeichnung speichern" aria-label="Speichern">💾</button>
                     </div>
                     <div class="zeichnungsdb-right">
-                        <button id="zeichnungsdb-open-file" class="btn-confirm" title="Zeichnungen laden (Datei öffnen)">📂 Öffnen</button>
-                        <button id="zeichnungsdb-save-file" class="btn-confirm" title="Zeichnungen speichern (Datei speichern)">💾 Speichern</button>
+                        <button id="zeichnungsdb-open-file" class="icon-btn" title="Zeichnungen laden" aria-label="Öffnen">📂</button>
+                        <button id="zeichnungsdb-save-file" class="icon-btn" title="Zeichnungen speichern" aria-label="Speichern">💾</button>
                         <input type="file" id="zeichnungsdb-file-input" accept=".json" style="display:none;" />
                     </div>
                 </div>
@@ -117,9 +178,9 @@
                     </div>
                     <div class="zeichnungsdb-col zeichnungsdb-col-references">
                         <div class="col-title">Bezügenummern</div>
-                        <div style="display:flex; gap:6px; margin-bottom:6px;">
-                            <input type="text" id="zeichnungsdb-ref-input" placeholder="Bezügenummer..." style="flex:1; padding:6px 8px; border:1px solid #ddd; border-radius:6px;">
-                            <button id="zeichnungsdb-add-ref" class="btn-confirm" title="Bezügenummer hinzufügen">+</button>
+                        <div class="ref-row">
+                            <input type="text" id="zeichnungsdb-ref-input" placeholder="Bezügenummer..." class="ref-input">
+                            <button id="zeichnungsdb-add-ref" class="icon-btn" title="Bezügenummer hinzufügen" aria-label="Bezügenummer hinzufügen">➕</button>
                         </div>
                         <ul id="zeichnungsdb-ref-list" class="list"></ul>
                     </div>
@@ -192,31 +253,15 @@
                 <button id="kerbe-modal-close" class="modal-close">&times;</button>
             </div>
             <div class="modal-body">
-                <div class="kerbe-settings">
-                    <div class="input-group">
-                        <label for="kerbe-type">Standard-Typ (für neue Kerben):</label>
-                        <select id="kerbe-type">
-                            <option value="triangle">Dreieck</option>
-                            <option value="marker">Strichmarkierung</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="kerbe-depth">Tiefe/Höhe:</label>
-                        <input type="number" id="kerbe-depth" placeholder="Tiefe/Höhe eingeben" min="1" step="0.1" value="4">
-                        <span class="unit">mm</span>
-                    </div>
-                    <div class="input-group" id="kerbe-width-group" style="display: block;">
-                        <label for="kerbe-width">Breite:</label>
-                        <input type="number" id="kerbe-width" placeholder="Breite eingeben" min="1" step="0.1" value="6">
-                        <span class="unit">mm</span>
-                    </div>
+                <div class="kerbe-settings" style="margin-bottom: 15px;">
+                    <button id="open-kerben-types-modal-btn" class="add-kerbe-btn" style="width: auto; padding: 8px 16px; margin-bottom: 10px;">⚙️ Kerben-Typen verwalten</button>
                 </div>
                 
                 <div class="kerbe-table-container">
                     <table id="kerbe-table" class="kerbe-table">
                         <thead>
                             <tr>
-                                <th>Typ</th>
+                                <th>Kerben-Typ</th>
                                 <th>Abstand (mm)</th>
                                 <th>Position</th>
                                 <th>Aktion</th>
@@ -232,6 +277,29 @@
             <div class="modal-footer">
                 <button id="kerbe-cancel" class="btn-cancel" title="Abbrechen">✕</button>
                 <button id="kerbe-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kerben-Typen Verwaltungs-Modal -->
+    <div id="kerben-types-modal" class="modal">
+        <div class="modal-content" style="width: 700px;">
+            <div class="modal-header">
+                <h3>Kerben-Typen verwalten</h3>
+                <button id="kerben-types-modal-close" class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="kerben-types-container" style="margin-bottom: 20px;">
+                    <div id="kerben-types-list" style="margin-bottom: 10px;">
+                        <!-- Kerben-Typen werden hier dynamisch hinzugefügt -->
+                    </div>
+                    <button id="add-kerben-type-btn" class="add-kerbe-btn" style="width: auto; padding: 8px 16px;">+ Neuer Kerben-Typ</button>
+                    <div style="margin-top: 10px; font-size: 12px; color: #666;">Maximal 3 Kerben-Typen möglich</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="kerben-types-cancel" class="btn-cancel" title="Schließen">✕</button>
+                <button id="kerben-types-confirm" class="btn-confirm" title="Übernehmen">✓</button>
             </div>
         </div>
     </div>
@@ -542,7 +610,7 @@
 
     <!-- Versionshinweis (wird automatisch aktualisiert) -->
     <div id="version-info" style="position: fixed; bottom: 10px; left: 10px; font-size: 12px; color: #666; z-index: 1000; background: rgba(255, 255, 255, 0.8); padding: 5px 10px; border-radius: 4px;">
-        Version 1.1.1
+        Version 1.2.1
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
