@@ -472,6 +472,60 @@ class ProfilZeichner {
                                                                                                                                                 addText(t.x, t.y, (t.size || 16) * 0.264583, t.content || '', 'TEXT'); // 16px ~ 4.23mm
                                                                                                                                             });
 
+                                                                                                                                            // Detail-Indikatoren (gestrichelte Kreise um Kerben/Löcher)
+                                                                                                                                            // Gestrichelter Kreis um eine Kerbe (nur die erste) - nur bei Dreieck-Kerben
+                                                                                                                                            if (this.kerben && this.kerben.length > 0) {
+                                                                                                                                                const kerbe = this.kerben[0];
+                                                                                                                                                let type = 'triangle';
+                                                                                                                                                let widthPx, depthPx;
+                                                                                                                                                
+                                                                                                                                                if (kerbe.kerbenTypeId) {
+                                                                                                                                                    const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                                                                                                                                                    if (kerbenType) {
+                                                                                                                                                        type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+                                                                                                                                                        widthPx = kerbenType.width * this.mmToPx;
+                                                                                                                                                        depthPx = kerbenType.depth * this.mmToPx;
+                                                                                                                                                    }
+                                                                                                                                                } else {
+                                                                                                                                                    type = kerbe.type || 'triangle';
+                                                                                                                                                    widthPx = (kerbe.width || 6) * this.mmToPx;
+                                                                                                                                                    depthPx = (kerbe.depth || 4) * this.mmToPx;
+                                                                                                                                                }
+                                                                                                                                                
+                                                                                                                                                if (type === 'triangle') {
+                                                                                                                                                    const distancePx = kerbe.distance * this.mmToPx;
+                                                                                                                                                    let kerbeCenterX, kerbeCenterY;
+                                                                                                                                                    
+                                                                                                                                                    if (kerbe.position === 'oben') {
+                                                                                                                                                        kerbeCenterX = rect.x + distancePx;
+                                                                                                                                                        kerbeCenterY = rect.y;
+                                                                                                                                                    } else {
+                                                                                                                                                        kerbeCenterX = rect.x + distancePx;
+                                                                                                                                                        kerbeCenterY = rect.y + rect.height;
+                                                                                                                                                    }
+                                                                                                                                                    
+                                                                                                                                                    const radius = Math.max(widthPx, depthPx) * 1.4; // 40% größer als Kerbe
+                                                                                                                                                    // DXF unterstützt keine gestrichelten Kreise direkt, aber wir können einen Kreis hinzufügen
+                                                                                                                                                    // Hinweis: Gestrichelt müsste in CAD-Software manuell auf Layer gesetzt werden
+                                                                                                                                                    addCircle(kerbeCenterX, kerbeCenterY, radius, 'DETAIL_INDICATORS');
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            // Gestrichelter Kreis um ein Loch (nur das erste)
+                                                                                                                                            if (this.loecher && this.loecher.length > 0) {
+                                                                                                                                                const loch = this.loecher[0];
+                                                                                                                                                const distancePx = loch.distance * this.mmToPx;
+                                                                                                                                                const widthPx = loch.width * this.mmToPx;
+                                                                                                                                                const heightPx = loch.height * this.mmToPx;
+                                                                                                                                                const positionPx = (loch.positionFromTop || 2) * this.mmToPx;
+                                                                                                                                                
+                                                                                                                                                const lochCenterX = rect.x + distancePx;
+                                                                                                                                                const lochCenterY = rect.y + positionPx + (heightPx / 2);
+                                                                                                                                                
+                                                                                                                                                const radius = Math.max(widthPx, heightPx) * 1.4; // 40% größer als Loch
+                                                                                                                                                addCircle(lochCenterX, lochCenterY, radius, 'DETAIL_INDICATORS');
+                                                                                                                                            }
+
                                                                                                                                             // Bounding Box bestimmen (für Y-Invert & Verschiebung ins positive)
                                                                                                                                             let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
                                                                                                                                             const considerPoint = (x,y)=>{minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y);};
@@ -495,7 +549,7 @@ class ProfilZeichner {
                                                                                                                                             push('0','SECTION','2','HEADER','9','$INSUNITS','70','4','0','ENDSEC');
                                                                                                                                             // Tables (nur Layer)
                                                                                                                                             push('0','SECTION','2','TABLES','0','TABLE','2','LAYER','70','7');
-                                                                                                                                            const layers = ['PROFILE','CUTOUTS','KERBEN','LOECHER','NAHT','CRIMPING','TEXT','BOHNE','TITLEBLOCK'];
+                                                                                                                                            const layers = ['PROFILE','CUTOUTS','KERBEN','LOECHER','NAHT','CRIMPING','TEXT','BOHNE','TITLEBLOCK','DETAIL_INDICATORS'];
                                                                                                                                             layers.forEach((ln,i)=>{
                                                                                                                                                 push('0','LAYER','2',ln,'70','0','62', String((i%7)+1),'6','CONTINUOUS');
                                                                                                                                             });
@@ -4387,13 +4441,28 @@ class ProfilZeichner {
         // Gestrichelter Kreis um eine Kerbe (nur die erste) - nur bei Dreieck-Kerben
         if (this.kerben.length > 0) {
             const kerbe = this.kerben[0]; // Nur die erste Kerbe
-            const type = kerbe.type || 'triangle'; // Standard: Dreieck
+            
+            // Hole Kerben-Typ für neue Struktur
+            let type = 'triangle';
+            let widthPx, depthPx;
+            
+            if (kerbe.kerbenTypeId) {
+                const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                if (kerbenType) {
+                    type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+                    widthPx = kerbenType.width * this.mmToPx;
+                    depthPx = kerbenType.depth * this.mmToPx;
+                }
+            } else {
+                // Alte Struktur: Direkt aus Kerbe (für Rückwärtskompatibilität)
+                type = kerbe.type || 'triangle';
+                widthPx = (kerbe.width || 6) * this.mmToPx;
+                depthPx = (kerbe.depth || 4) * this.mmToPx;
+            }
             
             // Nur Detail-Indikator bei Dreieck-Kerben (nicht bei Strich-Markierung)
             if (type === 'triangle') {
                 const distancePx = kerbe.distance * this.mmToPx;
-                const widthPx = kerbe.width * this.mmToPx;
-                const depthPx = kerbe.depth * this.mmToPx;
                 
                 let kerbeCenterX, kerbeCenterY;
                 
@@ -4419,7 +4488,7 @@ class ProfilZeichner {
             const distancePx = loch.distance * this.mmToPx;
             const widthPx = loch.width * this.mmToPx;
             const heightPx = loch.height * this.mmToPx;
-            const positionPx = loch.position * this.mmToPx;
+            const positionPx = (loch.positionFromTop || 2) * this.mmToPx; // Korrigiert: positionFromTop statt position
             
             const lochCenterX = rect.x + distancePx;
             // Position ist Abstand von oben (Standard 2mm)
@@ -5518,7 +5587,10 @@ class ProfilZeichner {
             this.drawDetailDrawingsToSVG(svgGroup, rect, detailStartY);
         }
         
-        // 11. Titelblock
+        // 11. Detail-Indikatoren (gestrichelte Kreise um Kerben/Löcher)
+        this.drawDetailIndicatorsToSVG(svgGroup, rect);
+        
+        // 12. Titelblock
         if (this.titleBlock && this.titleBlock.x != null) {
             this.drawTitleBlockToSVG(svgGroup);
         }
@@ -6612,6 +6684,90 @@ class ProfilZeichner {
             textHeight.setAttribute('dominant-baseline', 'middle');
             textHeight.textContent = `${loch.height}mm`;
             svgGroup.appendChild(textHeight);
+        }
+    }
+    
+    // Detail-Indikatoren als SVG (gestrichelte Kreise um Kerben/Löcher)
+    drawDetailIndicatorsToSVG(svgGroup, rect) {
+        if (!rect || (!this.kerben.length && !this.loecher.length)) return;
+        
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        // Gestrichelter Kreis um eine Kerbe (nur die erste) - nur bei Dreieck-Kerben
+        if (this.kerben.length > 0) {
+            const kerbe = this.kerben[0]; // Nur die erste Kerbe
+            
+            // Hole Kerben-Typ für neue Struktur
+            let type = 'triangle';
+            let widthPx, depthPx;
+            
+            if (kerbe.kerbenTypeId) {
+                const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                if (kerbenType) {
+                    type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+                    widthPx = kerbenType.width * this.mmToPx;
+                    depthPx = kerbenType.depth * this.mmToPx;
+                }
+            } else {
+                // Alte Struktur
+                type = kerbe.type || 'triangle';
+                widthPx = (kerbe.width || 6) * this.mmToPx;
+                depthPx = (kerbe.depth || 4) * this.mmToPx;
+            }
+            
+            // Nur Detail-Indikator bei Dreieck-Kerben (nicht bei Strich-Markierung)
+            if (type === 'triangle') {
+                const distancePx = kerbe.distance * this.mmToPx;
+                
+                let kerbeCenterX, kerbeCenterY;
+                
+                if (kerbe.position === 'oben') {
+                    kerbeCenterX = rect.x + distancePx;
+                    kerbeCenterY = rect.y;
+                } else {
+                    kerbeCenterX = rect.x + distancePx;
+                    kerbeCenterY = rect.y + rect.height;
+                }
+                
+                // Kreis um Kerbe zeichnen - Radius basierend auf Kerben-Größe
+                const radius = Math.max(widthPx, depthPx) * 1.4; // 40% größer als Kerbe
+                
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', kerbeCenterX.toString());
+                circle.setAttribute('cy', kerbeCenterY.toString());
+                circle.setAttribute('r', radius.toString());
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', '#666');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('stroke-dasharray', '5,5'); // Gestrichelt
+                svgGroup.appendChild(circle);
+            }
+        }
+        
+        // Gestrichelter Kreis um ein Loch (nur das erste)
+        if (this.loecher.length > 0) {
+            const loch = this.loecher[0]; // Nur das erste Loch
+            const distancePx = loch.distance * this.mmToPx;
+            const widthPx = loch.width * this.mmToPx;
+            const heightPx = loch.height * this.mmToPx;
+            const positionPx = (loch.positionFromTop || 2) * this.mmToPx;
+            
+            const lochCenterX = rect.x + distancePx;
+            // Position ist Abstand von oben (Standard 2mm)
+            const lochCenterY = rect.y + positionPx + (heightPx / 2);
+            
+            // Kreis um Loch zeichnen - Radius basierend auf Loch-Größe
+            const radius = Math.max(widthPx, heightPx) * 1.4; // 40% größer als Loch
+            
+            const circle = document.createElementNS(ns, 'circle');
+            circle.setAttribute('cx', lochCenterX.toString());
+            circle.setAttribute('cy', lochCenterY.toString());
+            circle.setAttribute('r', radius.toString());
+            circle.setAttribute('fill', 'none');
+            circle.setAttribute('stroke', '#666');
+            circle.setAttribute('stroke-width', '1');
+            circle.setAttribute('stroke-dasharray', '5,5'); // Gestrichelt
+            svgGroup.appendChild(circle);
         }
     }
     
