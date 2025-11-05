@@ -4,627 +4,740 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ProfilZeichner</title>
-    <link rel="stylesheet" href="style.min.css">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <div class="container">
-        <!-- Explorer Panel -->
+<body class="bg-gray-50 font-sans h-screen overflow-hidden">
+    <div class="flex h-screen">
         <!-- Hauptbereich -->
-        <div class="main-content">
+        <div class="flex-1 flex flex-col">
             <!-- Menüleiste -->
-            <div class="menu-bar">
+            <div class="bg-white px-5 py-4 flex items-center gap-5 shadow-md border-b border-gray-200">
             <!-- Logo -->
-            <div class="logo">
-                <!-- WebP mit PNG-Fallback für bessere Performance -->
-                <img src="Logo.png" alt="Profil Zeichner" class="logo-image">
+                <div class="flex items-center mr-4">
+                    <svg class="h-20 w-auto max-w-[400px]" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Hintergrund -->
+                        <rect width="200" height="60" fill="#f8f9fa" rx="4"/>
+                        
+                        <!-- Profil-Illustration -->
+                        <rect x="20" y="20" width="60" height="20" fill="none" stroke="#333" stroke-width="2"/>
+                        <rect x="22" y="22" width="56" height="16" fill="#e0e0e0"/>
+                        
+                        <!-- Bemaßungspfeile -->
+                        <line x1="20" y1="45" x2="20" y2="50" stroke="#0066cc" stroke-width="1.5"/>
+                        <line x1="80" y1="45" x2="80" y2="50" stroke="#0066cc" stroke-width="1.5"/>
+                        <line x1="20" y1="47.5" x2="80" y2="47.5" stroke="#0066cc" stroke-width="1.5"/>
+                        <path d="M 20 47.5 L 24 45 L 24 50 Z" fill="#0066cc"/>
+                        <path d="M 80 47.5 L 76 45 L 76 50 Z" fill="#0066cc"/>
+                        
+                        <!-- Text -->
+                        <text x="100" y="35" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#333">Profil</text>
+                        <text x="100" y="50" font-family="Arial, sans-serif" font-size="14" fill="#666">Zeichner</text>
+                    </svg>
+                </div>
+                
+                <div class="flex items-center gap-2">
+                    <label for="width-input" class="font-semibold text-gray-700 text-sm">Breite:</label>
+                    <input type="number" id="width-input" placeholder="Breite eingeben" min="1" value="100" class="px-3 py-1.5 border-2 border-gray-200 rounded-lg text-sm w-24 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors">
+                    <span class="text-gray-600 text-sm">mm</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <label for="height-input" class="font-semibold text-gray-700 text-sm">Höhe:</label>
+                    <input type="number" id="height-input" placeholder="Höhe eingeben" min="1" value="20" class="px-3 py-1.5 border-2 border-gray-200 rounded-lg text-sm w-24 bg-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-colors">
+                    <span class="text-gray-600 text-sm">mm</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="draw-button" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold" title="Profil zeichnen - Rechteck mit angegebenen Maßen erstellen">✓</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="clear-button" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-semibold" title="Alles löschen - Zeichnung zurücksetzen">✕</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="undo-button" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold" title="Rückgängig - Letzte Aktion rückgängig machen">↶</button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="redo-button" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold" title="Wiederholen - Letzte Aktion wiederholen">↷</button>
+                </div>
+                
+                <div class="flex items-center gap-2 ml-auto">
+                    <label for="zoom-slider" class="font-semibold text-gray-700 text-sm">Zoom:</label>
+                    <input type="range" id="zoom-slider" min="10" max="500" value="100" step="5" class="w-40">
+                    <span id="zoom-level" class="ml-2 min-w-[50px] inline-block text-sm text-gray-700">100%</span>
+                </div>
             </div>
             
-            <div class="menu-section">
-                <label for="width-input">Breite:</label>
-                <input type="number" id="width-input" placeholder="Breite eingeben" min="1" value="100">
-                <span class="unit">mm</span>
+            <!-- Canvas Container -->
+            <div class="flex-1 relative bg-white overflow-hidden">
+                <canvas id="main-canvas" class="absolute inset-0"></canvas>
+                
+                <!-- Canvas Overlay Buttons (rechts) -->
+                <div class="absolute top-4 right-4 flex flex-col gap-2 z-10">
+                    <button id="bohne-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Bohne hinzufügen - Ein rundes Element oben am Profil">●</button>
+                    <button id="cutout-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Cut out - Profileck abtrennen">└</button>
+                    <button id="kerbe-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Kerbe hinzufügen - Ein dreieckiger Einschnitt">◢</button>
+                    <button id="nahtlinie-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Nahtlinie einzeichnen - Gestrichelte Linie">━</button>
+                    <button id="loch-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Loch hinzufügen - Ein rundes oder ovales Loch">○</button>
+                    <button id="ausschnitt-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Ausschnitt erstellen - Ein rechteckiger Ausschnitt">▢</button>
+                    <button id="crimping-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
+                    <button id="bemaßung-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
+                    <button id="text-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg font-bold" title="Text hinzufügen - Textfeld auf die Zeichnung">T</button>
+                    <button id="bild-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Bild einfügen - Bild vom Rechner auf das Canvas laden">🖼️</button>
+                    <button id="database-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Profil-Datenbank öffnen - Profile verwalten">📁</button>
+                    <button id="zeichnungsdb-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Zeichnungen öffnen - Fertige Zeichnungen verwalten">📋</button>
+                    <button id="titleblock-button" class="w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg" title="Titelblock anzeigen/bearbeiten">🏷️</button>
+                </div>
+                
+                <!-- Untere Button-Leiste -->
+                <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-lg shadow-lg border border-gray-200 z-10">
+                    <button id="auto-zoom-button" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium" title="Automatisch zoomen - Gesamte Zeichnung anzeigen">🔍</button>
+                    <button id="pan-button" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium" title="Alles verschieben - Per Mausklick und Drag">✋</button>
+                    <button id="pdf-button" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium" title="Als PDF exportieren - Speichern als PDF-Datei">📄</button>
+                    <button id="svg-button" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium" title="Als SVG exportieren - Vektorgrafik exportieren">SVG</button>
+                    <button id="dxf-button" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium" title="Als DXF exportieren - CAD-Geometrie exportieren">DXF</button>
+                    <button id="einstellungen-button" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium" title="Einstellungen - Bemaßungen und Titelblock anpassen">⚙️</button>
+                </div>
             </div>
-            <div class="menu-section">
-                <label for="height-input">Höhe:</label>
-                <input type="number" id="height-input" placeholder="Höhe eingeben" min="1" value="20">
-                <span class="unit">mm</span>
-            </div>
-            <div class="menu-section">
-                <button id="draw-button" class="icon-button draw-button" title="Profil zeichnen - Rechteck mit angegebenen Maßen erstellen">✓</button>
-            </div>
-            <div class="menu-section">
-                <button id="clear-button" class="icon-button clear-button" title="Alles löschen - Zeichnung zurücksetzen">✕</button>
-            </div>
-            <div class="menu-section">
-                <button id="undo-button" class="icon-button" style="background: #6c757d;" title="Rückgängig - Letzte Aktion rückgängig machen">↶</button>
-            </div>
-            <div class="menu-section">
-                <button id="redo-button" class="icon-button" style="background: #6c757d;" title="Wiederholen - Letzte Aktion wiederholen">↷</button>
-            </div>
-            
-            <div class="menu-section zoom-info">
-                <label for="zoom-slider" style="margin-right: 8px;">Zoom:</label>
-                <input type="range" id="zoom-slider" min="10" max="500" value="100" step="5" style="width: 150px;">
-                <span id="zoom-level" style="margin-left: 8px; min-width: 50px; display: inline-block;">100%</span>
-            </div>
-        </div>
-
-        <!-- Canvas Container -->
-        <div class="canvas-container">
-            <canvas id="main-canvas"></canvas>
-            
-            <!-- Canvas Overlay Buttons (rechts) -->
-            <div class="canvas-overlay">
-                <button id="bohne-button" class="icon-button profile-button" title="Bohne hinzufügen - Ein rundes Element oben am Profil">●</button>
-                <button id="cutout-button" class="icon-button profile-button" title="Cut out - Profileck abtrennen">└</button>
-                <button id="kerbe-button" class="icon-button profile-button" title="Kerbe hinzufügen - Ein dreieckiger Einschnitt">◢</button>
-                <button id="nahtlinie-button" class="icon-button profile-button" title="Nahtlinie einzeichnen - Gestrichelte Linie">━</button>
-                <button id="loch-button" class="icon-button profile-button" title="Loch hinzufügen - Ein rundes oder ovales Loch">○</button>
-                <button id="ausschnitt-button" class="icon-button profile-button" title="Ausschnitt erstellen - Ein rechteckiger Ausschnitt">▢</button>
-                <button id="crimping-button" class="icon-button profile-button" title="Crimping - Materialumklappung (noch nicht verfügbar)">◈</button>
-                <button id="bemaßung-button" class="icon-button profile-button" title="Bemaßung ein-/ausblenden - Technische Maßangaben">📏</button>
-                <button id="text-button" class="icon-button profile-button" title="Text hinzufügen - Textfeld auf die Zeichnung">T</button>
-                <button id="bild-button" class="icon-button profile-button" title="Bild einfügen - Bild vom Rechner auf das Canvas laden">🖼️</button>
-                <button id="database-button" class="icon-button profile-button" title="Profil-Datenbank öffnen - Profile verwalten">📁</button>
-                <button id="zeichnungsdb-button" class="icon-button profile-button" title="Zeichnungen öffnen - Fertige Zeichnungen verwalten">📋</button>
-                <button id="titleblock-button" class="icon-button profile-button" title="Titelblock anzeigen/bearbeiten">🏷️</button>
-            </div>
-            
-            <!-- Untere Button-Leiste -->
-            <div class="bottom-buttons">
-                <button id="auto-zoom-button" class="format-button" title="Automatisch zoomen - Gesamte Zeichnung anzeigen">🔍</button>
-                <button id="pan-button" class="format-button" title="Alles verschieben - Per Mausklick und Drag">✋</button>
-                <button id="pdf-button" class="format-button" title="Als PDF exportieren - Speichern als PDF-Datei">📄</button>
-                <button id="dxf-button" class="format-button" title="Als DXF exportieren - CAD-Geometrie exportieren">DXF</button>
-            </div>
-        </div>
         </div>
     </div>
 
     <!-- Titelblock Modal -->
-    <div id="titleblock-modal" class="modal">
-        <div class="modal-content" style="width: 520px;">
-            <div class="modal-header">
-                <h3>Titelblock</h3>
-                <button id="titleblock-modal-close" class="modal-close">&times;</button>
+    <div id="titleblock-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Titelblock</h3>
+                <button id="titleblock-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="grid-2">
-                    <div class="input-group">
-                        <label>Projekt</label>
-                        <input type="text" id="tb-project" placeholder="Projekt">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Projekt</label>
+                        <input type="text" id="tb-project" placeholder="Projekt" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Variante</label>
-                        <input type="text" id="tb-variant" placeholder="Variante">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Variante</label>
+                        <input type="text" id="tb-variant" placeholder="Variante" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Bezügenummer</label>
-                        <input type="text" id="tb-reference" placeholder="Bezügenummer">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Bezügenummer</label>
+                        <input type="text" id="tb-reference" placeholder="Bezügenummer" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Zeichnungsnummer</label>
-                        <input type="text" id="tb-zeichnungsnummer" placeholder="Zeichnungsnummer">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Zeichnungsnummer</label>
+                        <input type="text" id="tb-zeichnungsnummer" placeholder="Zeichnungsnummer" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Revision</label>
-                        <input type="text" id="tb-revision" placeholder="Revision">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Revision</label>
+                        <input type="text" id="tb-revision" placeholder="Revision" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>SPS Nummer</label>
-                        <input type="text" id="tb-spsnummer" placeholder="SPS Nummer">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">SPS Nummer</label>
+                        <input type="text" id="tb-spsnummer" placeholder="SPS Nummer" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Material</label>
-                        <input type="text" id="tb-material" placeholder="Material">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Material</label>
+                        <input type="text" id="tb-material" placeholder="Material" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Lieferantennummer</label>
-                        <input type="text" id="tb-supplier" placeholder="Lieferantennr.">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Lieferantennummer</label>
+                        <input type="text" id="tb-supplier" placeholder="Lieferantennr." class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="input-group">
-                        <label>Datum</label>
-                        <input type="date" id="tb-date">
+                    <div class="col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Datum</label>
+                        <input type="date" id="tb-date" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                 </div>
-                <div style="display:flex; gap:8px; margin-top:10px;">
-                    <button id="tb-fill-from-db" class="icon-btn" title="Aus DB übernehmen">↻</button>
-                    <button id="tb-save-to-db" class="icon-btn" title="In DB speichern">💾</button>
+                <div class="flex gap-2 mt-4">
+                    <button id="tb-fill-from-db" class="px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Aus DB übernehmen">↻</button>
+                    <button id="tb-save-to-db" class="px-4 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="In DB speichern">💾</button>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="titleblock-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="titleblock-confirm" class="btn-confirm" title="Übernehmen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="titleblock-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="titleblock-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Übernehmen">✓</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Email Confirmation Modal -->
+    <div id="email-confirmation-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">E-Mail vorbereitet</h3>
+                <button id="email-confirmation-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
+            </div>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <p class="mb-4">Ihre E-Mail wurde vorbereitet! SVG- und PDF-Dateien werden als Anhänge vorbereitet.</p>
+                <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                    <h4 class="font-semibold mb-2">Nächste Schritte:</h4>
+                    <ol class="list-decimal list-inside space-y-1 text-sm">
+                        <li>Klicken Sie auf "SVG & PDF herunterladen & E-Mail öffnen"</li>
+                        <li>SVG- und PDF-Dateien werden automatisch heruntergeladen</li>
+                        <li>Ihr E-Mail-Programm öffnet sich mit vorausgefülltem Text</li>
+                        <li>Fügen Sie beide Dateien (SVG + PDF) als Anhänge in die E-Mail ein</li>
+                        <li>Versenden Sie die E-Mail an den Dienstleister</li>
+                    </ol>
+                    <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                        <strong>Hinweis:</strong> Die Dateien werden in Ihren Download-Ordner gespeichert. Bitte fügen Sie sie manuell als Anhänge in die E-Mail ein.
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail-Text (Vorschau):</label>
+                    <textarea id="email-text-preview" readonly class="w-full h-48 px-3 py-2 border border-gray-300 rounded-lg font-mono text-xs resize-y"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">E-Mail-Adresse des Dienstleisters:</label>
+                    <input type="email" id="freelancer-email" placeholder="freelancer@example.com" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="email-confirmation-close2" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Schließen">✕</button>
+                <!-- Button für Order-Funktion (Version 2.0) - aktuell deaktiviert -->
+                <button class="px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50" title="Wird in Version 2.0 verfügbar sein" disabled>
+                    📧 SVG & PDF herunterladen & E-Mail öffnen
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Einstellungen Modal -->
+    <div id="einstellungen-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Einstellungen</h3>
+                <button id="einstellungen-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
+            </div>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Textgröße für Bemaßungen (px)</label>
+                        <input type="number" id="settings-dimension-font-size" min="8" max="24" step="1" placeholder="12" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-xs text-gray-600 mt-1 block">Aktuell: <span id="settings-dimension-font-size-current">12px</span></span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Titelblock - Breite (mm)</label>
+                        <input type="number" id="settings-titleblock-width" min="60" max="150" step="5" placeholder="90" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-xs text-gray-600 mt-1 block">Aktuell: <span id="settings-titleblock-width-current">90mm</span></span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Titelblock - Höhe (mm)</label>
+                        <input type="number" id="settings-titleblock-height" min="30" max="80" step="5" placeholder="40" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-xs text-gray-600 mt-1 block">Aktuell: <span id="settings-titleblock-height-current">40mm</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="einstellungen-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="einstellungen-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Übernehmen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Zeichnungen Modal -->
-    <div id="zeichnungsdb-modal" class="modal">
-        <div class="modal-content" style="width: 90%; max-width: 1200px;">
-            <div class="modal-header">
-                <h3>Zeichnungen</h3>
-                <div class="modal-controls">
-                    <button id="zeichnungsdb-modal-minimize" class="modal-minimize" title="Minimieren">−</button>
-                    <button id="zeichnungsdb-modal-maximize" class="modal-maximize" title="Maximieren">□</button>
-                    <button id="zeichnungsdb-modal-close" class="modal-close" title="Schließen">&times;</button>
+    <div id="zeichnungsdb-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Zeichnungen</h3>
+                <div class="flex gap-2">
+                    <button id="zeichnungsdb-modal-minimize" class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm" title="Minimieren">−</button>
+                    <button id="zeichnungsdb-modal-maximize" class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm" title="Maximieren">□</button>
+                    <button id="zeichnungsdb-modal-close" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm" title="Schließen">&times;</button>
                 </div>
             </div>
-            <div class="modal-body">
-                <div class="zeichnungsdb-toolbar">
-                    <div class="zeichnungsdb-left">
-                        <button id="zeichnungsdb-add-project" class="icon-btn" title="Projekt hinzufügen" aria-label="Projekt hinzufügen">➕</button>
-                        <button id="zeichnungsdb-add-variant" class="icon-btn" title="Variante hinzufügen" aria-label="Variante hinzufügen">➕</button>
-                        <button id="zeichnungsdb-save-current" class="icon-btn" title="Aktuelle Zeichnung speichern" aria-label="Speichern">💾</button>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="flex justify-between items-center mb-4 gap-2">
+                    <div class="flex gap-2">
+                        <button id="zeichnungsdb-add-project" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Projekt hinzufügen" aria-label="Projekt hinzufügen">➕</button>
+                        <button id="zeichnungsdb-add-variant" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Variante hinzufügen" aria-label="Variante hinzufügen">➕</button>
+                        <button id="zeichnungsdb-save-current" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Aktuelle Zeichnung speichern" aria-label="Speichern">💾</button>
                     </div>
-                    <div class="zeichnungsdb-right">
-                        <button id="zeichnungsdb-open-file" class="icon-btn" title="Zeichnungen laden" aria-label="Öffnen">📂</button>
-                        <button id="zeichnungsdb-save-file" class="icon-btn" title="Zeichnungen speichern" aria-label="Speichern">💾</button>
-                        <input type="file" id="zeichnungsdb-file-input" accept=".json" style="display:none;" />
+                    <div class="flex gap-2">
+                        <button id="zeichnungsdb-open-file" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Zeichnungen laden" aria-label="Öffnen">📂</button>
+                        <button id="zeichnungsdb-save-file" class="px-3 py-2 bg-gray-100 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors" title="Zeichnungen speichern" aria-label="Speichern">💾</button>
+                        <input type="file" id="zeichnungsdb-file-input" accept=".json" class="hidden" />
                     </div>
                 </div>
                 <!-- Datei-Info für Zeichnungen-Datenbank -->
-                <div class="database-file-info">
+                <div class="px-3 py-2 bg-gray-50 rounded mb-4 text-sm text-gray-600">
                     <span id="zeichnungsdb-file-info">Keine Datei geladen</span>
                 </div>
-                <div class="zeichnungsdb-layout">
-                    <div class="zeichnungsdb-col zeichnungsdb-col-projects">
-                        <div class="col-title">Projekte</div>
-                        <ul id="zeichnungsdb-project-list" class="list"></ul>
+                <div class="grid grid-cols-[200px_200px_200px_1fr] gap-3 min-h-[420px]">
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex flex-col">
+                        <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Projekte</div>
+                        <ul id="zeichnungsdb-project-list" class="flex-1 overflow-y-auto space-y-1"></ul>
                     </div>
-                    <div class="zeichnungsdb-col zeichnungsdb-col-variants">
-                        <div class="col-title">Varianten</div>
-                        <ul id="zeichnungsdb-variant-list" class="list"></ul>
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex flex-col">
+                        <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Varianten</div>
+                        <ul id="zeichnungsdb-variant-list" class="flex-1 overflow-y-auto space-y-1"></ul>
                     </div>
-                    <div class="zeichnungsdb-col zeichnungsdb-col-references">
-                        <div class="col-title">Bezügenummern</div>
-                        <div class="ref-row">
-                            <input type="text" id="zeichnungsdb-ref-input" placeholder="Bezügenummer..." class="ref-input">
-                            <button id="zeichnungsdb-add-ref" class="icon-btn" title="Bezügenummer hinzufügen" aria-label="Bezügenummer hinzufügen">➕</button>
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex flex-col">
+                        <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Bezügenummern</div>
+                        <div class="flex gap-1 mb-2">
+                            <input type="text" id="zeichnungsdb-ref-input" placeholder="Bezügenummer..." class="flex-1 px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="zeichnungsdb-add-ref" class="px-2 py-1 bg-gray-100 border border-gray-300 text-gray-700 rounded hover:bg-gray-200 transition-colors text-xs" title="Bezügenummer hinzufügen" aria-label="Bezügenummer hinzufügen">➕</button>
                         </div>
-                        <ul id="zeichnungsdb-ref-list" class="list"></ul>
+                        <ul id="zeichnungsdb-ref-list" class="flex-1 overflow-y-auto space-y-1"></ul>
                     </div>
-                    <div class="zeichnungsdb-col zeichnungsdb-col-profiles">
-                        <div class="col-title">Profile</div>
-                        <div id="zeichnungsdb-profile-grid" class="profile-grid"></div>
+                    <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 flex flex-col">
+                        <div class="text-xs font-semibold text-gray-700 uppercase mb-2">Profile</div>
+                        <div id="zeichnungsdb-profile-grid" class="flex-1 overflow-y-auto grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2"></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="zeichnungsdb-close" class="btn-cancel" title="Schließen">✕</button>
-            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="zeichnungsdb-close" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Schließen">✕</button>
+        </div>
         </div>
     </div>
 
     <!-- Bohne Modal -->
-    <div id="bohne-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Bohne hinzufügen</h3>
-                <button id="bohne-modal-close" class="modal-close">&times;</button>
+    <div id="bohne-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Bohne hinzufügen</h3>
+                <button id="bohne-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label for="bohne-height">Höhe der Bohne:</label>
-                    <input type="number" id="bohne-height" placeholder="Höhe eingeben" min="1" value="4">
-                    <span class="unit">mm</span>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-4">
+                    <label for="bohne-height" class="block text-sm font-medium text-gray-700 mb-2">Höhe der Bohne:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="bohne-height" placeholder="Höhe eingeben" min="1" value="4" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-600">mm</span>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="bohne-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="bohne-remove" class="btn-remove" title="Entfernen">🗑️</button>
-                <button id="bohne-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="bohne-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="bohne-remove" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" title="Entfernen">🗑️</button>
+                <button id="bohne-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Cut out Modal -->
-    <div id="cutout-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Cut out hinzufügen</h3>
-                <button id="cutout-modal-close" class="modal-close">&times;</button>
+    <div id="cutout-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Cut out hinzufügen</h3>
+                <button id="cutout-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label for="cutout-width">Breite:</label>
-                    <input type="number" id="cutout-width" placeholder="Breite eingeben" min="1" value="20">
-                    <span class="unit">mm</span>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-4">
+                    <label for="cutout-width" class="block text-sm font-medium text-gray-700 mb-2">Breite:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="cutout-width" placeholder="Breite eingeben" min="1" value="20" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-600">mm</span>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="cutout-height">Höhe:</label>
-                    <input type="number" id="cutout-height" placeholder="Höhe eingeben" min="1" value="10">
-                    <span class="unit">mm</span>
+                <div class="mb-4">
+                    <label for="cutout-height" class="block text-sm font-medium text-gray-700 mb-2">Höhe:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="cutout-height" placeholder="Höhe eingeben" min="1" value="10" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-600">mm</span>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="cutout-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="cutout-remove" class="btn-remove" title="Entfernen">🗑️</button>
-                <button id="cutout-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="cutout-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="cutout-remove" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" title="Entfernen">🗑️</button>
+                <button id="cutout-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Kerbe Modal -->
-    <div id="kerbe-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Kerben hinzufügen</h3>
-                <button id="kerbe-modal-close" class="modal-close">&times;</button>
+    <div id="kerbe-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Kerben hinzufügen</h3>
+                <button id="kerbe-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="kerbe-settings" style="margin-bottom: 15px;">
-                    <button id="open-kerben-types-modal-btn" class="add-kerbe-btn" style="width: auto; padding: 8px 16px; margin-bottom: 10px;">⚙️ Kerben-Typen verwalten</button>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-4">
+                    <button id="open-kerben-types-modal-btn" class="w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors mb-2">⚙️ Kerben-Typen verwalten</button>
                 </div>
                 
-                <div class="kerbe-table-container">
-                    <table id="kerbe-table" class="kerbe-table">
-                        <thead>
-                            <tr>
-                                <th>Kerben-Typ</th>
-                                <th>Abstand (mm)</th>
-                                <th>Position</th>
-                                <th>Aktion</th>
+                <div class="border border-gray-200 rounded-lg overflow-hidden mb-4">
+                    <div class="max-h-96 overflow-y-auto">
+                        <table id="kerbe-table" class="w-full border-collapse">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Kerben-Typ</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Abstand (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Position</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Aktion</th>
                             </tr>
                         </thead>
-                        <tbody id="kerbe-tbody">
+                            <tbody id="kerbe-tbody" class="bg-white">
                             <!-- Kerben werden hier dynamisch hinzugefügt -->
                         </tbody>
                     </table>
-                    <button id="add-kerbe-btn" class="add-kerbe-btn">+ Kerbe hinzufügen</button>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-t border-gray-200">
+                        <button id="add-kerbe-btn" class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">+ Kerbe hinzufügen</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="kerbe-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="kerbe-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="kerbe-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="kerbe-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Kerben-Typen Verwaltungs-Modal -->
-    <div id="kerben-types-modal" class="modal">
-        <div class="modal-content" style="width: 700px;">
-            <div class="modal-header">
-                <h3>Kerben-Typen verwalten</h3>
-                <button id="kerben-types-modal-close" class="modal-close">&times;</button>
+    <div id="kerben-types-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Kerben-Typen verwalten</h3>
+                <button id="kerben-types-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="kerben-types-container" style="margin-bottom: 20px;">
-                    <div id="kerben-types-list" style="margin-bottom: 10px;">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-5">
+                    <div id="kerben-types-list" class="mb-3">
                         <!-- Kerben-Typen werden hier dynamisch hinzugefügt -->
                     </div>
-                    <button id="add-kerben-type-btn" class="add-kerbe-btn" style="width: auto; padding: 8px 16px;">+ Neuer Kerben-Typ</button>
-                    <div style="margin-top: 10px; font-size: 12px; color: #666;">Maximal 3 Kerben-Typen möglich</div>
+                    <button id="add-kerben-type-btn" class="w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">+ Neuer Kerben-Typ</button>
+                    <div class="mt-2 text-xs text-gray-600">Maximal 3 Kerben-Typen möglich</div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="kerben-types-cancel" class="btn-cancel" title="Schließen">✕</button>
-                <button id="kerben-types-confirm" class="btn-confirm" title="Übernehmen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="kerben-types-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Schließen">✕</button>
+                <button id="kerben-types-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Übernehmen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Nahtlinie Modal -->
-    <div id="nahtlinie-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Nahtlinie hinzufügen</h3>
-                <button id="nahtlinie-modal-close" class="modal-close">&times;</button>
+    <div id="nahtlinie-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Nahtlinie hinzufügen</h3>
+                <button id="nahtlinie-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label for="nahtlinie-distance">Abstand von unten:</label>
-                    <input type="number" id="nahtlinie-distance" placeholder="Abstand eingeben" min="1" step="0.1" value="8">
-                    <span class="unit">mm</span>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-4">
+                    <label for="nahtlinie-distance" class="block text-sm font-medium text-gray-700 mb-2">Abstand von unten:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="nahtlinie-distance" placeholder="Abstand eingeben" min="1" step="0.1" value="8" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-600">mm</span>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="nahtlinie-type">Linientyp:</label>
-                    <select id="nahtlinie-type">
+                <div class="mb-4">
+                    <label for="nahtlinie-type" class="block text-sm font-medium text-gray-700 mb-2">Linientyp:</label>
+                    <select id="nahtlinie-type" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="dashed">Gestrichelt</option>
                         <option value="holes">Mit Löchern (1mm)</option>
                     </select>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="nahtlinie-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="nahtlinie-remove" class="btn-remove" title="Entfernen">🗑️</button>
-                <button id="nahtlinie-confirm" class="btn-confirm" title="Bestätigen">✓</button>
-            </div>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="nahtlinie-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="nahtlinie-remove" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" title="Entfernen">🗑️</button>
+                <button id="nahtlinie-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
         </div>
     </div>
     </div>
 
     <!-- Loch Modal -->
-    <div id="loch-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Löcher hinzufügen</h3>
-                <button id="loch-modal-close" class="modal-close">&times;</button>
+    <div id="loch-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Löcher hinzufügen</h3>
+                <button id="loch-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="loch-settings">
-                    <div class="input-group">
-                        <label for="loch-width">Breite:</label>
-                        <input type="number" id="loch-width" placeholder="Breite eingeben" min="1" step="0.1" value="8">
-                        <span class="unit">mm</span>
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-6 space-y-4">
+                    <div>
+                        <label for="loch-width" class="block text-sm font-medium text-gray-700 mb-2">Breite:</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="loch-width" placeholder="Breite eingeben" min="1" step="0.1" value="8" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">mm</span>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label for="loch-height">Höhe:</label>
-                        <input type="number" id="loch-height" placeholder="Höhe eingeben" min="1" step="0.1" value="4">
-                        <span class="unit">mm</span>
+                    <div>
+                        <label for="loch-height" class="block text-sm font-medium text-gray-700 mb-2">Höhe:</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="loch-height" placeholder="Höhe eingeben" min="1" step="0.1" value="4" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">mm</span>
+                        </div>
                     </div>
-                    <div class="input-group">
-                        <label for="loch-position">Position von oben:</label>
-                        <input type="number" id="loch-position" placeholder="Abstand von oben" min="0" step="0.1" value="2">
-                        <span class="unit">mm</span>
+                    <div>
+                        <label for="loch-position" class="block text-sm font-medium text-gray-700 mb-2">Position von oben:</label>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="loch-position" placeholder="Abstand von oben" min="0" step="0.1" value="2" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <span class="text-gray-600">mm</span>
+                        </div>
                     </div>
-                    <div class="input-group" id="loch-kerben-checkbox-group" style="display: none;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="loch-use-kerben-positions" style="width: auto;">
-                            <span>Positionen von Kerben übernehmen</span>
+                    <div id="loch-kerben-checkbox-group" class="hidden">
+                        <label class="flex items-center gap-2">
+                            <input type="checkbox" id="loch-use-kerben-positions" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">Positionen von Kerben übernehmen</span>
                         </label>
                     </div>
                 </div>
                 
-                <div class="loch-table-container">
-                    <table id="loch-table" class="loch-table">
-                        <thead>
-                            <tr>
-                                <th>Abstand von links (mm)</th>
-                                <th>Aktion</th>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="max-h-96 overflow-y-auto">
+                        <table id="loch-table" class="w-full border-collapse">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Abstand von links (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Aktion</th>
                             </tr>
                         </thead>
-                        <tbody id="loch-tbody">
+                            <tbody id="loch-tbody" class="bg-white">
                         </tbody>
                     </table>
-                    <button id="add-loch-btn" class="add-loch-btn">Loch hinzufügen</button>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-t border-gray-200">
+                        <button id="add-loch-btn" class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">Loch hinzufügen</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="loch-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="loch-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="loch-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="loch-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
     
     <!-- Text Modal -->
-    <div id="text-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Text hinzufügen</h3>
-                <button id="text-modal-close" class="modal-close">&times;</button>
+    <div id="text-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Text hinzufügen</h3>
+                <button id="text-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <div class="input-group">
-                    <label for="text-content">Text:</label>
-                    <input type="text" id="text-content" placeholder="Text eingeben" maxlength="50">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <div class="mb-4">
+                    <label for="text-content" class="block text-sm font-medium text-gray-700 mb-2">Text:</label>
+                    <input type="text" id="text-content" placeholder="Text eingeben" maxlength="50" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
-                <div class="input-group">
-                    <label for="text-size">Schriftgröße:</label>
-                    <input type="number" id="text-size" placeholder="Schriftgröße" min="8" max="48" value="16">
-                    <span class="unit">px</span>
+                <div class="mb-4">
+                    <label for="text-size" class="block text-sm font-medium text-gray-700 mb-2">Schriftgröße:</label>
+                    <div class="flex items-center gap-2">
+                        <input type="number" id="text-size" placeholder="Schriftgröße" min="8" max="48" value="16" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <span class="text-gray-600">px</span>
+                </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="text-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="text-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="text-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="text-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Ausschnitt Modal -->
-    <div id="ausschnitt-modal" class="modal">
-        <div class="modal-content" style="width: 700px;">
-            <div class="modal-header">
-                <h3>Ausschnitt hinzufügen</h3>
-                <button id="ausschnitt-modal-close" class="modal-close">&times;</button>
+    <div id="ausschnitt-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Ausschnitt hinzufügen</h3>
+                <button id="ausschnitt-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <p class="mb-4 text-gray-600 text-sm">
                     Fügen Sie Ausschnitte hinzu, die das Profil durchschneiden. Position = Abstand vom linken Rand, 
                     Länge = Breite des Ausschnitts, Höhe = Tiefe des Ausschnitts.
                 </p>
-                <div class="table-container">
-                    <table id="ausschnitt-table">
-                        <thead>
-                            <tr>
-                                <th>Position (mm)</th>
-                                <th>Länge (mm)</th>
-                                <th>Höhe (mm)</th>
-                                <th>Position</th>
-                                <th>Aktion</th>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="max-h-96 overflow-y-auto">
+                        <table id="ausschnitt-table" class="w-full border-collapse">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Position (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Länge (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Höhe (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Position</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Aktion</th>
                             </tr>
                         </thead>
-                        <tbody id="ausschnitt-tbody">
-                            <tr>
-                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
-                                <td>
-                                    <select class="ausschnitt-position-select">
+                            <tbody id="ausschnitt-tbody" class="bg-white">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-height-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3">
+                                        <select class="ausschnitt-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="oben">Oben</option>
                                         <option value="unten">Unten</option>
                                     </select>
                                 </td>
-                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeAusschnittRow(this)">✕</button></td>
                             </tr>
-                            <tr>
-                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
-                                <td>
-                                    <select class="ausschnitt-position-select">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-height-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3">
+                                        <select class="ausschnitt-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="oben">Oben</option>
                                         <option value="unten">Unten</option>
                                     </select>
                                 </td>
-                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeAusschnittRow(this)">✕</button></td>
                             </tr>
-                            <tr>
-                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
-                                <td>
-                                    <select class="ausschnitt-position-select">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-height-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3">
+                                        <select class="ausschnitt-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="oben">Oben</option>
                                         <option value="unten">Unten</option>
                                     </select>
                                 </td>
-                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeAusschnittRow(this)">✕</button></td>
                             </tr>
-                            <tr>
-                                <td><input type="number" class="ausschnitt-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-length-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="ausschnitt-height-input" value="0" step="0.1"></td>
-                                <td>
-                                    <select class="ausschnitt-position-select">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="ausschnitt-height-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3">
+                                        <select class="ausschnitt-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                                         <option value="oben">Oben</option>
                                         <option value="unten">Unten</option>
                                     </select>
                                 </td>
-                                <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <button id="add-ausschnitt-row" class="btn-add-row-small">+</button>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeAusschnittRow(this)">✕</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-t border-gray-200">
+                        <button id="add-ausschnitt-row" class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">+</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="ausschnitt-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="ausschnitt-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="ausschnitt-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="ausschnitt-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Crimping Modal -->
-    <div id="crimping-modal" class="modal">
-        <div class="modal-content" style="width: 700px;">
-            <div class="modal-header">
-                <h3>Crimping hinzufügen</h3>
-                <button id="crimping-modal-close" class="modal-close">&times;</button>
+    <div id="crimping-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Crimping hinzufügen</h3>
+                <button id="crimping-modal-close" class="bg-red-500 text-white border-none w-8 h-8 rounded flex items-center justify-center font-bold hover:bg-red-600 transition-colors">&times;</button>
             </div>
-            <div class="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
+                <p class="mb-4 text-gray-600 text-sm">
                     Fügen Sie Crimping-Bereiche hinzu, die in der Bohne platziert werden. Position = Abstand vom linken Rand der Bohne, 
                     Länge = Breite des Crimping-Bereichs. Die Höhe entspricht automatisch der Höhe der Bohne.
                 </p>
-                <div id="crimping-no-bohne-warning" style="display: none; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; margin-bottom: 15px; color: #856404;">
+                <div id="crimping-no-bohne-warning" class="hidden p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-4 text-yellow-800">
                     ⚠️ Es ist keine Bohne vorhanden. Bitte erstellen Sie zuerst eine Bohne, bevor Sie Crimping hinzufügen können.
                 </div>
-                <div class="table-container">
-                    <table id="crimping-table">
-                        <thead>
-                            <tr>
-                                <th>Position (mm)</th>
-                                <th>Länge (mm)</th>
-                                <th>Aktion</th>
-                            </tr>
-                        </thead>
-                        <tbody id="crimping-tbody">
-                            <tr>
-                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
-                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
-                            </tr>
-                            <tr>
-                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
-                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
-                            </tr>
-                            <tr>
-                                <td><input type="number" class="crimping-position-input" value="0" step="0.1"></td>
-                                <td><input type="number" class="crimping-length-input" value="0" step="0.1"></td>
-                                <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+                <div class="border border-gray-200 rounded-lg overflow-hidden">
+                    <div class="max-h-96 overflow-y-auto">
+                        <table id="crimping-table" class="w-full border-collapse">
+                            <thead class="bg-gray-50 sticky top-0">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Position (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Länge (mm)</th>
+                                    <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700 border-b border-gray-200">Aktion</th>
+                                </tr>
+                            </thead>
+                            <tbody id="crimping-tbody" class="bg-white">
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="crimping-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="crimping-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeCrimpingRow(this)">✕</button></td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="crimping-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="crimping-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeCrimpingRow(this)">✕</button></td>
+                                </tr>
+                                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                    <td class="px-4 py-3"><input type="number" class="crimping-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><input type="number" class="crimping-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="0" step="0.1"></td>
+                                    <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeCrimpingRow(this)">✕</button></td>
                             </tr>
                         </tbody>
                     </table>
-                    <button id="add-crimping-row" class="btn-add-row-small">+</button>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-t border-gray-200">
+                        <button id="add-crimping-row" class="w-full px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">+</button>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="crimping-cancel" class="btn-cancel" title="Abbrechen">✕</button>
-                <button id="crimping-confirm" class="btn-confirm" title="Bestätigen">✓</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="crimping-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Abbrechen">✕</button>
+                <button id="crimping-confirm" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Bestätigen">✓</button>
             </div>
         </div>
     </div>
 
     <!-- Profil-Datenbank Modal -->
-    <div id="database-modal" class="modal">
-        <div class="modal-content" style="width: 90%; max-width: 1200px;">
-            <div class="modal-header">
-                <h3>Profil-Datenbank</h3>
-                <div class="modal-controls">
-                    <button id="database-modal-minimize" class="modal-minimize" title="Minimieren">−</button>
-                    <button id="database-modal-maximize" class="modal-maximize" title="Maximieren">□</button>
-                    <button id="database-modal-close" class="modal-close" title="Schließen">&times;</button>
+    <div id="database-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl shadow-2xl w-[90%] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="bg-gray-100 px-6 py-5 flex justify-between items-center border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-800">Profil-Datenbank</h3>
+                <div class="flex gap-2">
+                    <button id="database-modal-minimize" class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm" title="Minimieren">−</button>
+                    <button id="database-modal-maximize" class="px-3 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors text-sm" title="Maximieren">□</button>
+                    <button id="database-modal-close" class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm" title="Schließen">&times;</button>
                 </div>
             </div>
-            <div class="modal-body">
+            <div class="modal-body flex-1 overflow-y-auto p-6">
                 <!-- Obere Button-Leiste -->
-                <div class="database-toolbar">
-                    <div class="database-toolbar-left">
-                        <input type="text" id="database-search" placeholder="SPS Nummer oder Lieferant suchen..." class="database-search-input">
-                        <button id="add-profile-btn" class="btn-confirm">+ Neues Profil</button>
-                        <button id="load-profile-btn" class="btn-confirm" style="background: #007bff;">Profil laden</button>
+                <div class="flex justify-between items-center mb-4 gap-2 flex-wrap">
+                    <div class="flex gap-2 items-center flex-wrap">
+                        <input type="text" id="database-search" placeholder="SPS Nummer oder Lieferant suchen..." class="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 flex-1 min-w-[200px]">
+                        <button id="add-profile-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors whitespace-nowrap">+ Neues Profil</button>
+                        <button id="load-profile-btn" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors whitespace-nowrap">Profil laden</button>
                     </div>
-                    <div class="database-toolbar-right">
-                        <button id="open-database-btn" class="btn-confirm" style="background: #28a745;">📂 Öffnen</button>
-                        <button id="save-database-btn" class="btn-confirm" style="background: #17a2b8;">💾 Speichern</button>
-                        <button id="clear-last-database-btn" class="btn-cancel" style="background: #dc3545;">🗑️ Löschen</button>
+                    <div class="flex gap-2 flex-wrap">
+                        <button id="open-database-btn" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors whitespace-nowrap">📂 Öffnen</button>
+                        <button id="save-database-btn" class="px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors whitespace-nowrap">💾 Speichern</button>
+                        <button id="clear-last-database-btn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors whitespace-nowrap">🗑️ Löschen</button>
                     </div>
                 </div>
                 
                 <!-- Datei-Info -->
-                <div class="database-file-info">
+                <div class="px-3 py-2 bg-gray-50 rounded mb-4 text-sm text-gray-600">
                     <span id="database-file-info">Keine Datei geladen</span>
                 </div>
                 
-                <input type="file" id="database-file-input" accept=".json" style="display: none;">
-                <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-                    <table id="database-table">
-                        <thead>
+                <input type="file" id="database-file-input" accept=".json" class="hidden">
+                <div class="border border-gray-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+                    <table id="database-table" class="w-full border-collapse text-xs bg-white">
+                        <thead class="bg-gray-200 sticky top-0">
                             <tr>
-                                <th>ID</th>
-                                <th>SPS Nummer</th>
-                                <th>Lieferant</th>
-                                <th>Lieferant Nummer</th>
-                                <th>Höhe (mm)</th>
-                                <th>Material</th>
-                                <th>Projekt</th>
-                                <th>Skizze</th>
-                                <th>Aktion</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">ID</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">SPS Nummer</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Lieferant</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Lieferant Nummer</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Höhe (mm)</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Material</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Projekt</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Skizze</th>
+                                <th class="px-2 py-2 text-left text-xs font-semibold text-gray-700 border-b-2 border-gray-300">Aktion</th>
                             </tr>
                         </thead>
-                        <tbody id="database-tbody">
+                        <tbody id="database-tbody" class="bg-white">
                             <!-- Wird dynamisch gefüllt -->
                         </tbody>
                     </table>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button id="database-save" class="btn-confirm" title="Speichern">💾</button>
-                <button id="database-cancel" class="btn-cancel" title="Schließen">✕</button>
+            <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                <button id="database-save" class="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors" title="Speichern">💾</button>
+                <button id="database-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors" title="Schließen">✕</button>
             </div>
         </div>
     </div>
 
     <!-- Versionshinweis (wird automatisch aktualisiert) -->
-    <div id="version-info" style="position: fixed; bottom: 10px; left: 10px; font-size: 12px; color: #666; z-index: 1000; background: rgba(255, 255, 255, 0.8); padding: 5px 10px; border-radius: 4px;">
-        Version 1.2.1
+    <div id="version-info" class="fixed bottom-2.5 left-2.5 text-xs text-gray-600 z-[1000] bg-white/80 backdrop-blur-sm px-2.5 py-1.5 rounded">
+        Version 1.2.2
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="script.js"></script>
-    
-    <!-- Auth Overlay -->
-    <div id="auth-overlay" class="auth-overlay" style="display:none;">
-        <div class="auth-card">
-            <div class="auth-title">Zugang geschützt</div>
-            <div class="auth-subtitle">Bitte Passwort eingeben, um das Tool zu benutzen.</div>
-            <input type="password" id="auth-password" class="auth-input" placeholder="Passwort" autocomplete="current-password">
-            <div id="auth-error" class="auth-error" style="display:none;">Falsches Passwort.</div>
-            <button id="auth-login-btn" class="auth-btn">Anmelden</button>
-        </div>
-    </div>
 </body>
 </html>
