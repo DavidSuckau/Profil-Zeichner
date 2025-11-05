@@ -1,7 +1,17 @@
 {
-  "version": "1.2.1",
-  "lastUpdate": "2025-01-01",
+  "version": "1.2.2",
+  "lastUpdate": "2025-11-04",
   "changelog": {
+    "1.2.2": {
+      "date": "2025-11-04",
+      "changes": [
+        "Profil-Datenbank Excel-ähnliches Design (kompakte Zeilenhöhen, bessere Struktur)",
+        "Skizzen werden nur noch als Icon angezeigt (nicht mehr als Miniaturbild)",
+        "Modal-Fix: Datenbank-Modal wird beim zweiten Öffnen korrekt angezeigt",
+        "E-Mail-Funktion: PDF und SVG Export als Anhänge"
+      ],
+      "type": "patch"
+    },
     "1.2.1": {
       "date": "2025-01-01",
       "changes": [
