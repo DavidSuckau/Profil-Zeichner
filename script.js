@@ -6,7 +6,7 @@ class ProfilZeichner {
                                                                                                                                             // ====================================================================
                                                                                                                                             this.CONFIG = {
                                                                                                                                                 // Versionsnummer - wird automatisch verwaltet
-                                                                                                                                                version: '1.2.1',
+                                                                                                                                                version: '1.2.2',
                                                                                                                                                 
                                                                                                                                                 // Umrechnung & Skalierung
                                                                                                                                                 defaultDpi: 96,
@@ -82,7 +82,11 @@ class ProfilZeichner {
                                                                                                                                         
                                                                                                                                         openZeichnungenDb() {
                                                                                                                                             if (!this.zdb) this.zdb = { version: '1.0', projects: [] };
-                                                                                                                                            this.zeichnungsdbModal.style.display = 'block';
+                                                                                                                                            // Stelle sicher, dass Modal im normalen Zustand ist
+                                                                                                                                            this.restoreZeichnungenDbSize();
+                                                                                                                                            if (this.zeichnungsdbModal) {
+                                                                                                                                                this.zeichnungsdbModal.classList.remove('hidden');
+                                                                                                                                            }
                                                                                                                                             if (this.zdbFileInfo) {
                                                                                                                                                 this.zdbFileInfo.textContent = this.zdbFileName ? this.zdbFileName : 'Keine Datei geladen';
                                                                                                                                             }
@@ -173,10 +177,10 @@ class ProfilZeichner {
                                                                                                                                             this.tbMaterial.value = this.titleBlock.fields.material || '';
                                                                                                                                             this.tbSupplier.value = this.titleBlock.fields.supplierNumber || '';
                                                                                                                                             this.tbDate.value = this.titleBlock.fields.date || '';
-                                                                                                                                            this.titleblockModal.style.display = 'block';
+                                                                                                                                            this.titleblockModal.classList.remove('hidden');
                                                                                                                                         }
                                                                                                                                         closeTitleBlockModal() {
-                                                                                                                                            if (this.titleblockModal) this.titleblockModal.style.display = 'none';
+                                                                                                                                            if (this.titleblockModal) this.titleblockModal.classList.add('hidden');
                                                                                                                                         }
                                                                                                                                         confirmTitleBlock() {
                                                                                                                                             this.titleBlock.fields.project = this.tbProject.value.trim();
@@ -208,6 +212,98 @@ class ProfilZeichner {
                                                                                                                                         titleBlockSaveToDb() {
                                                                                                                                             // Optional: könnte Metadaten in ein Profil-Objekt schreiben; vorerst nur Hinweis
                                                                                                                                             alert('Metadaten im Titelblock gespeichert. (DB-Sync optional)');
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        // Einstellungen Modal
+                                                                                                                                        openEinstellungenModal() {
+                                                                                                                                            if (!this.einstellungenModal) return;
+                                                                                                                                            // Aktuelle Werte anzeigen
+                                                                                                                                            const fontSizeSpan = this.settingsDimensionFontSize.parentElement.querySelector('span');
+                                                                                                                                            if (fontSizeSpan) fontSizeSpan.textContent = `Aktuell: ${this.CONFIG.dimensionFontSize}px`;
+                                                                                                                                            // Stelle sicher, dass der Wert als String gesetzt wird
+                                                                                                                                            this.settingsDimensionFontSize.value = String(this.CONFIG.dimensionFontSize);
+                                                                                                                                            
+                                                                                                                                            const widthSpan = this.settingsTitleblockWidth.parentElement.querySelector('span');
+                                                                                                                                            if (widthSpan) widthSpan.textContent = `Aktuell: ${this.CONFIG.titleBlockWidth}mm`;
+                                                                                                                                            this.settingsTitleblockWidth.value = String(this.CONFIG.titleBlockWidth);
+                                                                                                                                            
+                                                                                                                                            const heightSpan = this.settingsTitleblockHeight.parentElement.querySelector('span');
+                                                                                                                                            if (heightSpan) heightSpan.textContent = `Aktuell: ${this.CONFIG.titleBlockHeight}mm`;
+                                                                                                                                            this.settingsTitleblockHeight.value = String(this.CONFIG.titleBlockHeight);
+                                                                                                                                            
+                                                                                                                                            this.einstellungenModal.classList.remove('hidden');
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        closeEinstellungenModal() {
+                                                                                                                                            if (this.einstellungenModal) this.einstellungenModal.classList.add('hidden');
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        confirmEinstellungen() {
+                                                                                                                                            let hasChanges = false;
+                                                                                                                                            
+                                                                                                                                            // Textgröße für Bemaßungen
+                                                                                                                                            const fontSizeValue = this.settingsDimensionFontSize.value.trim();
+                                                                                                                                            if (fontSizeValue !== '') {
+                                                                                                                                                const newFontSize = parseInt(fontSizeValue);
+                                                                                                                                                if (!isNaN(newFontSize) && newFontSize >= 8 && newFontSize <= 24) {
+                                                                                                                                                    if (this.CONFIG.dimensionFontSize !== newFontSize) {
+                                                                                                                                                        this.CONFIG.dimensionFontSize = newFontSize;
+                                                                                                                                                        hasChanges = true;
+                                                                                                                                                        console.log('Textgröße aktualisiert auf:', newFontSize, 'px');
+                                                                                                                                                    }
+                                                                                                                                                } else {
+                                                                                                                                                    alert('Bitte eine gültige Textgröße zwischen 8 und 24 px eingeben.');
+                                                                                                                                                    return; // Nicht speichern wenn ungültig
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            // Titelblock-Größe
+                                                                                                                                            const widthValue = this.settingsTitleblockWidth.value.trim();
+                                                                                                                                            if (widthValue !== '') {
+                                                                                                                                                const newWidth = parseFloat(widthValue);
+                                                                                                                                                if (!isNaN(newWidth) && newWidth >= 60 && newWidth <= 150) {
+                                                                                                                                                    if (this.CONFIG.titleBlockWidth !== newWidth) {
+                                                                                                                                                        this.CONFIG.titleBlockWidth = newWidth;
+                                                                                                                                                        // Aktualisiere Titelblock-Größe
+                                                                                                                                                        if (this.titleBlock) {
+                                                                                                                                                            this.titleBlock.width = newWidth * this.mmToPx;
+                                                                                                                                                        }
+                                                                                                                                                        hasChanges = true;
+                                                                                                                                                    }
+                                                                                                                                                } else {
+                                                                                                                                                    alert('Bitte eine gültige Breite zwischen 60 und 150 mm eingeben.');
+                                                                                                                                                    return;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            const heightValue = this.settingsTitleblockHeight.value.trim();
+                                                                                                                                            if (heightValue !== '') {
+                                                                                                                                                const newHeight = parseFloat(heightValue);
+                                                                                                                                                if (!isNaN(newHeight) && newHeight >= 30 && newHeight <= 80) {
+                                                                                                                                                    if (this.CONFIG.titleBlockHeight !== newHeight) {
+                                                                                                                                                        this.CONFIG.titleBlockHeight = newHeight;
+                                                                                                                                                        // Aktualisiere Titelblock-Größe
+                                                                                                                                                        if (this.titleBlock) {
+                                                                                                                                                            this.titleBlock.height = newHeight * this.mmToPx;
+                                                                                                                                                        }
+                                                                                                                                                        hasChanges = true;
+                                                                                                                                                    }
+                                                                                                                                                } else {
+                                                                                                                                                    alert('Bitte eine gültige Höhe zwischen 30 und 80 mm eingeben.');
+                                                                                                                                                    return;
+                                                                                                                                                }
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            // Nur speichern und neuzeichnen wenn Änderungen vorgenommen wurden
+                                                                                                                                            if (hasChanges) {
+                                                                                                                                                this.closeEinstellungenModal();
+                                                                                                                                                this.saveState();
+                                                                                                                                                this.draw(); // Neuzeichnen mit neuen Einstellungen
+                                                                                                                                                this.autoZoom();
+                                                                                                                                            } else {
+                                                                                                                                                // Keine Änderungen, einfach Modal schließen
+                                                                                                                                                this.closeEinstellungenModal();
+                                                                                                                                            }
                                                                                                                                         }
                                                                                                                                         
                                                                                                                                         // ============================================================================
@@ -279,25 +375,29 @@ class ProfilZeichner {
                                                                                                                                                 addLine(x,bohneY+h,x,bohneY,'CRIMPING');
                                                                                                                                             });
 
-                                                                                                                                            // Bohne (als horizontale Kapsel: 2 Linien + 2 Bögen)
+                                                                                                                                            // Bohne (als Rechteck - wie im SVG und Canvas)
                                                                                                                                             if (this.bohnen && this.bohnen.length > 0) {
                                                                                                                                                 const b = this.bohnen[0];
-                                                                                                                                                const R = (b.height * this.mmToPx) / 2;
-                                                                                                                                                const bohneWidth = rect.width - (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-                                                                                                                                                const bohneX = rect.x + (this.cutoutWidth ? this.cutoutWidth * this.mmToPx : 0);
-                                                                                                                                                const bohneY = rect.y - (b.height * this.mmToPx);
-                                                                                                                                                const leftCx = bohneX + R;
-                                                                                                                                                const rightCx = bohneX + bohneWidth - R;
-                                                                                                                                                const cy = bohneY + R;
+                                                                                                                                                // Berechne die Breite der Bohne (angepasst an Cut-out, wie in drawBohnen)
+                                                                                                                                                let bohneWidth = rect.width;
+                                                                                                                                                if (this.cutoutWidth > 0) {
+                                                                                                                                                    bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+                                                                                                                                                }
+                                                                                                                                                const bohneHeight = b.height * this.mmToPx;
+                                                                                                                                                const bohneX = rect.x + (rect.width - bohneWidth) / 2; // Zentriert
+                                                                                                                                                const bohneY = rect.y - bohneHeight; // Direkt über dem Profil
+                                                                                                                                                
+                                                                                                                                                // Rechteck mit 4 Linien (ohne runde Enden)
+                                                                                                                                                const leftX = bohneX;
+                                                                                                                                                const rightX = bohneX + bohneWidth;
                                                                                                                                                 const topY = bohneY;
-                                                                                                                                                const bottomY = bohneY + 2*R;
-                                                                                                                                                // horizontale Geraden
-                                                                                                                                                addLine(leftCx, topY, rightCx, topY, 'BOHNE');
-                                                                                                                                                addLine(leftCx, bottomY, rightCx, bottomY, 'BOHNE');
-                                                                                                                                                // linke Halbkreis-Bögen (oben->unten)
-                                                                                                                                                addArc(leftCx, cy, R, 90, 270, 'BOHNE');
-                                                                                                                                                // rechte Halbkreis-Bögen (unten->oben)
-                                                                                                                                                addArc(rightCx, cy, R, 270, 90, 'BOHNE');
+                                                                                                                                                const bottomY = bohneY + bohneHeight;
+                                                                                                                                                
+                                                                                                                                                // 4 Linien für das Rechteck
+                                                                                                                                                addLine(leftX, topY, rightX, topY, 'BOHNE');      // Oben
+                                                                                                                                                addLine(rightX, topY, rightX, bottomY, 'BOHNE'); // Rechts
+                                                                                                                                                addLine(rightX, bottomY, leftX, bottomY, 'BOHNE'); // Unten
+                                                                                                                                                addLine(leftX, bottomY, leftX, topY, 'BOHNE');    // Links
                                                                                                                                             }
 
                                                                                                                                             // Löcher
@@ -463,7 +563,7 @@ class ProfilZeichner {
                                                                                                                                             URL.revokeObjectURL(url);
                                                                                                                                         }
                                                                                                                                         closeZeichnungenDb() {
-                                                                                                                                            if (this.zeichnungsdbModal) this.zeichnungsdbModal.style.display = 'none';
+                                                                                                                                            if (this.zeichnungsdbModal) this.zeichnungsdbModal.classList.add('hidden');
                                                                                                                                         }
                                                                                                                                         
                                                                                                                                         // ============================================================================
@@ -472,28 +572,66 @@ class ProfilZeichner {
                                                                                                                                         
                                                                                                                                         toggleZeichnungenDbMaximize() {
                                                                                                                                             if (!this.zeichnungsdbModal) return;
-                                                                                                                                            this.zeichnungsdbModal.classList.add('maximized');
-                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
-                                                                                                                                            if (modalContent) {
-                                                                                                                                                modalContent.style.width = '100%';
-                                                                                                                                                modalContent.style.maxWidth = '100%';
-                                                                                                                                                modalContent.style.height = '100%';
-                                                                                                                                                modalContent.style.maxHeight = '100%';
-                                                                                                                                                modalContent.style.transform = 'none';
+                                                                                                                                            
+                                                                                                                                            // Toggle zwischen maximiert und normal
+                                                                                                                                            if (this.isZeichnungenDbMaximized) {
+                                                                                                                                                this.restoreZeichnungenDbSize();
+                                                                                                                                            } else {
+                                                                                                                                                this.maximizeZeichnungenDb();
                                                                                                                                             }
+                                                                                                                                        }
+                                                                                                                                        
+                                                                                                                                        maximizeZeichnungenDb() {
+                                                                                                                                            if (!this.zeichnungsdbModal) return;
+                                                                                                                                            
+                                                                                                                                            // Speichere ursprüngliche Größe beim ersten Mal
+                                                                                                                                            if (!this.originalZeichnungenDbStyle) {
+                                                                                                                                                const modalContent = this.zeichnungsdbModal.querySelector('.bg-white');
+                                                                                                                                                this.originalZeichnungenDbStyle = {
+                                                                                                                                                    modalContentClass: modalContent ? modalContent.className : ''
+                                                                                                                                                };
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            // Setze Modal auf volle Bildschirmgröße
+                                                                                                                                            this.zeichnungsdbModal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]';
+                                                                                                                                            this.zeichnungsdbModal.classList.remove('hidden');
+                                                                                                                                            
+                                                                                                                                            // Setze Modal-Content auf volle Größe
+                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.bg-white');
+                                                                                                                                            if (modalContent) {
+                                                                                                                                                modalContent.className = 'bg-white rounded-none shadow-2xl w-full h-full flex flex-col overflow-hidden';
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            // Aktualisiere Button
+                                                                                                                                            if (this.zeichnungsdbModalMaximize) {
+                                                                                                                                                this.zeichnungsdbModalMaximize.textContent = '⧉';
+                                                                                                                                                this.zeichnungsdbModalMaximize.classList.add('bg-green-500');
+                                                                                                                                                this.zeichnungsdbModalMaximize.classList.remove('bg-gray-500');
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            this.isZeichnungenDbMaximized = true;
                                                                                                                                         }
 
                                                                                                                                         restoreZeichnungenDbSize() {
                                                                                                                                             if (!this.zeichnungsdbModal) return;
-                                                                                                                                            this.zeichnungsdbModal.classList.remove('maximized');
-                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.modal-content');
-                                                                                                                                            if (modalContent) {
-                                                                                                                                                modalContent.style.width = '90%';
-                                                                                                                                                modalContent.style.maxWidth = '1200px';
-                                                                                                                                                modalContent.style.height = '';
-                                                                                                                                                modalContent.style.maxHeight = '';
-                                                                                                                                                modalContent.style.transform = '';
+                                                                                                                                            
+                                                                                                                                            // Stelle ursprüngliche Größe wieder her
+                                                                                                                                            this.zeichnungsdbModal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+                                                                                                                                            
+                                                                                                                                            // Stelle Modal-Content wieder her
+                                                                                                                                            const modalContent = this.zeichnungsdbModal.querySelector('.bg-white');
+                                                                                                                                            if (modalContent && this.originalZeichnungenDbStyle) {
+                                                                                                                                                modalContent.className = this.originalZeichnungenDbStyle.modalContentClass || 'bg-white rounded-2xl shadow-2xl w-[90%] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden';
                                                                                                                                             }
+                                                                                                                                            
+                                                                                                                                            // Aktualisiere Button
+                                                                                                                                            if (this.zeichnungsdbModalMaximize) {
+                                                                                                                                                this.zeichnungsdbModalMaximize.textContent = '□';
+                                                                                                                                                this.zeichnungsdbModalMaximize.classList.remove('bg-green-500');
+                                                                                                                                                this.zeichnungsdbModalMaximize.classList.add('bg-gray-500');
+                                                                                                                                            }
+                                                                                                                                            
+                                                                                                                                            this.isZeichnungenDbMaximized = false;
                                                                                                                                         }
 
                                                                                                                                         // ============================================================================
@@ -532,18 +670,19 @@ class ProfilZeichner {
                                                                                                                                             this.zdbProjectList.innerHTML = '';
                                                                                                                                             this.zdb.projects.forEach(p => {
                                                                                                                                                 const li = document.createElement('li');
-                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                li.className = 'flex items-center justify-between px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-50 rounded mb-1';
+                                                                                                                                                if (this.zdbSelectedProjectId === p.id) li.className += ' bg-blue-100 font-semibold';
                                                                                                                                                 const left = document.createElement('div');
+                                                                                                                                                left.className = 'flex-1';
                                                                                                                                                 left.textContent = p.name;
                                                                                                                                                 const del = document.createElement('button');
-                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.className = 'w-5 h-5 flex items-center justify-center text-red-600 hover:bg-red-100 rounded text-sm';
                                                                                                                                                 del.title = 'Projekt löschen';
                                                                                                                                                 del.textContent = '×';
                                                                                                                                                 del.addEventListener('click', (e) => {
                                                                                                                                                     e.stopPropagation();
                                                                                                                                                     this.zdbDeleteProject(p.id);
                                                                                                                                                 });
-                                                                                                                                                if (this.zdbSelectedProjectId === p.id) li.classList.add('active');
                                                                                                                                                 li.addEventListener('click', () => {
                                                                                                                                                     this.zdbSelectedProjectId = p.id;
                                                                                                                                                     this.zdbSelectedVariantId = null;
@@ -563,18 +702,19 @@ class ProfilZeichner {
                                                                                                                                             if (!project) return;
                                                                                                                                             (project.varianten || []).forEach(v => {
                                                                                                                                                 const li = document.createElement('li');
-                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                li.className = 'flex items-center justify-between px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-50 rounded mb-1';
+                                                                                                                                                if (this.zdbSelectedVariantId === v.id) li.className += ' bg-blue-100 font-semibold';
                                                                                                                                                 const left = document.createElement('div');
+                                                                                                                                                left.className = 'flex-1';
                                                                                                                                                 left.textContent = v.name;
                                                                                                                                                 const del = document.createElement('button');
-                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.className = 'w-5 h-5 flex items-center justify-center text-red-600 hover:bg-red-100 rounded text-sm';
                                                                                                                                                 del.title = 'Variante löschen';
                                                                                                                                                 del.textContent = '×';
                                                                                                                                                 del.addEventListener('click', (e) => {
                                                                                                                                                     e.stopPropagation();
                                                                                                                                                     this.zdbDeleteVariant(v.id);
                                                                                                                                                 });
-                                                                                                                                                if (this.zdbSelectedVariantId === v.id) li.classList.add('active');
                                                                                                                                                 li.addEventListener('click', () => {
                                                                                                                                                     this.zdbSelectedVariantId = v.id;
                                                                                                                                                     this.zdbSelectedReferenceId = null;
@@ -605,18 +745,19 @@ class ProfilZeichner {
                                                                                                                                             }
                                                                                                                                             (variant.references || []).forEach(ref => {
                                                                                                                                                 const li = document.createElement('li');
-                                                                                                                                                li.className = 'list-item-row';
+                                                                                                                                                li.className = 'flex items-center justify-between px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-50 rounded mb-1';
+                                                                                                                                                if (this.zdbSelectedReferenceId === ref.id) li.className += ' bg-blue-100 font-semibold';
                                                                                                                                                 const left = document.createElement('div');
+                                                                                                                                                left.className = 'flex-1';
                                                                                                                                                 left.textContent = ref.number;
                                                                                                                                                 const del = document.createElement('button');
-                                                                                                                                                del.className = 'delete-btn-small';
+                                                                                                                                                del.className = 'w-5 h-5 flex items-center justify-center text-red-600 hover:bg-red-100 rounded text-sm';
                                                                                                                                                 del.title = 'Bezügenummer löschen';
                                                                                                                                                 del.textContent = '×';
                                                                                                                                                 del.addEventListener('click', (e) => {
                                                                                                                                                     e.stopPropagation();
                                                                                                                                                     this.zdbDeleteReference(ref.id);
                                                                                                                                                 });
-                                                                                                                                                if (this.zdbSelectedReferenceId === ref.id) li.classList.add('active');
                                                                                                                                                 li.addEventListener('click', () => {
                                                                                                                                                     this.zdbSelectedReferenceId = ref.id;
                                                                                                                                                     this.zdbRenderProfiles();
@@ -639,9 +780,9 @@ class ProfilZeichner {
                                                                                                                                             const profiles = ref ? (ref.profiles || []) : [];
                                                                                                                                             profiles.forEach(pr => {
                                                                                                                                                 const card = document.createElement('div');
-                                                                                                                                                card.className = 'profile-card';
+                                                                                                                                                card.className = 'relative border border-gray-200 rounded-lg p-2 bg-white hover:shadow-md transition-all cursor-pointer';
                                                                                                                                                 const del = document.createElement('button');
-                                                                                                                                                del.className = 'delete-btn-small card-delete';
+                                                                                                                                                del.className = 'absolute top-1 right-1 w-5 h-5 flex items-center justify-center text-red-600 hover:bg-red-100 rounded text-sm z-10';
                                                                                                                                                 del.title = 'Profil löschen';
                                                                                                                                                 del.textContent = '×';
                                                                                                                                                 del.addEventListener('click', (e) => {
@@ -650,16 +791,12 @@ class ProfilZeichner {
                                                                                                                                                 });
                                                                                                                                                 const img = document.createElement('img');
                                                                                                                                                 img.src = pr.previewImage || '';
-                                                                                                                                                // Stelle sicher, dass das Bild immer klein dargestellt wird
-                                                                                                                                                img.style.maxWidth = '100%';
-                                                                                                                                                img.style.maxHeight = '50px';
-                                                                                                                                                img.style.objectFit = 'contain';
-                                                                                                                                                img.style.objectPosition = 'center';
+                                                                                                                                                img.className = 'w-full max-h-[50px] object-contain object-center mb-2';
                                                                                                                                                 const title = document.createElement('div');
-                                                                                                                                                title.className = 'title';
+                                                                                                                                                title.className = 'text-xs font-semibold text-gray-800 mb-1 truncate';
                                                                                                                                                 title.textContent = pr.name;
                                                                                                                                                 const meta = document.createElement('div');
-                                                                                                                                                meta.className = 'meta';
+                                                                                                                                                meta.className = 'text-xs text-gray-600 truncate';
                                                                                                                                                 meta.textContent = pr.supplierNumber ? `Lieferant: ${pr.supplierNumber}` : '—';
                                                                                                                                                 card.appendChild(del);
                                                                                                                                                 card.appendChild(img);
@@ -668,8 +805,10 @@ class ProfilZeichner {
                                                                                                                                                 // Single-Click: visuelle Auswahl (optional)
                                                                                                                                                 card.addEventListener('click', () => {
                                                                                                                                                     // Auswahlzustand setzen
-                                                                                                                                                    Array.from(this.zdbProfileGrid.children).forEach(el => el.classList.remove('active'));
-                                                                                                                                                    card.classList.add('active');
+                                                                                                                                                    Array.from(this.zdbProfileGrid.children).forEach(el => {
+                                                                                                                                                        el.classList.remove('border-blue-500', 'bg-blue-50');
+                                                                                                                                                    });
+                                                                                                                                                    card.classList.add('border-blue-500', 'bg-blue-50');
                                                                                                                                                 });
                                                                                                                                                 // Doppelklick: sofort öffnen
                                                                                                                                                 card.addEventListener('dblclick', () => this.zdbOpenProfile(pr));
@@ -946,7 +1085,25 @@ class ProfilZeichner {
         this.autoZoomButton = document.getElementById('auto-zoom-button');
         this.panButton = document.getElementById('pan-button');
         this.pdfButton = document.getElementById('pdf-button');
+        this.svgButton = document.getElementById('svg-button');
                                                                                                                                             this.dxfButton = document.getElementById('dxf-button');
+        this.einstellungenButton = document.getElementById('einstellungen-button');
+        
+        // Email Confirmation Modal (für zukünftige Order-Funktion)
+        this.emailConfirmationModal = document.getElementById('email-confirmation-modal');
+        this.emailConfirmationClose = document.getElementById('email-confirmation-close');
+        this.emailConfirmationClose2 = document.getElementById('email-confirmation-close2');
+        this.emailTextPreview = document.getElementById('email-text-preview');
+        this.freelancerEmail = document.getElementById('freelancer-email');
+        
+        // Einstellungen Modal
+        this.einstellungenModal = document.getElementById('einstellungen-modal');
+        this.einstellungenModalClose = document.getElementById('einstellungen-modal-close');
+        this.einstellungenCancel = document.getElementById('einstellungen-cancel');
+        this.einstellungenConfirm = document.getElementById('einstellungen-confirm');
+        this.settingsDimensionFontSize = document.getElementById('settings-dimension-font-size');
+        this.settingsTitleblockWidth = document.getElementById('settings-titleblock-width');
+        this.settingsTitleblockHeight = document.getElementById('settings-titleblock-height');
         
         
         // Modal-Elemente
@@ -1088,6 +1245,7 @@ class ProfilZeichner {
                                                                                                                                             this.crimping = [];
         this.nahtlinie = null;
         this.texts = [];
+        this.images = []; // Array für alle eingefügten Bilder
         this.showDimensions = false;
                                                                                                                                             // Titelblock State
                                                                                                                                             this.titleBlock = {
@@ -1305,6 +1463,8 @@ class ProfilZeichner {
 
         // Zeichnungen-DB State
         this.zdbKey = 'pz.zeichnungsdb.v1';
+        this.isZeichnungenDbMaximized = false;
+        this.originalZeichnungenDbStyle = null;
         this.zdb = this.zdbLoad();
         this.zdbSelectedProjectId = null;
         this.zdbSelectedVariantId = null;
@@ -1318,8 +1478,27 @@ class ProfilZeichner {
         if (this.panButton) {
             this.panButton.addEventListener('click', () => this.togglePanMode());
         }
-        if (this.pdfButton) this.pdfButton.addEventListener('click', () => this.exportToPDF());
-        if (this.dxfButton) this.dxfButton.addEventListener('click', () => this.exportToDXF());
+        if (this.pdfButton) {
+            console.log('PDF-Button gefunden, Event Listener wird hinzugefügt');
+            this.pdfButton.addEventListener('click', () => {
+                console.log('PDF-Button geklickt!');
+                this.exportToPDF();
+            });
+        } else {
+            console.error('PDF-Button nicht gefunden! Button-ID: pdf-button');
+        }
+        if (this.svgButton) this.svgButton.addEventListener('click', () => this.exportToSVG());
+                                                                                                                                            if (this.dxfButton) this.dxfButton.addEventListener('click', () => this.exportToDXF());
+        if (this.einstellungenButton) this.einstellungenButton.addEventListener('click', () => this.openEinstellungenModal());
+        
+        // Einstellungen Modal Events
+        // Email Confirmation Modal Events (für zukünftige Order-Funktion)
+        if (this.emailConfirmationClose) this.emailConfirmationClose.addEventListener('click', () => this.closeEmailConfirmationModal());
+        if (this.emailConfirmationClose2) this.emailConfirmationClose2.addEventListener('click', () => this.closeEmailConfirmationModal());
+        
+        if (this.einstellungenModalClose) this.einstellungenModalClose.addEventListener('click', () => this.closeEinstellungenModal());
+        if (this.einstellungenCancel) this.einstellungenCancel.addEventListener('click', () => this.closeEinstellungenModal());
+        if (this.einstellungenConfirm) this.einstellungenConfirm.addEventListener('click', () => this.confirmEinstellungen());
         
         this.bemaßungButton.addEventListener('click', () => {
             this.toggleDimensions();
@@ -2503,7 +2682,7 @@ class ProfilZeichner {
             
             // Aktualisiere Tabelle im Modal, wenn es geöffnet ist
             // keepUserInputs = false, damit die neuen Positionen aus this.kerben angezeigt werden
-            if (this.kerbeModal && this.kerbeModal.style.display === 'block') {
+            if (this.kerbeModal && !this.kerbeModal.classList.contains('hidden')) {
                 this.refreshKerbeTable(false);
             }
             
@@ -4532,11 +4711,9 @@ class ProfilZeichner {
     updatePanButton() {
         if (this.panButton) {
             if (this.panMode) {
-                this.panButton.style.backgroundColor = '#28a745'; // Grün
-                this.panButton.style.color = 'white';
+                this.panButton.className = 'px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium';
             } else {
-                this.panButton.style.backgroundColor = '#f8f9fa'; // Standard
-                this.panButton.style.color = '#495057';
+                this.panButton.className = 'px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium';
             }
         }
     }
@@ -4739,26 +4916,458 @@ class ProfilZeichner {
     }
     
     updateBemaßungButton() {
+        if (this.bemaßungButton) {
         if (this.showDimensions) {
-            this.bemaßungButton.style.backgroundColor = '#28a745'; // Grün wenn aktiv
+                this.bemaßungButton.className = 'w-10 h-10 bg-green-500 border border-gray-300 rounded-lg shadow-md hover:bg-green-600 hover:shadow-lg transition-all flex items-center justify-center text-lg';
         } else {
-            this.bemaßungButton.style.backgroundColor = '#6c757d'; // Grau wenn inaktiv
+                this.bemaßungButton.className = 'w-10 h-10 bg-white border border-gray-300 rounded-lg shadow-md hover:bg-gray-50 hover:shadow-lg transition-all flex items-center justify-center text-lg';
+            }
         }
     }
     
-    exportToPDF() {
+    async exportToPDF() {
+        console.log('exportToPDF aufgerufen');
+        
         if (!this.currentRect) {
             alert('Bitte erst ein Profil zeichnen!');
             return;
         }
         
-        // Speichere aktuelle Canvas-Einstellungen
+        console.log('Profil vorhanden, starte PDF-Export...');
+        
+        // Speichere aktuelle Canvas-Einstellungen VOR dem try-catch
         const originalZoom = this.zoom;
         const originalOffsetX = this.offsetX;
         const originalOffsetY = this.offsetY;
+        console.log('Canvas-Einstellungen gespeichert:', { originalZoom, originalOffsetX, originalOffsetY });
         
-        // Verwende autoZoom-Logik für korrekte Bounding Box-Berechnung
-        // Berechne die Gesamtausdehnung aller Elemente (wie in autoZoom)
+        try {
+            // Verwende autoZoom-Logik für korrekte Bounding Box-Berechnung
+            // Berechne die Gesamtausdehnung ALLER Elemente (wie in autoZoom)
+            console.log('Berechne Bounding Box...');
+            console.log('currentRect:', this.currentRect);
+            console.log('mmToPx:', this.mmToPx);
+            console.log('canvasWidth:', this.canvasWidth, 'canvasHeight:', this.canvasHeight);
+            
+            let minX = this.currentRect.x;
+            let maxX = this.currentRect.x + this.currentRect.width;
+            let minY = this.currentRect.y;
+            let maxY = this.currentRect.y + this.currentRect.height;
+            console.log('Initiale Bounding Box:', { minX, maxX, minY, maxY });
+            
+            // Bohne berücksichtigen
+            if (this.bohnen.length > 0) {
+                this.bohnen.forEach(bohne => {
+                    const bohneHeight = bohne.height * this.mmToPx;
+                    const bohneWidth = bohne.width * this.mmToPx;
+                    minY = Math.min(minY, this.currentRect.y - bohneHeight);
+                    minX = Math.min(minX, bohne.x - bohneWidth / 2);
+                    maxX = Math.max(maxX, bohne.x + bohneWidth / 2);
+                });
+            }
+            
+            // Kerben berücksichtigen
+            this.kerben.forEach(kerbe => {
+                const kerbeX = this.currentRect.x + kerbe.distance;
+                const kerbeDepth = kerbe.depth * this.mmToPx;
+                const kerbeWidth = kerbe.width * this.mmToPx;
+                if (kerbe.position === 'oben') {
+                    minY = Math.min(minY, this.currentRect.y - kerbeDepth);
+                } else {
+                    maxY = Math.max(maxY, this.currentRect.y + this.currentRect.height + kerbeDepth);
+                }
+                minX = Math.min(minX, kerbeX - kerbeWidth / 2);
+                maxX = Math.max(maxX, kerbeX + kerbeWidth / 2);
+            });
+            
+            // Löcher berücksichtigen
+            this.loecher.forEach(loch => {
+                const lochX = this.currentRect.x + loch.distance;
+                const lochWidth = loch.width * this.mmToPx;
+                const lochHeight = loch.height * this.mmToPx;
+                minX = Math.min(minX, lochX - lochWidth / 2);
+                maxX = Math.max(maxX, lochX + lochWidth / 2);
+                minY = Math.min(minY, this.currentRect.y + loch.heightOffset - lochHeight);
+                maxY = Math.max(maxY, this.currentRect.y + loch.heightOffset + lochHeight);
+            });
+            
+            // Ausschnitte berücksichtigen
+            this.ausschnitte.forEach(ausschnitt => {
+                const ausschnittX = this.currentRect.x + ausschnitt.position;
+                const ausschnittWidth = ausschnitt.width * this.mmToPx;
+                const ausschnittHeight = ausschnitt.height * this.mmToPx;
+                minX = Math.min(minX, ausschnittX - ausschnittWidth / 2);
+                maxX = Math.max(maxX, ausschnittX + ausschnittWidth / 2);
+                if (ausschnitt.positionType === 'oben') {
+                    minY = Math.min(minY, this.currentRect.y - ausschnittHeight);
+                } else {
+                    maxY = Math.max(maxY, this.currentRect.y + this.currentRect.height + ausschnittHeight);
+                }
+            });
+            
+            // Crimping berücksichtigen
+            this.crimping.forEach(crimp => {
+                const crimpX = this.currentRect.x + crimp.position;
+                const crimpWidth = crimp.length * this.mmToPx;
+                const crimpHeight = this.bohnen.length > 0 ? this.bohnen[0].height * this.mmToPx : 4 * this.mmToPx;
+                minX = Math.min(minX, crimpX - crimpWidth / 2);
+                maxX = Math.max(maxX, crimpX + crimpWidth / 2);
+                minY = Math.min(minY, this.currentRect.y - crimpHeight);
+            });
+            
+            // Bemaßungen berücksichtigen (mit größerem Offset für Sicherheit)
+            if (this.showDimensions) {
+                const dimensionOffset = 60 * this.mmToPx; // Mehr Platz für Bemaßungen
+                minY -= dimensionOffset;
+                maxY += dimensionOffset;
+                minX -= dimensionOffset;
+                maxX += dimensionOffset;
+            }
+            
+            // Detailzeichnungen berücksichtigen
+            if (this.kerben.length > 0 || this.loecher.length > 0) {
+                const rect = this.currentRect;
+                const corner4Y = rect.y + rect.height;
+                let detailStartY = corner4Y;
+                
+                // Wenn Bemaßungen aktiv sind, Detailzeichnungen nach den Bemaßungen
+                if (this.showDimensions) {
+                    const dimensionOffset = 7 * this.mmToPx;
+                    let currentYOffset = 10 * this.mmToPx;
+                    
+                    // Zähle Bemaßungen unten
+                    const elementsUnten = [];
+                    this.kerben.forEach(kerbe => elementsUnten.push({ position: kerbe.distance }));
+                    this.ausschnitte.forEach(ausschnitt => {
+                        if (ausschnitt.positionType === 'unten') {
+                            elementsUnten.push({ position: ausschnitt.position });
+                        }
+                    });
+                    
+                    currentYOffset += elementsUnten.length * dimensionOffset;
+                    if (this.nahtlinie && this.nahtlinie.distance > 0) {
+                        currentYOffset += dimensionOffset;
+                    }
+                    
+                    const totalWidthY = corner4Y + currentYOffset;
+                    detailStartY = totalWidthY + (40 * this.mmToPx); // 40mm unter der letzten Bemaßung
+                } else {
+                    detailStartY = corner4Y + (50 * this.mmToPx); // 50mm unter dem Profil
+                }
+                
+                // Detailzeichnungen sind etwa 80-100mm hoch
+                const detailHeight = 100 * this.mmToPx;
+                maxY = Math.max(maxY, detailStartY + detailHeight);
+            }
+            
+            // Nahtlinie berücksichtigen
+            if (this.nahtlinie && this.nahtlinie.distance > 0) {
+                const nahtX = this.currentRect.x + this.nahtlinie.distance;
+                minX = Math.min(minX, nahtX - 10 * this.mmToPx);
+                maxX = Math.max(maxX, nahtX + 10 * this.mmToPx);
+            }
+            
+            // Skizze berücksichtigen
+            if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
+                minX = Math.min(minX, this.skizzeX - 10);
+                maxX = Math.max(maxX, this.skizzeX + this.skizzeWidth + 10);
+                minY = Math.min(minY, this.skizzeY - 10);
+                maxY = Math.max(maxY, this.skizzeY + this.skizzeHeight + 10);
+            }
+            
+            // Titelblock berücksichtigen
+            if (this.titleBlock && this.titleBlock.x != null) {
+                minX = Math.min(minX, this.titleBlock.x - 10);
+                maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width + 10);
+                minY = Math.min(minY, this.titleBlock.y - 10);
+                maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height + 10);
+            }
+            
+            // Texte berücksichtigen
+            this.texts.forEach(text => {
+                const textWidth = this.ctx.measureText(text.content).width;
+                const textHeight = parseInt(text.size);
+                minX = Math.min(minX, text.x - 15);
+                maxX = Math.max(maxX, text.x + textWidth + 15);
+                minY = Math.min(minY, text.y - textHeight - 15);
+                maxY = Math.max(maxY, text.y + 15);
+            });
+            
+            // Bilder berücksichtigen (bildImage - das eingefügte Bild vom Rechner)
+            if (this.bildImage && this.bildX !== null && this.bildY !== null) {
+                minX = Math.min(minX, this.bildX);
+                maxX = Math.max(maxX, this.bildX + this.bildWidth);
+                minY = Math.min(minY, this.bildY);
+                maxY = Math.max(maxY, this.bildY + this.bildHeight);
+            }
+            
+            // Zusätzliche Bilder aus dem images Array (falls vorhanden)
+            if (this.images && Array.isArray(this.images)) {
+                this.images.forEach(img => {
+                    if (img && img.x != null && img.y != null && img.width != null && img.height != null) {
+                        minX = Math.min(minX, img.x);
+                        maxX = Math.max(maxX, img.x + img.width);
+                        minY = Math.min(minY, img.y);
+                        maxY = Math.max(maxY, img.y + img.height);
+                    }
+                });
+            }
+        
+            // Zusätzlicher Sicherheitsrand
+            console.log('Füge Sicherheitsrand hinzu...');
+            const safetyMargin = 20 * this.mmToPx;
+            minX -= safetyMargin;
+            maxX += safetyMargin;
+            minY -= safetyMargin;
+            maxY += safetyMargin;
+            console.log('Bounding Box mit Rand:', { minX, maxX, minY, maxY });
+            
+            // Berechne die tatsächliche Größe des Zeichnungsinhalts
+            const contentWidth = maxX - minX;
+            const contentHeight = maxY - minY;
+            console.log('Content Größe:', { contentWidth, contentHeight });
+            
+            // Berechne Skalierung (in mm)
+            const contentWidthMm = contentWidth / this.mmToPx;
+            const contentHeightMm = contentHeight / this.mmToPx;
+            console.log('Content Größe in mm:', { contentWidthMm, contentHeightMm });
+            
+            // A4 Format-Dimensionen in mm
+            const a4WidthPortrait = 210; // mm (Hochformat)
+            const a4HeightPortrait = 297; // mm
+            const a4WidthLandscape = 297; // mm (Querformat)
+            const a4HeightLandscape = 210; // mm
+            
+            const margin = 5; // mm Rand
+            
+            // Entscheide automatisch, ob Hoch- oder Querformat besser passt
+            const aspectRatio = contentWidthMm / contentHeightMm;
+            console.log('Seitenverhältnis:', aspectRatio);
+            
+            let isLandscape;
+            let a4Width, a4Height;
+            
+            // Wenn Inhalt breiter als hoch, nutze Querformat; sonst Hochformat
+            if (aspectRatio > 1) {
+                // Inhalt ist breiter als hoch
+                isLandscape = true;
+                a4Width = a4WidthLandscape;
+                a4Height = a4HeightLandscape;
+                console.log('Verwende Querformat');
+            } else {
+                // Inhalt ist höher als breit
+                isLandscape = false;
+                a4Width = a4WidthPortrait;
+                a4Height = a4HeightPortrait;
+                console.log('Verwende Hochformat');
+            }
+            
+            const usableWidth = a4Width - (2 * margin);
+            const usableHeight = a4Height - (2 * margin);
+            console.log('Nutzbare A4 Größe:', { usableWidth, usableHeight });
+            
+            // Berechne Skalierung
+            const scaleX = usableWidth / contentWidthMm;
+            const scaleY = usableHeight / contentHeightMm;
+            const scale = Math.min(scaleX, scaleY); // Verwende den kleineren Wert, damit alles passt
+            console.log('Skalierung:', { scaleX, scaleY, scale });
+            
+            // Verwende autoZoom-Logik um alles korrekt zu positionieren
+            const totalWidth = maxX - minX;
+            const totalHeight = maxY - minY;
+            console.log('Total Größe:', { totalWidth, totalHeight });
+            
+            // Berechne optimalen Zoom (ähnlich wie autoZoom)
+            const zoomX = (this.canvasWidth * 0.9) / totalWidth; // 90% für besseren Überblick
+            const zoomY = (this.canvasHeight * 0.9) / totalHeight;
+            const optimalZoom = Math.min(zoomX, zoomY);
+            console.log('Optimaler Zoom:', { zoomX, zoomY, optimalZoom });
+            
+            // Zentriere die Ansicht
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            console.log('Zentrum:', { centerX, centerY });
+        
+            // Setze temporäre Zoom/Offset für PDF
+            console.log('Setze temporäre Zoom/Offset...');
+            this.zoom = optimalZoom;
+            this.offsetX = this.canvasWidth / 2 - centerX * this.zoom;
+            this.offsetY = this.canvasHeight / 2 - centerY * this.zoom;
+            console.log('Temporäre Einstellungen:', { zoom: this.zoom, offsetX: this.offsetX, offsetY: this.offsetY });
+            
+            // Zeichne auf den normalen Canvas (mit allen Elementen)
+            console.log('Zeichne Canvas neu...');
+            this.draw();
+            console.log('Canvas gezeichnet');
+            
+            // Warte kurz, damit asynchrone Bilder (z.B. bildImage) geladen werden
+            await new Promise(resolve => setTimeout(resolve, 200));
+            
+            // Zeichne nochmals, um sicherzustellen, dass alle Bilder gerendert sind
+            this.draw();
+            
+            // Screenshot des gesamten Canvas mit hoher Auflösung
+            console.log('Erstelle hochauflösendes Canvas...');
+            const scaleFactor = 3; // Hohe Auflösung für PDF
+            
+            // Erstelle temporäres Canvas für hohe Auflösung
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = this.canvasWidth * scaleFactor;
+            tempCanvas.height = this.canvasHeight * scaleFactor;
+            console.log('Temp Canvas Größe:', { width: tempCanvas.width, height: tempCanvas.height });
+            
+            // Setze Hintergrund auf weiß
+            tempCtx.fillStyle = '#ffffff';
+            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
+            // Kopiere den gesamten Canvas-Inhalt auf hohe Auflösung (direkt skalieren)
+            console.log('Kopiere Canvas-Inhalt...');
+            tempCtx.drawImage(
+                this.canvas,
+                0, 0, this.canvasWidth, this.canvasHeight,
+                0, 0, tempCanvas.width, tempCanvas.height
+            );
+            console.log('Canvas-Inhalt kopiert');
+            
+            // Verwende tempCanvas für PDF
+            console.log('Erstelle Bild-Daten...');
+            const imgData = tempCanvas.toDataURL('image/png', 1.0);
+            console.log('Bild-Daten erstellt, Länge:', imgData.length);
+            
+            // Prüfe ob jsPDF verfügbar ist
+            console.log('Prüfe jsPDF Verfügbarkeit...');
+            console.log('window.jspdf:', window.jspdf);
+            
+            if (!window.jspdf) {
+                alert('Fehler: jsPDF Bibliothek nicht geladen. Bitte Seite neu laden und sicherstellen, dass die Internetverbindung besteht.');
+                console.error('jsPDF nicht gefunden in window.jspdf');
+                // Stelle ursprüngliche Einstellungen wieder her
+                this.zoom = originalZoom;
+                this.offsetX = originalOffsetX;
+                this.offsetY = originalOffsetY;
+                this.draw();
+                return;
+            }
+            
+            // Erstelle PDF mit jsPDF - automatisch Hoch- oder Querformat
+            // jsPDF UMD Modul: window.jspdf.jsPDF ist die Klasse
+            let jsPDFClass;
+            try {
+                console.log('Versuche jsPDF zu laden...');
+                if (window.jspdf.jsPDF) {
+                    jsPDFClass = window.jspdf.jsPDF;
+                    console.log('jsPDF gefunden über window.jspdf.jsPDF');
+                } else if (window.jspdf.default && window.jspdf.default.jsPDF) {
+                    jsPDFClass = window.jspdf.default.jsPDF;
+                    console.log('jsPDF gefunden über window.jspdf.default.jsPDF');
+                } else {
+                    console.error('jsPDF Struktur:', Object.keys(window.jspdf));
+                    throw new Error('jsPDF nicht gefunden');
+                }
+            } catch (e) {
+                alert('Fehler: jsPDF konnte nicht gefunden werden. Bitte Seite neu laden.');
+                console.error('jsPDF Fehler:', e);
+                console.error('window.jspdf Inhalt:', window.jspdf);
+                // Stelle ursprüngliche Einstellungen wieder her
+                this.zoom = originalZoom;
+                this.offsetX = originalOffsetX;
+                this.offsetY = originalOffsetY;
+                this.draw();
+                return;
+            }
+            
+            console.log('Erstelle PDF-Objekt...');
+            const pdf = new jsPDFClass({
+                orientation: isLandscape ? 'landscape' : 'portrait',
+            unit: 'mm',
+                format: 'a4'
+            });
+            console.log('PDF-Objekt erstellt');
+            
+            // Berechne die sichtbare Welt-Koordinaten-Region auf dem Canvas
+            const visibleWorldWidth = this.canvasWidth / this.zoom;
+            const visibleWorldHeight = this.canvasHeight / this.zoom;
+            
+            // Verwende den gesamten sichtbaren Bereich für PDF
+            const finalWidthMm = visibleWorldWidth / this.mmToPx;
+            const finalHeightMm = visibleWorldHeight / this.mmToPx;
+            
+            // Skaliere für A4 (mit Rand)
+            const scaleX2 = usableWidth / finalWidthMm;
+            const scaleY2 = usableHeight / finalHeightMm;
+            const finalScale = Math.min(scaleX2, scaleY2);
+            
+            const finalWidth = finalWidthMm * finalScale;
+            const finalHeight = finalHeightMm * finalScale;
+            
+            // Zentriere auf A4 (mittig)
+            const xOffset = (a4Width - finalWidth) / 2;
+            const yOffset = (a4Height - finalHeight) / 2;
+            
+            // Füge Bild zum PDF hinzu (mittig platziert)
+            console.log('Füge Bild zum PDF hinzu...', { xOffset, yOffset, finalWidth, finalHeight });
+            try {
+                pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
+                console.log('Bild zum PDF hinzugefügt');
+            } catch (e) {
+                alert('Fehler beim Hinzufügen des Bildes zum PDF: ' + e.message);
+                console.error('addImage Fehler:', e);
+                // Stelle ursprüngliche Einstellungen wieder her
+                this.zoom = originalZoom;
+                this.offsetX = originalOffsetX;
+                this.offsetY = originalOffsetY;
+                this.draw();
+                return;
+            }
+        
+        // Speichere PDF
+            const orientationStr = isLandscape ? 'Querformat' : 'Hochformat';
+            const fileName = `ProfilZeichner_A4_${orientationStr}_${new Date().toISOString().slice(0,10)}.pdf`;
+            console.log('Speichere PDF als:', fileName);
+            try {
+        pdf.save(fileName);
+                console.log('PDF gespeichert');
+            } catch (e) {
+                alert('Fehler beim Speichern des PDF: ' + e.message);
+                console.error('save Fehler:', e);
+                // Stelle ursprüngliche Einstellungen wieder her
+                this.zoom = originalZoom;
+                this.offsetX = originalOffsetX;
+                this.offsetY = originalOffsetY;
+                this.draw();
+                return;
+            }
+        
+        // Stelle ursprüngliche Einstellungen wieder her
+        this.zoom = originalZoom;
+        this.offsetX = originalOffsetX;
+        this.offsetY = originalOffsetY;
+        this.draw();
+        
+            console.log('PDF-Export erfolgreich abgeschlossen');
+            alert(`PDF wurde als A4 ${orientationStr} exportiert!`);
+        } catch (error) {
+            console.error('Fehler beim PDF-Export:', error);
+            alert('Fehler beim PDF-Export: ' + error.message);
+            // Stelle ursprüngliche Einstellungen wieder her
+            if (typeof originalZoom !== 'undefined') {
+                this.zoom = originalZoom;
+                this.offsetX = originalOffsetX;
+                this.offsetY = originalOffsetY;
+                this.draw();
+            }
+        }
+    }
+    
+    // SVG-Export Funktion
+    exportToSVG() {
+        if (!this.currentRect) {
+            alert('Bitte erst ein Profil zeichnen!');
+            return;
+        }
+        
+        // Berechne Bounding Box (ähnlich wie PDF)
         let minX = this.currentRect.x;
         let maxX = this.currentRect.x + this.currentRect.width;
         let minY = this.currentRect.y;
@@ -4771,9 +5380,9 @@ class ProfilZeichner {
             minY = Math.min(minY, this.currentRect.y - bohneHeight);
         }
         
-        // Bemaßungen berücksichtigen (mit größerem Offset für Sicherheit)
+        // Bemaßungen berücksichtigen
         if (this.showDimensions) {
-            const dimensionOffset = 60 * this.mmToPx; // Mehr Platz für Bemaßungen
+            const dimensionOffset = 60 * this.mmToPx;
             minY -= dimensionOffset;
             maxY += dimensionOffset;
             minX -= dimensionOffset;
@@ -4781,170 +5390,1318 @@ class ProfilZeichner {
         }
         
         // Detailzeichnungen berücksichtigen
-        // Berechne tatsächliche Position der Detailzeichnungen basierend auf Bemaßungen
         if (this.kerben.length > 0 || this.loecher.length > 0) {
-            // Berechne wo die Detailzeichnungen tatsächlich starten
-            const rect = this.currentRect;
-            const corner4Y = rect.y + rect.height;
-            let detailStartY = corner4Y;
-            
-            // Wenn Bemaßungen aktiv sind, Detailzeichnungen nach den Bemaßungen
+            const detailHeight = 80 * this.mmToPx;
+            maxY += detailHeight;
+        }
+        
+        // Titelblock berücksichtigen
+        if (this.titleBlock && this.titleBlock.x != null) {
+            maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width);
+            maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height);
+        }
+        
+        // Sicherheitsabstand
+        const padding = 20 * this.mmToPx;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        const totalWidth = maxX - minX;
+        const totalHeight = maxY - minY;
+        
+        // Erstelle SVG-Element
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.setAttribute('width', `${totalWidth}px`);
+        svg.setAttribute('height', `${totalHeight}px`);
+        svg.setAttribute('viewBox', `${minX} ${minY} ${totalWidth} ${totalHeight}`);
+        
+        // Defs für Pfeile
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        arrowMarker.setAttribute('id', 'arrowhead');
+        arrowMarker.setAttribute('markerWidth', '10');
+        arrowMarker.setAttribute('markerHeight', '10');
+        arrowMarker.setAttribute('refX', '9');
+        arrowMarker.setAttribute('refY', '3');
+        arrowMarker.setAttribute('orient', 'auto');
+        const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        arrowPath.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+        arrowPath.setAttribute('fill', '#333');
+        arrowMarker.appendChild(arrowPath);
+        defs.appendChild(arrowMarker);
+        svg.appendChild(defs);
+        
+        // Erstelle Gruppe für Zeichnung
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        
+        // Zeichne Elemente als SVG
+        this.drawToSVG(g);
+        
+        svg.appendChild(g);
+        
+        // Konvertiere zu String und Download
+        const serializer = new XMLSerializer();
+        const svgString = serializer.serializeToString(svg);
+        const blob = new Blob([svgString], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `ProfilZeichner_${new Date().toISOString().slice(0,10)}.svg`;
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+    
+    // Zeichne alle Elemente als SVG
+    drawToSVG(svgGroup) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const rect = this.currentRect;
+        if (!rect) return;
+        
+        // 1. Profil mit Kerben-Unterbrechungen
+        this.drawProfileToSVG(svgGroup, rect);
+        
+        // 2. Bohnen
+        this.drawBohnenToSVG(svgGroup, rect);
+        
+        // 3. Kerben
+        this.drawKerbenToSVG(svgGroup, rect);
+        
+        // 4. Löcher
+        this.drawLoecherToSVG(svgGroup, rect);
+        
+        // 5. Ausschnitte
+        this.drawAusschnitteToSVG(svgGroup, rect);
+        
+        // 6. Crimping
+        this.drawCrimpingToSVG(svgGroup, rect);
+        
+        // 7. Nahtlinie
+        this.drawNahtlinieToSVG(svgGroup, rect);
+        
+        // 8. Texte
+        this.drawTextsToSVG(svgGroup);
+        
+        // 9. Bemaßungen (wichtig für Textqualität)
+        if (this.showDimensions) {
+            this.drawDimensionsToSVG(svgGroup, rect);
+        }
+        
+        // 10. Detailzeichnungen
+        if (this.kerben.length > 0 || this.loecher.length > 0) {
+            // Berechne Startposition für Detailzeichnungen (wie in draw)
+            let detailStartY = rect.y + rect.height;
             if (this.showDimensions) {
+                // Wenn Bemaßungen aktiv sind, Detailzeichnungen nach den Bemaßungen
                 const dimensionOffset = 7 * this.mmToPx;
                 let currentYOffset = 10 * this.mmToPx;
                 
                 // Zähle Bemaßungen unten
                 const elementsUnten = [];
-                this.kerben.forEach(kerbe => elementsUnten.push({ position: kerbe.distance }));
+                this.kerben.forEach(kerbe => {
+                    if (kerbe.position === 'unten') elementsUnten.push({ position: kerbe.distance });
+                });
                 this.ausschnitte.forEach(ausschnitt => {
-                    if (ausschnitt.positionType === 'unten') {
-                        elementsUnten.push({ position: ausschnitt.position });
-                    }
+                    if (ausschnitt.positionType === 'unten') elementsUnten.push({ position: ausschnitt.position });
                 });
                 
+                elementsUnten.sort((a, b) => a.position - b.position);
                 currentYOffset += elementsUnten.length * dimensionOffset;
-                if (this.nahtlinie && this.nahtlinie.distance > 0) {
-                    currentYOffset += dimensionOffset;
-                }
                 
-                const totalWidthY = corner4Y + currentYOffset;
-                detailStartY = totalWidthY + (40 * this.mmToPx); // 40mm unter der letzten Bemaßung
+                detailStartY = rect.y + rect.height + currentYOffset + (10 * this.mmToPx);
             } else {
-                detailStartY = corner4Y + (50 * this.mmToPx); // 50mm unter dem Profil
+                detailStartY = rect.y + rect.height + (50 * this.mmToPx);
             }
             
-            // Detailzeichnungen sind etwa 80-100mm hoch
-            const detailHeight = 100 * this.mmToPx;
-            maxY = Math.max(maxY, detailStartY + detailHeight);
+            this.drawDetailDrawingsToSVG(svgGroup, rect, detailStartY);
         }
         
-        // Skizze berücksichtigen
-        if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
-            minX = Math.min(minX, this.skizzeX - 10);
-            maxX = Math.max(maxX, this.skizzeX + this.skizzeWidth + 10);
-            minY = Math.min(minY, this.skizzeY - 10);
-            maxY = Math.max(maxY, this.skizzeY + this.skizzeHeight + 10);
+        // 11. Titelblock
+        if (this.titleBlock && this.titleBlock.x != null) {
+            this.drawTitleBlockToSVG(svgGroup);
+        }
+    }
+    
+    // Profil als SVG (mit Kerben-Unterbrechungen)
+    drawProfileToSVG(svgGroup, rect) {
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        // Prüfe ob Cut-out angewendet wurde
+        if (this.cutoutWidth > 0) {
+            // Profil mit Cut-out zeichnen (wie in drawCutoutProfile)
+            const cutoutWidthPx = this.cutoutWidth * this.mmToPx;
+            const cutoutHeightPx = this.cutoutHeight * this.mmToPx;
+            
+            // Berechne die Eckpunkte des Cut-out-Profils
+            const x1 = rect.x + cutoutWidthPx; // Ecke 1 nach rechts verschoben
+            const y1 = rect.y;
+            const x2 = rect.x + rect.width - cutoutWidthPx; // Ecke 2 nach links verschoben
+            const y2 = rect.y;
+            const x3 = rect.x + rect.width; // Ecke 3 unverändert
+            const y3 = rect.y + rect.height;
+            const x4 = rect.x; // Ecke 4 unverändert
+            const y4 = rect.y + rect.height;
+            
+            const path = document.createElementNS(ns, 'path');
+            let pathData = `M ${x1} ${y1}`; // Start bei Ecke 1 (oben links verschoben)
+            pathData += ` L ${x2} ${y2}`; // Zu Ecke 2 (oben rechts verschoben)
+            
+            if (this.cutoutHeight > 0) {
+                // Punkt zwischen Ecke 2 und 3 (von Ecke 3 aus vertikal nach oben)
+                const x5 = x3;
+                const y5 = y3 - cutoutHeightPx;
+                // Punkt zwischen Ecke 4 und 1 (von Ecke 4 aus vertikal nach oben)
+                const x6 = x4;
+                const y6 = y4 - cutoutHeightPx;
+                
+                pathData += ` L ${x5} ${y5}`; // Schräge rechts oben nach oben
+                pathData += ` L ${x3} ${y3}`; // Zu Ecke 3 (unten rechts)
+                pathData += ` L ${x4} ${y4}`; // Zu Ecke 4 (unten links)
+                pathData += ` L ${x6} ${y6}`; // Schräge links oben nach oben
+            } else {
+                pathData += ` L ${x3} ${y3}`; // Direkt zu Ecke 3 (unten rechts)
+                pathData += ` L ${x4} ${y4}`; // Zu Ecke 4 (unten links)
+            }
+            
+            pathData += ` Z`; // Zurück zu Start (schließt den Pfad)
+            
+            path.setAttribute('d', pathData);
+            path.setAttribute('fill', '#E0E0E0');
+            path.setAttribute('stroke', '#333');
+            path.setAttribute('stroke-width', '1');
+            svgGroup.appendChild(path);
+        } else {
+            // Normales Profil mit Kerben-Unterbrechungen
+            const kerbenOben = this.kerben.filter(k => {
+                if (k.kerbenTypeId) {
+                    const kt = this.kerbenTypes.find(kt => kt.id === k.kerbenTypeId);
+                    return kt && kt.type !== 'marker' && k.position === 'oben';
+                }
+                return k.type !== 'marker' && k.position === 'oben';
+            }).sort((a, b) => a.distance - b.distance);
+            
+            const kerbenUnten = this.kerben.filter(k => {
+                if (k.kerbenTypeId) {
+                    const kt = this.kerbenTypes.find(kt => kt.id === k.kerbenTypeId);
+                    return kt && kt.type !== 'marker' && k.position === 'unten';
+                }
+                return k.type !== 'marker' && k.position === 'unten';
+            }).sort((a, b) => a.distance - b.distance);
+            
+            const path = document.createElementNS(ns, 'path');
+            let pathData = `M ${rect.x} ${rect.y}`;
+            
+            // Obere Kante mit Unterbrechungen
+            let currentX = rect.x;
+            for (const kerbe of kerbenOben) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                let widthPx;
+                if (kerbe.kerbenTypeId) {
+                    const kt = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                    widthPx = kt ? kt.width * this.mmToPx : 6 * this.mmToPx;
+                } else {
+                    widthPx = (kerbe.width || 6) * this.mmToPx;
+                }
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width && kerbeStartX > currentX) {
+                    pathData += ` L ${kerbeStartX} ${rect.y}`;
+                }
+                currentX = Math.max(currentX, kerbeEndX);
+            }
+            if (currentX < rect.x + rect.width) {
+                pathData += ` L ${rect.x + rect.width} ${rect.y}`;
+            }
+            
+            // Rechte Kante
+            pathData += ` L ${rect.x + rect.width} ${rect.y + rect.height}`;
+            
+            // Untere Kante mit Unterbrechungen
+            currentX = rect.x + rect.width;
+            for (const kerbe of kerbenUnten) {
+                const distancePx = kerbe.distance * this.mmToPx;
+                let widthPx;
+                if (kerbe.kerbenTypeId) {
+                    const kt = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                    widthPx = kt ? kt.width * this.mmToPx : 6 * this.mmToPx;
+                } else {
+                    widthPx = (kerbe.width || 6) * this.mmToPx;
+                }
+                const kerbeStartX = rect.x + distancePx - widthPx/2;
+                const kerbeEndX = rect.x + distancePx + widthPx/2;
+                
+                if (kerbeStartX >= rect.x && kerbeEndX <= rect.x + rect.width && kerbeEndX < currentX) {
+                    pathData += ` L ${kerbeEndX} ${rect.y + rect.height}`;
+                }
+                currentX = Math.min(currentX, kerbeStartX);
+            }
+            if (currentX > rect.x) {
+                pathData += ` L ${rect.x} ${rect.y + rect.height}`;
+            }
+            
+            // Linke Kante
+            pathData += ` Z`;
+            
+            path.setAttribute('d', pathData);
+            path.setAttribute('fill', '#E0E0E0');
+            path.setAttribute('stroke', '#333');
+            path.setAttribute('stroke-width', '1');
+            svgGroup.appendChild(path);
+        }
+    }
+    
+    // Bohnen als SVG
+    drawBohnenToSVG(svgGroup, rect) {
+        if (this.bohnen.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        const bohne = this.bohnen[0];
+        
+        let bohneWidth = rect.width;
+        if (this.cutoutWidth > 0) {
+            bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
         }
         
-        // Texte berücksichtigen
+        const bohneHeight = bohne.height * this.mmToPx;
+        const bohneX = rect.x + (rect.width - bohneWidth) / 2;
+        const bohneY = rect.y - bohneHeight;
+        
+        const rectEl = document.createElementNS(ns, 'rect');
+        rectEl.setAttribute('x', bohneX.toString());
+        rectEl.setAttribute('y', bohneY.toString());
+        rectEl.setAttribute('width', bohneWidth.toString());
+        rectEl.setAttribute('height', bohneHeight.toString());
+        rectEl.setAttribute('fill', '#36454F');
+        rectEl.setAttribute('stroke', '#333');
+        rectEl.setAttribute('stroke-width', '1');
+        svgGroup.appendChild(rectEl);
+    }
+    
+    // Kerben als SVG
+    drawKerbenToSVG(svgGroup, rect) {
+        if (this.kerben.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        this.kerben.forEach(kerbe => {
+            const distancePx = kerbe.distance * this.mmToPx;
+            
+            let widthPx, depthPx, type;
+            if (kerbe.kerbenTypeId) {
+                const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbe.kerbenTypeId);
+                if (!kerbenType) return;
+                widthPx = kerbenType.width * this.mmToPx;
+                depthPx = kerbenType.depth * this.mmToPx;
+                type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+            } else {
+                widthPx = (kerbe.width || 6) * this.mmToPx;
+                depthPx = (kerbe.depth || 4) * this.mmToPx;
+                type = kerbe.type || 'triangle';
+            }
+            
+            const kerbeX = rect.x + distancePx;
+            const kerbeY = kerbe.position === 'oben' ? rect.y : rect.y + rect.height;
+            
+            if (type === 'marker') {
+                // Strich-Markierung
+                const line = document.createElementNS(ns, 'line');
+                if (kerbe.position === 'oben') {
+                    line.setAttribute('x1', kerbeX.toString());
+                    line.setAttribute('y1', kerbeY.toString());
+                    line.setAttribute('x2', kerbeX.toString());
+                    line.setAttribute('y2', (kerbeY + depthPx).toString());
+                } else {
+                    line.setAttribute('x1', kerbeX.toString());
+                    line.setAttribute('y1', kerbeY.toString());
+                    line.setAttribute('x2', kerbeX.toString());
+                    line.setAttribute('y2', (kerbeY - depthPx).toString());
+                }
+                line.setAttribute('stroke', '#333');
+                line.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(line);
+            } else {
+                // Dreieck
+                const path = document.createElementNS(ns, 'path');
+                let pathData;
+                if (kerbe.position === 'oben') {
+                    pathData = `M ${kerbeX - widthPx/2} ${kerbeY}`;
+                    pathData += ` L ${kerbeX} ${kerbeY + depthPx}`;
+                    pathData += ` L ${kerbeX + widthPx/2} ${kerbeY} Z`;
+                } else {
+                    pathData = `M ${kerbeX - widthPx/2} ${kerbeY}`;
+                    pathData += ` L ${kerbeX} ${kerbeY - depthPx}`;
+                    pathData += ` L ${kerbeX + widthPx/2} ${kerbeY} Z`;
+                }
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'white');
+                path.setAttribute('stroke', '#333');
+                path.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(path);
+            }
+        });
+    }
+    
+    // Löcher als SVG
+    drawLoecherToSVG(svgGroup, rect) {
+        if (this.loecher.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        this.loecher.forEach(loch => {
+            const distancePx = loch.distance * this.mmToPx;
+            const widthPx = loch.width * this.mmToPx;
+            const heightPx = loch.height * this.mmToPx;
+            const positionPx = (loch.position || this.CONFIG.defaultLochPositionFromTop) * this.mmToPx;
+            
+            const lochX = rect.x + distancePx;
+            const lochY = rect.y + positionPx + (heightPx / 2);
+            
+            // Kreis
+            if (Math.abs(widthPx - heightPx) < 0.1) {
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', lochX.toString());
+                circle.setAttribute('cy', lochY.toString());
+                circle.setAttribute('r', (widthPx / 2).toString());
+                circle.setAttribute('fill', 'white');
+                circle.setAttribute('stroke', '#333');
+                circle.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(circle);
+            } else {
+                // Kapsel (Stadion-Form)
+                const radius = Math.min(widthPx, heightPx) / 2;
+                const x = lochX - widthPx / 2;
+                const y = lochY - heightPx / 2;
+                
+                const path = document.createElementNS(ns, 'path');
+                const r = radius;
+                const rRight = x + widthPx - r;
+                const rBottom = y + heightPx - r;
+                let pathData = `M ${x + r} ${y}`;
+                pathData += ` L ${rRight} ${y}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x + widthPx} ${y + r}`;
+                pathData += ` L ${x + widthPx} ${rBottom}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${rRight} ${y + heightPx}`;
+                pathData += ` L ${x + r} ${y + heightPx}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x} ${rBottom}`;
+                pathData += ` L ${x} ${y + r}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x + r} ${y} Z`;
+                
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'white');
+                path.setAttribute('stroke', '#333');
+                path.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(path);
+            }
+        });
+    }
+    
+    // Ausschnitte als SVG
+    drawAusschnitteToSVG(svgGroup, rect) {
+        if (this.ausschnitte.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        this.ausschnitte.forEach(ausschnitt => {
+            const positionPx = ausschnitt.position * this.mmToPx;
+            const widthPx = ausschnitt.width * this.mmToPx;
+            const heightPx = ausschnitt.height * this.mmToPx;
+            
+            let x, y;
+            if (ausschnitt.positionType === 'oben') {
+                x = rect.x + positionPx;
+                y = rect.y;
+            } else {
+                x = rect.x + positionPx;
+                y = rect.y + rect.height - heightPx;
+            }
+            
+            // Schräglinien für Ausschnitt
+            const g = document.createElementNS(ns, 'g');
+            g.setAttribute('stroke', '#333');
+            g.setAttribute('stroke-width', '1');
+            
+            // Linie 1: oben links nach unten rechts
+            const line1 = document.createElementNS(ns, 'line');
+            line1.setAttribute('x1', x.toString());
+            line1.setAttribute('y1', y.toString());
+            line1.setAttribute('x2', (x + widthPx).toString());
+            line1.setAttribute('y2', (y + heightPx).toString());
+            g.appendChild(line1);
+            
+            // Linie 2: oben rechts nach unten links
+            const line2 = document.createElementNS(ns, 'line');
+            line2.setAttribute('x1', (x + widthPx).toString());
+            line2.setAttribute('y1', y.toString());
+            line2.setAttribute('x2', x.toString());
+            line2.setAttribute('y2', (y + heightPx).toString());
+            g.appendChild(line2);
+            
+            svgGroup.appendChild(g);
+        });
+    }
+    
+    // Crimping als SVG
+    drawCrimpingToSVG(svgGroup, rect) {
+        if (this.crimping.length === 0 || this.bohnen.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        const bohne = this.bohnen[0];
+        
+        let bohneWidth = rect.width;
+        if (this.cutoutWidth > 0) {
+            bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+        }
+        const bohneX = rect.x + (rect.width - bohneWidth) / 2;
+        const bohneY = rect.y - (bohne.height * this.mmToPx);
+        
+        this.crimping.forEach(crimpingItem => {
+            const positionPx = crimpingItem.position * this.mmToPx;
+            const lengthPx = crimpingItem.length * this.mmToPx;
+            const heightPx = bohne.height * this.mmToPx;
+            
+            // Berechne tatsächliche Position innerhalb der Bohne
+            let actualX = bohneX + positionPx;
+            let actualWidth = lengthPx;
+            
+            // Begrenze auf Bohne-Grenzen
+            if (actualX < bohneX) {
+                actualWidth -= (bohneX - actualX);
+                actualX = bohneX;
+            }
+            if (actualX + actualWidth > bohneX + bohneWidth) {
+                actualWidth = bohneX + bohneWidth - actualX;
+            }
+            
+            if (actualWidth <= 0) return;
+            
+            // Rechteck mit Schraffur
+            const rectEl = document.createElementNS(ns, 'rect');
+            rectEl.setAttribute('x', actualX.toString());
+            rectEl.setAttribute('y', bohneY.toString());
+            rectEl.setAttribute('width', actualWidth.toString());
+            rectEl.setAttribute('height', heightPx.toString());
+            rectEl.setAttribute('fill', '#808080');
+            rectEl.setAttribute('stroke', '#666');
+            rectEl.setAttribute('stroke-width', '1');
+            svgGroup.appendChild(rectEl);
+            
+            // Schraffur (diagonale Linien)
+            const hatchGroup = document.createElementNS(ns, 'g');
+            hatchGroup.setAttribute('stroke', '#666');
+            hatchGroup.setAttribute('stroke-width', '0.5');
+            
+            const spacing = 3 * this.mmToPx;
+            for (let i = 0; i < actualWidth; i += spacing) {
+                const line = document.createElementNS(ns, 'line');
+                line.setAttribute('x1', (actualX + i).toString());
+                line.setAttribute('y1', bohneY.toString());
+                line.setAttribute('x2', (actualX + i - heightPx).toString());
+                line.setAttribute('y2', (bohneY + heightPx).toString());
+                hatchGroup.appendChild(line);
+            }
+            svgGroup.appendChild(hatchGroup);
+        });
+    }
+    
+    // Nahtlinie als SVG
+    drawNahtlinieToSVG(svgGroup, rect) {
+        if (!this.nahtlinie) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        const distancePx = this.nahtlinie.distance * this.mmToPx;
+        const y = rect.y + rect.height - distancePx;
+        
+        if (this.nahtlinie.type === 'dashed') {
+            const line = document.createElementNS(ns, 'line');
+            line.setAttribute('x1', rect.x.toString());
+            line.setAttribute('y1', y.toString());
+            line.setAttribute('x2', (rect.x + rect.width).toString());
+            line.setAttribute('y2', y.toString());
+            line.setAttribute('stroke', '#333');
+            line.setAttribute('stroke-width', '1');
+            line.setAttribute('stroke-dasharray', '10,5');
+            svgGroup.appendChild(line);
+        } else if (this.nahtlinie.type === 'holes') {
+            const holeDiameter = 1 * this.mmToPx;
+            const holeSpacing = 3 * this.mmToPx;
+            
+            for (let x = rect.x; x <= rect.x + rect.width; x += holeSpacing) {
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', x.toString());
+                circle.setAttribute('cy', y.toString());
+                circle.setAttribute('r', (holeDiameter / 2).toString());
+                circle.setAttribute('fill', '#333');
+                svgGroup.appendChild(circle);
+            }
+        }
+    }
+    
+    // Texte als SVG
+    drawTextsToSVG(svgGroup) {
+        if (this.texts.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        
         this.texts.forEach(text => {
-            const textWidth = this.ctx.measureText(text.content).width;
-            const textHeight = parseInt(text.size);
-            minX = Math.min(minX, text.x - 15);
-            maxX = Math.max(maxX, text.x + textWidth + 15);
-            minY = Math.min(minY, text.y - textHeight - 15);
-            maxY = Math.max(maxY, text.y + 15);
+            const textEl = document.createElementNS(ns, 'text');
+            textEl.setAttribute('x', text.x.toString());
+            textEl.setAttribute('y', text.y.toString());
+            textEl.setAttribute('font-size', text.size.toString());
+            textEl.setAttribute('font-family', 'Arial');
+            textEl.setAttribute('fill', '#333');
+            textEl.setAttribute('text-anchor', 'start');
+            textEl.setAttribute('dominant-baseline', 'baseline');
+            textEl.textContent = text.content;
+            svgGroup.appendChild(textEl);
+        });
+    }
+    
+    // Bemaßungen als SVG (vollständige Implementierung)
+    drawDimensionsToSVG(svgGroup, rect) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const fontSize = this.CONFIG.dimensionFontSize;
+        const corner4X = rect.x;
+        const corner4Y = rect.y + rect.height;
+        const dimensionOffset = this.CONFIG.dimensionLineSpacing * this.mmToPx;
+        let currentYOffset = this.CONFIG.dimensionOffset * this.mmToPx;
+        
+        // Sammle alle Elemente
+        const allElements = [];
+        this.kerben.forEach(kerbe => {
+            allElements.push({
+                type: 'kerbe',
+                position: kerbe.distance,
+                positionType: kerbe.position,
+                element: kerbe
+            });
+        });
+        this.ausschnitte.forEach(ausschnitt => {
+            allElements.push({
+                type: 'ausschnitt',
+                position: ausschnitt.position,
+                positionType: ausschnitt.positionType,
+                element: ausschnitt
+            });
+        });
+        this.loecher.forEach(loch => {
+            allElements.push({
+                type: 'loch',
+                position: loch.distance,
+                element: loch
+            });
+        });
+        this.crimping.forEach(crimpingItem => {
+            allElements.push({
+                type: 'crimping',
+                position: crimpingItem.position,
+                length: crimpingItem.length,
+                element: crimpingItem
+            });
         });
         
-        // Zusätzlicher Sicherheitsrand
-        const safetyMargin = 20 * this.mmToPx;
-        minX -= safetyMargin;
-        maxX += safetyMargin;
-        minY -= safetyMargin;
-        maxY += safetyMargin;
+        allElements.sort((a, b) => a.position - b.position);
         
-        // Berechne die tatsächliche Größe des Zeichnungsinhalts
-        const contentWidth = maxX - minX;
-        const contentHeight = maxY - minY;
-        
-        // A4 Format-Dimensionen in mm (Querformat)
-        const a4Width = 297; // mm
-        const a4Height = 210; // mm
-        const margin = 5; // mm Rand
-        const usableWidth = a4Width - (2 * margin);
-        const usableHeight = a4Height - (2 * margin);
-        
-        // Berechne Skalierung (in mm)
-        const contentWidthMm = contentWidth / this.mmToPx;
-        const contentHeightMm = contentHeight / this.mmToPx;
-        
-        const scaleX = usableWidth / contentWidthMm;
-        const scaleY = usableHeight / contentHeightMm;
-        const scale = Math.min(scaleX, scaleY);
-        
-        // Verwende autoZoom-Logik um alles korrekt zu positionieren
-        const totalWidth = maxX - minX;
-        const totalHeight = maxY - minY;
-        
-        // Berechne optimalen Zoom (ähnlich wie autoZoom)
-        const zoomX = (this.canvasWidth * 0.8) / totalWidth;
-        const zoomY = (this.canvasHeight * 0.8) / totalHeight;
-        const optimalZoom = Math.min(zoomX, zoomY);
-        
-        // Zentriere die Ansicht
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-        
-        // Setze temporäre Zoom/Offset für PDF
-        this.zoom = optimalZoom;
-        this.offsetX = this.canvasWidth / 2 - centerX * this.zoom;
-        this.offsetY = this.canvasHeight / 2 - centerY * this.zoom;
-        
-        // Zeichne auf den normalen Canvas
-        this.draw();
-        
-        // Screenshot des gesamten Canvas mit hoher Auflösung
-        const scaleFactor = 3; // Hohe Auflösung für PDF
-        
-        // Erstelle temporäres Canvas für hohe Auflösung - verwende gesamten Canvas
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCanvas.width = this.canvasWidth * scaleFactor;
-        tempCanvas.height = this.canvasHeight * scaleFactor;
-        
-        // Kopiere den gesamten Canvas-Inhalt auf hohe Auflösung
-        tempCtx.drawImage(
-            this.canvas,
-            0, 0, this.canvasWidth, this.canvasHeight,
-            0, 0, tempCanvas.width, tempCanvas.height
+        const elementsOben = allElements.filter(el => 
+            (el.type === 'kerbe' && el.positionType === 'oben') ||
+            (el.type === 'ausschnitt' && el.positionType === 'oben') ||
+            el.type === 'loch' ||
+            el.type === 'crimping'
+        );
+        const elementsUnten = allElements.filter(el => 
+            (el.type === 'kerbe' && el.positionType === 'unten') ||
+            (el.type === 'ausschnitt' && el.positionType === 'unten')
         );
         
-        // Verwende tempCanvas für PDF
-        const imgData = tempCanvas.toDataURL('image/png', 1.0);
+        // Bemaßungen oberhalb
+        let obenOffset = 0;
+        if (elementsOben.length > 0) {
+            let obenDimensionY;
+            if (this.bohnen.length > 0) {
+                const bohneHeight = this.bohnen[0].height * this.mmToPx;
+                obenDimensionY = rect.y - bohneHeight - (8 * this.mmToPx);
+            } else {
+                obenDimensionY = rect.y - (8 * this.mmToPx);
+            }
+            
+            elementsOben.forEach((element, index) => {
+                const positionPx = element.position * this.mmToPx;
+                const customOffset = this.dimensionOffsets.horizontal[index] || 0;
+                const dimensionY = obenDimensionY - obenOffset + customOffset;
+                
+                if (element.type === 'ausschnitt' || element.type === 'crimping') {
+                    this.drawHorizontalDimensionLeftArrowOnlySVG(svgGroup, corner4X, dimensionY, rect.x + positionPx, dimensionY, `${element.position}mm`, fontSize);
+                } else {
+                    this.drawHorizontalDimensionFromZeroSVG(svgGroup, corner4X, dimensionY, rect.x + positionPx, dimensionY, `${element.position}mm`, fontSize);
+                }
+                obenOffset += dimensionOffset;
+            });
+        }
         
-        // Erstelle PDF mit jsPDF - A4 Querformat
-        const { jsPDF } = window.jspdf;
-        const pdf = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'a4'
+        // Bemaßungen unterhalb
+        elementsUnten.forEach((element, index) => {
+            const positionPx = element.position * this.mmToPx;
+            const baseIndexBottom = elementsOben.length;
+            const customOffset = this.dimensionOffsets.horizontal[baseIndexBottom + index] || 0;
+            const dimensionY = corner4Y + currentYOffset + customOffset;
+            
+            if (element.type === 'ausschnitt') {
+                this.drawHorizontalDimensionLeftArrowOnlySVG(svgGroup, corner4X, dimensionY, rect.x + positionPx, dimensionY, `${element.position}mm`, fontSize);
+            } else {
+                this.drawHorizontalDimensionFromZeroSVG(svgGroup, corner4X, dimensionY, rect.x + positionPx, dimensionY, `${element.position}mm`, fontSize);
+            }
+            currentYOffset += dimensionOffset;
         });
         
-        // Berechne die sichtbare Welt-Koordinaten-Region auf dem Canvas
-        // Der Canvas zeigt den gesamten Bereich von minX bis maxX (dank optimalZoom)
-        const visibleWorldWidth = this.canvasWidth / this.zoom;
-        const visibleWorldHeight = this.canvasHeight / this.zoom;
+        // Vertikale Bemaßungen (rechts)
+        let rightDimensionX = rect.x + rect.width + (20 * this.mmToPx);
+        const rightDimensionSpacing = 7 * this.mmToPx;
+        let verticalIndex = 0;
         
-        // Verwende den gesamten sichtbaren Bereich für PDF
-        const finalWidthMm = visibleWorldWidth / this.mmToPx;
-        const finalHeightMm = visibleWorldHeight / this.mmToPx;
+        if (this.bohnen.length > 0) {
+            const bohne = this.bohnen[0];
+            const bohneHeight = bohne.height * this.mmToPx;
+            const bohneTopY = rect.y - bohneHeight;
+            
+            const customOffsetX1 = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX1 = rightDimensionX + customOffsetX1;
+            this.drawVerticalDimensionFromZeroSVG(svgGroup, bohneTopY, dimensionX1, rect.y, dimensionX1, `${bohne.height}mm`, fontSize);
+            verticalIndex++;
+            rightDimensionX += rightDimensionSpacing;
+            
+            const customOffsetX2 = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX2 = rightDimensionX + customOffsetX2;
+            this.drawVerticalDimensionFromZeroSVG(svgGroup, rect.y, dimensionX2, rect.y + rect.height, dimensionX2, `${(rect.height / this.mmToPx).toFixed(1)}mm`, fontSize);
+            verticalIndex++;
+        } else {
+            const customOffsetX = this.dimensionOffsets.vertical[verticalIndex] || 0;
+            const dimensionX = rightDimensionX + customOffsetX;
+            this.drawVerticalDimensionFromZeroSVG(svgGroup, rect.y, dimensionX, rect.y + rect.height, dimensionX, `${(rect.height / this.mmToPx).toFixed(1)}mm`, fontSize);
+        }
         
-        // Skaliere für A4
-        const scaleX2 = usableWidth / finalWidthMm;
-        const scaleY2 = usableHeight / finalHeightMm;
-        const finalScale = Math.min(scaleX2, scaleY2);
+        // Cutout-Bemaßungen
+        if (this.cutoutWidth > 0) {
+            const cutoutWidthPx = this.cutoutWidth * this.mmToPx;
+            const cutoutHeightPx = this.cutoutHeight * this.mmToPx;
+            
+            // Cutout-Breite bemaßen (oberhalb des Profils)
+            let cutoutDimY;
+            if (this.bohnen.length > 0) {
+                const bohneHeight = this.bohnen[0].height * this.mmToPx;
+                cutoutDimY = rect.y - bohneHeight - (8 * this.mmToPx);
+            } else {
+                cutoutDimY = rect.y - (8 * this.mmToPx);
+            }
+            
+            const cutoutX1 = rect.x + cutoutWidthPx; // Cutout-Stelle links
+            const cutoutX2 = rect.x + rect.width - cutoutWidthPx; // Cutout-Stelle rechts
+            // Nutze Offset falls vorhanden
+            const cutoutIndex = elementsOben.length;
+            const customOffsetCutout = this.dimensionOffsets.horizontal[cutoutIndex] || 0;
+            cutoutDimY += customOffsetCutout;
+            
+            // Cutout-Breite-Bemaßung (von links bis rechts)
+            this.drawHorizontalDimensionLeftArrowOnlySVG(
+                svgGroup,
+                cutoutX1, // Start bei Cutout-Stelle links
+                cutoutDimY,
+                cutoutX2, // Ende bei Cutout-Stelle rechts
+                cutoutDimY,
+                `${this.cutoutWidth}mm`,
+                fontSize
+            );
+            
+            // Cutout-Höhe bemaßen (rechts, von oben bis unten)
+            if (this.cutoutHeight > 0) {
+                const cutoutBottomY = rect.y + rect.height;
+                const cutoutTopY = cutoutBottomY - cutoutHeightPx;
+                const cutoutDimensionX = rightDimensionX;
+                const customOffsetX = this.dimensionOffsets.vertical[verticalIndex] || 0;
+                const dimensionX = cutoutDimensionX + customOffsetX;
+                
+                this.drawVerticalDimensionFromZeroSVG(
+                    svgGroup,
+                    cutoutTopY,
+                    dimensionX,
+                    cutoutBottomY,
+                    dimensionX,
+                    `${this.cutoutHeight}mm`,
+                    fontSize
+                );
+            } else {
+                // Nur Breite bemaßen (wenn keine Höhe)
+                const cutoutDimensionX = rightDimensionX;
+                const customOffsetX = this.dimensionOffsets.vertical[verticalIndex] || 0;
+                const dimensionX = cutoutDimensionX + customOffsetX;
+                
+                this.drawVerticalDimensionFromZeroSVG(
+                    svgGroup,
+                    rect.y + cutoutWidthPx,
+                    dimensionX,
+                    rect.y + rect.height - cutoutWidthPx,
+                    dimensionX,
+                    `${this.cutoutWidth}mm`,
+                    fontSize
+                );
+            }
+        }
         
-        const finalWidth = finalWidthMm * finalScale;
-        const finalHeight = finalHeightMm * finalScale;
+        // Crimping-Bemaßungen
+        if (this.crimping.length > 0 && this.bohnen.length > 0) {
+            this.crimping.forEach((crimpingItem, index) => {
+                const lengthPx = crimpingItem.length * this.mmToPx;
+                const positionPx = crimpingItem.position * this.mmToPx;
+                let bohneWidth = rect.width;
+                if (this.cutoutWidth > 0) {
+                    bohneWidth = rect.width - (2 * this.cutoutWidth * this.mmToPx);
+                }
+                const bohneX = rect.x + (rect.width - bohneWidth) / 2;
+                const crimpingX = bohneX + positionPx;
+                const crimpingDimensionY = rect.y - (this.bohnen[0].height * this.mmToPx) - (15 * this.mmToPx);
+                
+                const widthLine = document.createElementNS(ns, 'line');
+                widthLine.setAttribute('x1', crimpingX.toString());
+                widthLine.setAttribute('y1', crimpingDimensionY.toString());
+                widthLine.setAttribute('x2', (crimpingX + lengthPx).toString());
+                widthLine.setAttribute('y2', crimpingDimensionY.toString());
+                widthLine.setAttribute('stroke', '#555');
+                widthLine.setAttribute('stroke-width', '0.5');
+                svgGroup.appendChild(widthLine);
+                
+                // Pfeile
+                const arrow1 = document.createElementNS(ns, 'path');
+                arrow1.setAttribute('d', `M ${crimpingX} ${crimpingDimensionY} L ${crimpingX + 6} ${crimpingDimensionY - 3} L ${crimpingX + 6} ${crimpingDimensionY + 3} Z`);
+                arrow1.setAttribute('fill', '#555');
+                svgGroup.appendChild(arrow1);
+                
+                const arrow2 = document.createElementNS(ns, 'path');
+                arrow2.setAttribute('d', `M ${crimpingX + lengthPx} ${crimpingDimensionY} L ${crimpingX + lengthPx - 6} ${crimpingDimensionY - 3} L ${crimpingX + lengthPx - 6} ${crimpingDimensionY + 3} Z`);
+                arrow2.setAttribute('fill', '#555');
+                svgGroup.appendChild(arrow2);
+                
+                // Text
+                const textEl = document.createElementNS(ns, 'text');
+                textEl.setAttribute('x', (crimpingX + lengthPx / 2).toString());
+                textEl.setAttribute('y', (crimpingDimensionY - 5).toString());
+                textEl.setAttribute('font-size', fontSize.toString());
+                textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
+                textEl.setAttribute('fill', '#555');
+                textEl.setAttribute('text-anchor', 'middle');
+                textEl.setAttribute('dominant-baseline', 'baseline');
+                textEl.textContent = `${crimpingItem.length}mm`;
+                svgGroup.appendChild(textEl);
+            });
+        }
         
-        // Zentriere auf A4
-        const xOffset = (a4Width - finalWidth) / 2;
-        const yOffset = (a4Height - finalHeight) / 2;
+        // Nahtlinie-Bemaßung (innerhalb des Profils, 30mm von links)
+        if (this.nahtlinie) {
+            const nahtDistancePx = this.nahtlinie.distance * this.mmToPx;
+            const nahtY = rect.y + rect.height - nahtDistancePx;
+            const insideX = rect.x + (30 * this.mmToPx); // 30mm von links innerhalb des Profils
+            
+            this.drawVerticalDimensionFromZeroSVG(svgGroup, nahtY, insideX, rect.y + rect.height, insideX, `${this.nahtlinie.distance}mm`, fontSize);
+        }
         
-        // Füge Bild zum PDF hinzu
-        pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
+        // Gesamtbreite-Bemaßung (ganz unten, ganz außen)
+        const totalWidthYOffset = (elementsUnten.length * dimensionOffset) + (this.nahtlinie && this.nahtlinie.distance > 0 ? dimensionOffset : 0);
+        const totalWidthIndex = elementsOben.length + elementsUnten.length;
+        const customOffsetTotalWidth = this.dimensionOffsets.horizontal[totalWidthIndex] || 0;
+        const totalWidthY = corner4Y + currentYOffset + totalWidthYOffset + customOffsetTotalWidth;
         
-        // Speichere PDF
-        const fileName = `ProfilZeichner_A4_${new Date().toISOString().slice(0,10)}.pdf`;
-        pdf.save(fileName);
+        this.drawHorizontalDimensionFromZeroSVG(
+            svgGroup,
+            corner4X,
+            totalWidthY,
+            rect.x + rect.width,
+            totalWidthY,
+            `${(rect.width / this.mmToPx).toFixed(1)}mm`,
+            fontSize
+        );
+    }
+    
+    // Hilfsfunktionen für Bemaßungen als SVG
+    drawHorizontalDimensionFromZeroSVG(svgGroup, startX, y, endX, y2, label, fontSize) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const arrowSize = this.CONFIG.dimensionArrowSize;
+        const rect = this.currentRect;
         
-        // Stelle ursprüngliche Einstellungen wieder her
-        this.zoom = originalZoom;
-        this.offsetX = originalOffsetX;
-        this.offsetY = originalOffsetY;
-        this.draw();
+        // Berechne Zielpunkt für gestrichelte Linien (zum Profil)
+        let elementTopY = rect ? (rect.y + rect.height) : y;
+        if (rect) {
+            if (y > rect.y + rect.height) {
+                // Bemaßung ist unterhalb des Profils - Linie geht nach oben zum Profil
+                elementTopY = rect.y + rect.height; // Bis zur unteren Profilkante
+            } else {
+                // Bemaßung ist oberhalb des Profils - Linie geht nach unten zum Profil
+                elementTopY = rect.y; // Bis zur oberen Profilkante
+            }
+        }
         
-        alert('PDF wurde als A4-Format exportiert!');
+        // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
+        if (rect) {
+            // Gestrichelte Linie am Anfang (zum Element)
+            const dashLine1 = document.createElementNS(ns, 'line');
+            dashLine1.setAttribute('x1', startX.toString());
+            dashLine1.setAttribute('y1', y.toString());
+            dashLine1.setAttribute('x2', startX.toString());
+            dashLine1.setAttribute('y2', elementTopY.toString());
+            dashLine1.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine1.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+            dashLine1.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine1);
+            
+            // Gestrichelte Linie am Ende (zum Element)
+            const dashLine2 = document.createElementNS(ns, 'line');
+            dashLine2.setAttribute('x1', endX.toString());
+            dashLine2.setAttribute('y1', y.toString());
+            dashLine2.setAttribute('x2', endX.toString());
+            dashLine2.setAttribute('y2', elementTopY.toString());
+            dashLine2.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine2.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+            dashLine2.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine2);
+        }
+        
+        // Hauptlinie
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', startX.toString());
+        line.setAttribute('y1', y.toString());
+        line.setAttribute('x2', endX.toString());
+        line.setAttribute('y2', y.toString());
+        line.setAttribute('stroke', this.CONFIG.colors.dimension);
+        line.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+        svgGroup.appendChild(line);
+        
+        // Pfeil links
+        const arrow1 = document.createElementNS(ns, 'path');
+        arrow1.setAttribute('d', `M ${startX} ${y} L ${startX + arrowSize} ${y - arrowSize/2} L ${startX + arrowSize} ${y + arrowSize/2} Z`);
+        arrow1.setAttribute('fill', this.CONFIG.colors.dimension);
+        svgGroup.appendChild(arrow1);
+        
+        // Pfeil rechts
+        const arrow2 = document.createElementNS(ns, 'path');
+        arrow2.setAttribute('d', `M ${endX} ${y} L ${endX - arrowSize} ${y - arrowSize/2} L ${endX - arrowSize} ${y + arrowSize/2} Z`);
+        arrow2.setAttribute('fill', this.CONFIG.colors.dimension);
+        svgGroup.appendChild(arrow2);
+        
+        // Text
+        const textEl = document.createElementNS(ns, 'text');
+        textEl.setAttribute('x', ((startX + endX) / 2).toString());
+        textEl.setAttribute('y', (y - 5).toString());
+        textEl.setAttribute('font-size', fontSize.toString());
+        textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
+        textEl.setAttribute('fill', this.CONFIG.colors.dimension);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'baseline');
+        textEl.textContent = label;
+        svgGroup.appendChild(textEl);
+    }
+    
+    drawHorizontalDimensionLeftArrowOnlySVG(svgGroup, startX, y, endX, y2, label, fontSize) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const arrowSize = 6; // Wie im Canvas (fest für Cutouts)
+        const rect = this.currentRect;
+        
+        // Berechne Zielpunkt für gestrichelte Linien (zum Profil)
+        let elementTopY = rect ? (rect.y + rect.height) : y;
+        if (rect) {
+            if (y > rect.y + rect.height) {
+                // Bemaßung ist unterhalb des Profils - Linie geht nach oben zum Profil
+                elementTopY = rect.y + rect.height; // Bis zur unteren Profilkante
+            } else {
+                // Bemaßung ist oberhalb des Profils - Linie geht nach unten zum Profil
+                elementTopY = rect.y; // Bis zur oberen Profilkante
+            }
+        }
+        
+        // Gestrichelte Hilfslinien zum Element - BLAU
+        if (rect) {
+            // Gestrichelte Linie am Anfang (links)
+            const dashLine1 = document.createElementNS(ns, 'line');
+            dashLine1.setAttribute('x1', startX.toString());
+            dashLine1.setAttribute('y1', y.toString());
+            dashLine1.setAttribute('x2', startX.toString());
+            dashLine1.setAttribute('y2', elementTopY.toString());
+            dashLine1.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine1.setAttribute('stroke-width', '0.5');
+            dashLine1.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine1);
+            
+            // Gestrichelte Linie am Ende (rechts)
+            const dashLine2 = document.createElementNS(ns, 'line');
+            dashLine2.setAttribute('x1', endX.toString());
+            dashLine2.setAttribute('y1', y.toString());
+            dashLine2.setAttribute('x2', endX.toString());
+            dashLine2.setAttribute('y2', elementTopY.toString());
+            dashLine2.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine2.setAttribute('stroke-width', '0.5');
+            dashLine2.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine2);
+        }
+        
+        // Hauptlinie
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', startX.toString());
+        line.setAttribute('y1', y.toString());
+        line.setAttribute('x2', endX.toString());
+        line.setAttribute('y2', y.toString());
+        line.setAttribute('stroke', this.CONFIG.colors.dimension);
+        line.setAttribute('stroke-width', '0.5');
+        svgGroup.appendChild(line);
+        
+        // Pfeil links
+        const arrow = document.createElementNS(ns, 'path');
+        arrow.setAttribute('d', `M ${startX} ${y} L ${startX + arrowSize} ${y - arrowSize/2} L ${startX + arrowSize} ${y + arrowSize/2} Z`);
+        arrow.setAttribute('fill', this.CONFIG.colors.dimension);
+        svgGroup.appendChild(arrow);
+        
+        // Text
+        const textEl = document.createElementNS(ns, 'text');
+        textEl.setAttribute('x', ((startX + endX) / 2).toString());
+        textEl.setAttribute('y', (y - 5).toString());
+        textEl.setAttribute('font-size', fontSize.toString());
+        textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
+        textEl.setAttribute('fill', this.CONFIG.colors.dimension);
+        textEl.setAttribute('text-anchor', 'middle');
+        textEl.setAttribute('dominant-baseline', 'baseline');
+        textEl.textContent = label;
+        svgGroup.appendChild(textEl);
+    }
+    
+    drawVerticalDimensionFromZeroSVG(svgGroup, startY, x, endY, x2, label, fontSize) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const arrowSize = this.CONFIG.dimensionArrowSize;
+        const rect = this.currentRect;
+        
+        // Berechne Zielpunkt für gestrichelte Linien (zum Profil)
+        let elementRightX = rect ? (rect.x + rect.width) : x; // Rechte Kante des Profils
+        
+        // Gestrichelte Hilfslinien zum Element (an den Enden der Bemaßungslinie) - BLAU
+        if (rect) {
+            // Gestrichelte Linie am Anfang (oben) - horizontal bis zum Profil
+            const dashLine1 = document.createElementNS(ns, 'line');
+            dashLine1.setAttribute('x1', x.toString());
+            dashLine1.setAttribute('y1', startY.toString());
+            dashLine1.setAttribute('x2', elementRightX.toString());
+            dashLine1.setAttribute('y2', startY.toString());
+            dashLine1.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine1.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+            dashLine1.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine1);
+            
+            // Gestrichelte Linie am Ende (unten) - horizontal bis zum Profil
+            const dashLine2 = document.createElementNS(ns, 'line');
+            dashLine2.setAttribute('x1', x.toString());
+            dashLine2.setAttribute('y1', endY.toString());
+            dashLine2.setAttribute('x2', elementRightX.toString());
+            dashLine2.setAttribute('y2', endY.toString());
+            dashLine2.setAttribute('stroke', this.CONFIG.colors.highlight); // Blau
+            dashLine2.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+            dashLine2.setAttribute('stroke-dasharray', '5,5');
+            svgGroup.appendChild(dashLine2);
+        }
+        
+        // Hauptlinie
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', x.toString());
+        line.setAttribute('y1', startY.toString());
+        line.setAttribute('x2', x.toString());
+        line.setAttribute('y2', endY.toString());
+        line.setAttribute('stroke', this.CONFIG.colors.dimension);
+        line.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
+        svgGroup.appendChild(line);
+        
+        // Pfeil oben
+        const arrow1 = document.createElementNS(ns, 'path');
+        arrow1.setAttribute('d', `M ${x} ${startY} L ${x - arrowSize/2} ${startY + arrowSize} L ${x + arrowSize/2} ${startY + arrowSize} Z`);
+        arrow1.setAttribute('fill', this.CONFIG.colors.dimension);
+        svgGroup.appendChild(arrow1);
+        
+        // Pfeil unten
+        const arrow2 = document.createElementNS(ns, 'path');
+        arrow2.setAttribute('d', `M ${x} ${endY} L ${x - arrowSize/2} ${endY - arrowSize} L ${x + arrowSize/2} ${endY - arrowSize} Z`);
+        arrow2.setAttribute('fill', this.CONFIG.colors.dimension);
+        svgGroup.appendChild(arrow2);
+        
+        // Text (rotiert um -90 Grad)
+        const textEl = document.createElementNS(ns, 'text');
+        textEl.setAttribute('x', (x + 5).toString());
+        textEl.setAttribute('y', ((startY + endY) / 2).toString());
+        textEl.setAttribute('font-size', fontSize.toString());
+        textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
+        textEl.setAttribute('fill', this.CONFIG.colors.dimension);
+        textEl.setAttribute('text-anchor', 'start');
+        textEl.setAttribute('dominant-baseline', 'middle');
+        textEl.setAttribute('transform', `rotate(-90 ${x + 5} ${(startY + endY) / 2})`);
+        textEl.textContent = label;
+        svgGroup.appendChild(textEl);
+    }
+    
+    // Detailzeichnungen als SVG
+    drawDetailDrawingsToSVG(svgGroup, rect, startY) {
+        if (this.kerben.length === 0 && this.loecher.length === 0) return;
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        const scale = 2; // Doppelt so groß
+        const detailSpacing = 30 * this.mmToPx; // Abstand zwischen Kerbe und Loch
+        let currentX = rect.x; // Startposition links
+        
+        // Kerbe Detailzeichnung - Zeige alle verschiedenen Kerben-Typen
+        const usedKerbenTypes = [];
+        this.kerben.forEach(kerbe => {
+            const kerbenTypeId = kerbe.kerbenTypeId || (this.kerbenTypes.length > 0 ? this.kerbenTypes[0].id : null);
+            const kerbenType = this.kerbenTypes.find(kt => kt.id === kerbenTypeId);
+            if (kerbenType && !usedKerbenTypes.find(ukt => ukt.id === kerbenType.id)) {
+                usedKerbenTypes.push(kerbenType);
+            }
+        });
+        
+        usedKerbenTypes.forEach(kerbenType => {
+            const type = (kerbenType.type === 'marker' || kerbenType.type === 'triangle') ? kerbenType.type : 'triangle';
+            const kerbeWidth = kerbenType.width * this.mmToPx * scale;
+            const kerbeDepth = kerbenType.depth * this.mmToPx * scale;
+            
+            if (type === 'marker') {
+                // Strichmarkierung zeichnen
+                const line = document.createElementNS(ns, 'line');
+                line.setAttribute('x1', currentX.toString());
+                line.setAttribute('y1', (startY - kerbeDepth/2).toString());
+                line.setAttribute('x2', currentX.toString());
+                line.setAttribute('y2', (startY + kerbeDepth/2).toString());
+                line.setAttribute('stroke', '#555');
+                line.setAttribute('stroke-width', '2');
+                svgGroup.appendChild(line);
+                
+                // Bemaßung für Strich - seitlich
+                this.drawDetailDimensionLineSVG(svgGroup, currentX, currentX, startY - kerbeDepth/2, startY + kerbeDepth/2, startY);
+                
+                // Text für Höhe
+                const textEl = document.createElementNS(ns, 'text');
+                textEl.setAttribute('x', (currentX + 15).toString());
+                textEl.setAttribute('y', (startY + kerbeDepth/2 + 15).toString());
+                textEl.setAttribute('font-size', '10');
+                textEl.setAttribute('font-family', 'Arial');
+                textEl.setAttribute('fill', '#555');
+                textEl.setAttribute('text-anchor', 'start');
+                textEl.setAttribute('dominant-baseline', 'baseline');
+                textEl.textContent = `${kerbenType.depth}mm`;
+                svgGroup.appendChild(textEl);
+            } else {
+                // Dreieck-Kerbe zeichnen
+                const path = document.createElementNS(ns, 'path');
+                let pathData = `M ${currentX} ${startY + kerbeDepth/2}`;
+                pathData += ` L ${currentX + kerbeWidth/2} ${startY - kerbeDepth/2}`;
+                pathData += ` L ${currentX + kerbeWidth} ${startY + kerbeDepth/2} Z`;
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'white');
+                path.setAttribute('stroke', '#555');
+                path.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(path);
+                
+                // Bemaßung für Breite
+                this.drawDetailDimensionLineSVG(svgGroup, currentX, currentX + kerbeWidth, startY + kerbeDepth/2 + 15, startY + kerbeDepth/2 + 15, startY + kerbeDepth/2 + 15);
+                
+                // Text für Breite
+                const textWidth = document.createElementNS(ns, 'text');
+                textWidth.setAttribute('x', (currentX + kerbeWidth/2).toString());
+                textWidth.setAttribute('y', (startY + kerbeDepth/2 + 25).toString());
+                textWidth.setAttribute('font-size', '10');
+                textWidth.setAttribute('font-family', 'Arial');
+                textWidth.setAttribute('fill', '#555');
+                textWidth.setAttribute('text-anchor', 'middle');
+                textWidth.setAttribute('dominant-baseline', 'baseline');
+                textWidth.textContent = `${kerbenType.width}mm`;
+                svgGroup.appendChild(textWidth);
+                
+                // Bemaßung für Tiefe
+                this.drawDetailDimensionLineSVG(svgGroup, currentX + kerbeWidth + 15, currentX + kerbeWidth + 15, startY - kerbeDepth/2, startY + kerbeDepth/2, startY);
+                
+                // Text für Tiefe
+                const textDepth = document.createElementNS(ns, 'text');
+                textDepth.setAttribute('x', (currentX + kerbeWidth + 25).toString());
+                textDepth.setAttribute('y', startY.toString());
+                textDepth.setAttribute('font-size', '10');
+                textDepth.setAttribute('font-family', 'Arial');
+                textDepth.setAttribute('fill', '#555');
+                textDepth.setAttribute('text-anchor', 'start');
+                textDepth.setAttribute('dominant-baseline', 'middle');
+                textDepth.textContent = `${kerbenType.depth}mm`;
+                svgGroup.appendChild(textDepth);
+            }
+            
+            // Label für Kerben-Typ-Name
+            const nameText = document.createElementNS(ns, 'text');
+            nameText.setAttribute('x', (currentX + kerbeWidth/2).toString());
+            nameText.setAttribute('y', (startY + kerbeDepth/2 + 25).toString());
+            nameText.setAttribute('font-size', '9');
+            nameText.setAttribute('font-family', 'Arial');
+            nameText.setAttribute('fill', '#555');
+            nameText.setAttribute('text-anchor', 'middle');
+            nameText.setAttribute('dominant-baseline', 'baseline');
+            nameText.textContent = kerbenType.name;
+            svgGroup.appendChild(nameText);
+            
+            currentX += Math.max(kerbeWidth, 10) + detailSpacing;
+        });
+        
+        // Loch Detailzeichnung
+        if (this.loecher.length > 0) {
+            const loch = this.loecher[0]; // Erstes Loch als Beispiel
+            const lochWidth = loch.width * this.mmToPx * scale;
+            const lochHeight = loch.height * this.mmToPx * scale;
+            
+            // Loch zeichnen (Kapsel-Form)
+            if (Math.abs(lochWidth - lochHeight) < 0.1) {
+                // Perfekter Kreis
+                const circle = document.createElementNS(ns, 'circle');
+                circle.setAttribute('cx', (currentX + lochWidth/2).toString());
+                circle.setAttribute('cy', startY.toString());
+                circle.setAttribute('r', (lochWidth / 2).toString());
+                circle.setAttribute('fill', 'white');
+                circle.setAttribute('stroke', '#555');
+                circle.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(circle);
+            } else {
+                // Kapsel (Stadion-Form)
+                const radius = Math.min(lochWidth, lochHeight) / 2;
+                const x = currentX;
+                const y = startY - lochHeight / 2;
+                
+                const path = document.createElementNS(ns, 'path');
+                const r = radius;
+                const rRight = x + lochWidth - r;
+                const rBottom = y + lochHeight - r;
+                let pathData = `M ${x + r} ${y}`;
+                pathData += ` L ${rRight} ${y}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x + lochWidth} ${y + r}`;
+                pathData += ` L ${x + lochWidth} ${rBottom}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${rRight} ${y + lochHeight}`;
+                pathData += ` L ${x + r} ${y + lochHeight}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x} ${rBottom}`;
+                pathData += ` L ${x} ${y + r}`;
+                pathData += ` A ${r} ${r} 0 0 1 ${x + r} ${y} Z`;
+                
+                path.setAttribute('d', pathData);
+                path.setAttribute('fill', 'white');
+                path.setAttribute('stroke', '#555');
+                path.setAttribute('stroke-width', '1');
+                svgGroup.appendChild(path);
+            }
+            
+            // Bemaßung für Loch - Breite
+            this.drawDetailDimensionLineSVG(svgGroup, currentX, currentX + lochWidth, startY + lochHeight/2 + 15, startY + lochHeight/2 + 15, startY + lochHeight/2 + 15);
+            
+            // Text für Breite
+            const textWidth = document.createElementNS(ns, 'text');
+            textWidth.setAttribute('x', (currentX + lochWidth/2).toString());
+            textWidth.setAttribute('y', (startY + lochHeight/2 + 25).toString());
+            textWidth.setAttribute('font-size', '10');
+            textWidth.setAttribute('font-family', 'Arial');
+            textWidth.setAttribute('fill', '#555');
+            textWidth.setAttribute('text-anchor', 'middle');
+            textWidth.setAttribute('dominant-baseline', 'baseline');
+            textWidth.textContent = `${loch.width}mm`;
+            svgGroup.appendChild(textWidth);
+            
+            // Bemaßung für Loch - Höhe
+            this.drawDetailDimensionLineSVG(svgGroup, currentX + lochWidth + 15, currentX + lochWidth + 15, startY - lochHeight/2, startY + lochHeight/2, startY);
+            
+            // Text für Höhe
+            const textHeight = document.createElementNS(ns, 'text');
+            textHeight.setAttribute('x', (currentX + lochWidth + 25).toString());
+            textHeight.setAttribute('y', startY.toString());
+            textHeight.setAttribute('font-size', '10');
+            textHeight.setAttribute('font-family', 'Arial');
+            textHeight.setAttribute('fill', '#555');
+            textHeight.setAttribute('text-anchor', 'start');
+            textHeight.setAttribute('dominant-baseline', 'middle');
+            textHeight.textContent = `${loch.height}mm`;
+            svgGroup.appendChild(textHeight);
+        }
+    }
+    
+    // Bemaßungslinien für Detailzeichnungen als SVG
+    drawDetailDimensionLineSVG(svgGroup, startX, endX, y1, y2, labelY) {
+        const ns = 'http://www.w3.org/2000/svg';
+        const arrowSize = 4;
+        const lineWidth = 0.5;
+        
+        // Hauptlinie
+        const line = document.createElementNS(ns, 'line');
+        line.setAttribute('x1', startX.toString());
+        line.setAttribute('y1', y1.toString());
+        line.setAttribute('x2', endX.toString());
+        line.setAttribute('y2', y2.toString());
+        line.setAttribute('stroke', '#555');
+        line.setAttribute('stroke-width', lineWidth.toString());
+        svgGroup.appendChild(line);
+        
+        // Pfeil am Start
+        const arrow1 = document.createElementNS(ns, 'path');
+        if (y1 === y2) {
+            // Horizontale Bemaßung
+            arrow1.setAttribute('d', `M ${startX} ${y1} L ${startX + arrowSize} ${y1 - arrowSize/2} L ${startX + arrowSize} ${y1 + arrowSize/2} Z`);
+        } else {
+            // Vertikale Bemaßung
+            arrow1.setAttribute('d', `M ${startX} ${y1} L ${startX - arrowSize/2} ${y1 - arrowSize} L ${startX + arrowSize/2} ${y1 - arrowSize} Z`);
+        }
+        arrow1.setAttribute('fill', '#555');
+        svgGroup.appendChild(arrow1);
+        
+        // Pfeil am Ende
+        const arrow2 = document.createElementNS(ns, 'path');
+        if (y1 === y2) {
+            // Horizontale Bemaßung
+            arrow2.setAttribute('d', `M ${endX} ${y1} L ${endX - arrowSize} ${y1 - arrowSize/2} L ${endX - arrowSize} ${y1 + arrowSize/2} Z`);
+        } else {
+            // Vertikale Bemaßung
+            arrow2.setAttribute('d', `M ${startX} ${y2} L ${startX - arrowSize/2} ${y2 + arrowSize} L ${startX + arrowSize/2} ${y2 + arrowSize} Z`);
+        }
+        arrow2.setAttribute('fill', '#555');
+        svgGroup.appendChild(arrow2);
+    }
+    
+    // Titelblock als SVG
+    drawTitleBlockToSVG(svgGroup) {
+        const ns = 'http://www.w3.org/2000/svg';
+        
+        // Rahmen
+        const tbRect = document.createElementNS(ns, 'rect');
+        tbRect.setAttribute('x', this.titleBlock.x.toString());
+        tbRect.setAttribute('y', this.titleBlock.y.toString());
+        tbRect.setAttribute('width', this.titleBlock.width.toString());
+        tbRect.setAttribute('height', this.titleBlock.height.toString());
+        tbRect.setAttribute('fill', 'rgba(255,255,255,0.95)');
+        tbRect.setAttribute('stroke', '#333');
+        tbRect.setAttribute('stroke-width', '1');
+        svgGroup.appendChild(tbRect);
+        
+        // Text
+        const leftColX = this.titleBlock.x + 8;
+        const rightColX = this.titleBlock.x + this.titleBlock.width * 0.5 + 8;
+        const totalRows = Math.max(this.titleBlock.layout[0].length, this.titleBlock.layout[1].length);
+        const rowH = this.titleBlock.height / totalRows;
+        
+        this.titleBlock.layout[0].forEach((item, i) => {
+            const value = this.titleBlock.fields[item.field] || '';
+            const text = `${item.label}: ${value}${item.suffix || ''}`;
+            const textEl = document.createElementNS(ns, 'text');
+            textEl.setAttribute('x', leftColX.toString());
+            textEl.setAttribute('y', (this.titleBlock.y + rowH * i + rowH * 0.25).toString());
+            textEl.setAttribute('font-size', this.CONFIG.titleBlockFontSize.toString());
+            textEl.setAttribute('font-family', this.CONFIG.titleBlockFontFamily);
+            textEl.setAttribute('fill', '#222');
+            textEl.textContent = text;
+            svgGroup.appendChild(textEl);
+        });
+        
+        this.titleBlock.layout[1].forEach((item, i) => {
+            const value = this.titleBlock.fields[item.field] || '';
+            const text = `${item.label}: ${value}${item.suffix || ''}`;
+            const textEl = document.createElementNS(ns, 'text');
+            textEl.setAttribute('x', rightColX.toString());
+            textEl.setAttribute('y', (this.titleBlock.y + rowH * i + rowH * 0.25).toString());
+            textEl.setAttribute('font-size', this.CONFIG.titleBlockFontSize.toString());
+            textEl.setAttribute('font-family', this.CONFIG.titleBlockFontFamily);
+            textEl.setAttribute('fill', '#222');
+            textEl.textContent = text;
+            svgGroup.appendChild(textEl);
+        });
     }
     
     // Zeichne alle Elemente auf einen gegebenen Kontext (für PDF-Export)
@@ -5297,11 +7054,15 @@ class ProfilZeichner {
     
     // Bohne Modal
     openBohneModal() {
-        this.bohneModal.style.display = 'block';
+        if (this.bohneModal) {
+            this.bohneModal.classList.remove('hidden');
+        }
     }
     
     closeBohneModal() {
-        this.bohneModal.style.display = 'none';
+        if (this.bohneModal) {
+            this.bohneModal.classList.add('hidden');
+        }
     }
     
     removeBohne() {
@@ -5336,11 +7097,15 @@ class ProfilZeichner {
     
     // Cut-out Modal
     openCutoutModal() {
-        this.cutoutModal.style.display = 'block';
+        if (this.cutoutModal) {
+            this.cutoutModal.classList.remove('hidden');
+        }
     }
     
     closeCutoutModal() {
-        this.cutoutModal.style.display = 'none';
+        if (this.cutoutModal) {
+            this.cutoutModal.classList.add('hidden');
+        }
     }
     
     removeCutout() {
@@ -5400,7 +7165,9 @@ class ProfilZeichner {
         
         // Aktualisiere die Tabelle mit den aktuellen Werten aus this.kerben
         // (inklusive verschobene Positionen)
-        this.kerbeModal.style.display = 'block';
+        if (this.kerbeModal) {
+            this.kerbeModal.classList.remove('hidden');
+        }
         this.refreshKerbeTable(false); // Keine User-Inputs übernehmen beim Öffnen
     }
     
@@ -5410,13 +7177,13 @@ class ProfilZeichner {
             // Stelle sicher, dass alle Typen-Werte korrekt sind
             this.saveCurrentKerbenTypesInputs();
             this.refreshKerbenTypesList();
-            this.kerbenTypesModal.style.display = 'block';
+            this.kerbenTypesModal.classList.remove('hidden');
         }
     }
     
     closeKerbenTypesModal() {
         if (this.kerbenTypesModal) {
-            this.kerbenTypesModal.style.display = 'none';
+            this.kerbenTypesModal.classList.add('hidden');
         }
     }
     
@@ -5470,36 +7237,34 @@ class ProfilZeichner {
         if (this.addKerbenTypeBtn) {
             if (this.kerbenTypes.length >= 3) {
                 this.addKerbenTypeBtn.disabled = true;
-                this.addKerbenTypeBtn.style.opacity = '0.5';
-                this.addKerbenTypeBtn.style.cursor = 'not-allowed';
+                this.addKerbenTypeBtn.className = 'w-auto px-4 py-2 bg-gray-300 text-gray-500 rounded-lg cursor-not-allowed opacity-50';
             } else {
                 this.addKerbenTypeBtn.disabled = false;
-                this.addKerbenTypeBtn.style.opacity = '1';
-                this.addKerbenTypeBtn.style.cursor = 'pointer';
+                this.addKerbenTypeBtn.className = 'w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors';
             }
         }
         
         limitedKerbenTypes.forEach((kerbenType, index) => {
             const typeDiv = document.createElement('div');
-            typeDiv.style.cssText = 'display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 8px; background: white; border-radius: 6px; border: 1px solid #e0e0e0;';
+            typeDiv.className = 'flex items-center gap-3 p-3 mb-2 bg-white rounded-lg border border-gray-200';
             
             const isMarker = kerbenType.type === 'marker';
             const depthValue = (kerbenType.depth !== undefined && kerbenType.depth !== null) ? kerbenType.depth : 4;
             const widthValue = (kerbenType.width !== undefined && kerbenType.width !== null && kerbenType.width !== 0.1) ? kerbenType.width : 6;
             
             typeDiv.innerHTML = `
-                <input type="text" class="kerben-type-name" value="${kerbenType.name || `Kerbe ${index + 1}`}" data-index="${index}" readonly style="flex: 1; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background-color: #f0f0f0; cursor: default;">
-                <select class="kerben-type-select" data-index="${index}" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
+                <input type="text" class="kerben-type-name flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded bg-gray-50 cursor-default" value="${kerbenType.name || `Kerbe ${index + 1}`}" data-index="${index}" readonly>
+                <select class="kerben-type-select px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" data-index="${index}">
                     <option value="triangle" ${kerbenType.type === 'triangle' ? 'selected' : ''}>Dreieck</option>
                     <option value="marker" ${kerbenType.type === 'marker' ? 'selected' : ''}>Strichmarkierung</option>
                 </select>
-                <input type="number" class="kerben-type-depth" value="${depthValue}" data-index="${index}" step="0.1" min="0.1" style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                <span style="font-size: 12px; color: #666;">mm Tiefe/Höhe</span>
-                <div class="kerben-type-width-container" style="display: ${isMarker ? 'none' : 'flex'}; align-items: center; gap: 5px;">
-                    <input type="number" class="kerben-type-width" value="${widthValue}" data-index="${index}" step="0.1" min="0.1" style="width: 80px; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;">
-                    <span style="font-size: 12px; color: #666;">mm Breite</span>
+                <input type="number" class="kerben-type-depth w-20 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${depthValue}" data-index="${index}" step="0.1" min="0.1">
+                <span class="text-xs text-gray-600">mm Tiefe/Höhe</span>
+                <div class="kerben-type-width-container ${isMarker ? 'hidden' : 'flex'} items-center gap-2">
+                    <input type="number" class="kerben-type-width w-20 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${widthValue}" data-index="${index}" step="0.1" min="0.1">
+                    <span class="text-xs text-gray-600">mm Breite</span>
                 </div>
-                <button class="remove-kerben-type-btn" onclick="profilZeichner.removeKerbenType(${index})" style="padding: 6px 12px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">✕</button>
+                <button class="remove-kerben-type-btn px-3 py-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm" onclick="profilZeichner.removeKerbenType(${index})">✕</button>
             `;
             
             this.kerbenTypesList.appendChild(typeDiv);
@@ -5514,8 +7279,7 @@ class ProfilZeichner {
             if (nameInput) {
                 // Entferne die Möglichkeit, den Namen manuell zu ändern, da er automatisch vergeben wird
                 nameInput.readOnly = true;
-                nameInput.style.backgroundColor = '#f0f0f0';
-                nameInput.style.cursor = 'default';
+                nameInput.className = 'flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded bg-gray-50 cursor-default';
             }
             
             // Typ speichern - sofort beim Ändern
@@ -5537,7 +7301,13 @@ class ProfilZeichner {
                         // Aktualisiere Breite-Anzeige sofort
                         const widthContainer = typeDiv.querySelector('.kerben-type-width-container');
                         if (widthContainer) {
-                            widthContainer.style.display = (selectedType === 'marker') ? 'none' : 'flex';
+                            if (selectedType === 'marker') {
+                                widthContainer.classList.add('hidden');
+                                widthContainer.classList.remove('flex');
+                            } else {
+                                widthContainer.classList.remove('hidden');
+                                widthContainer.classList.add('flex');
+                            }
                         }
                         
                         // Speichere State sofort
@@ -5744,7 +7514,9 @@ class ProfilZeichner {
     }
     
     closeKerbeModal() {
-        this.kerbeModal.style.display = 'none';
+        if (this.kerbeModal) {
+            this.kerbeModal.classList.add('hidden');
+        }
     }
     
     refreshKerbeTable(keepUserInputs = false) {
@@ -5755,7 +7527,7 @@ class ProfilZeichner {
         // WICHTIG: Die Position (distance) wird IMMER aus this.kerben genommen, nicht aus der Tabelle!
         // Nur Typ und Position (oben/unten) werden aus der Tabelle übernommen, wenn keepUserInputs = true
         const existingRows = this.kerbeTbody.querySelectorAll('tr');
-        if (keepUserInputs && existingRows.length > 0 && this.kerbeModal.style.display === 'block') {
+        if (keepUserInputs && existingRows.length > 0 && !this.kerbeModal.classList.contains('hidden')) {
             // Aktualisiere die Werte basierend auf der Reihenfolge (Index)
             // WICHTIG: Verwende Index, damit die Positionen nicht zurückgesetzt werden
             existingRows.forEach((row, rowIndex) => {
@@ -5805,20 +7577,21 @@ class ProfilZeichner {
                 kerbenTypeOptions += `<option value="${kt.id}" ${kerbenTypeId === kt.id ? 'selected' : ''}>${kt.name}</option>`;
             });
             
+            row.className = 'border-b border-gray-100 hover:bg-gray-50';
             row.innerHTML = `
-                <td>
-                    <select class="kerbe-kerben-type-select">
+                <td class="px-4 py-3">
+                    <select class="kerbe-kerben-type-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                         ${kerbenTypeOptions}
                     </select>
                 </td>
-                <td><input type="number" value="${kerbe.distance}" min="0" step="5" class="kerbe-distance-input"></td>
-                <td>
-                    <select class="kerbe-position-select">
+                <td class="px-4 py-3"><input type="number" value="${kerbe.distance}" min="0" step="5" class="kerbe-distance-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></td>
+                <td class="px-4 py-3">
+                    <select class="kerbe-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="oben" ${kerbe.position === 'oben' ? 'selected' : ''}>Oben</option>
                         <option value="unten" ${kerbe.position === 'unten' ? 'selected' : ''}>Unten</option>
                     </select>
                 </td>
-                <td><button class="remove-kerbe-btn" onclick="profilZeichner.removeKerbeRow(${originalIndex})">Entfernen</button></td>
+                <td class="px-4 py-3"><button class="remove-kerbe-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="profilZeichner.removeKerbeRow(${originalIndex})">Entfernen</button></td>
             `;
             this.kerbeTbody.appendChild(row);
         });
@@ -5893,16 +7666,26 @@ class ProfilZeichner {
         
         if (type === 'marker') {
             // Bei Strich-Markierung: Breite ausblenden
-            this.kerbeWidthGroup.style.display = 'none';
+            if (this.kerbeWidthGroup) {
+                this.kerbeWidthGroup.classList.add('hidden');
+                this.kerbeWidthGroup.classList.remove('block');
+            }
             // Label ändern
-            document.querySelector('label[for="kerbe-depth"]').textContent = 'Höhe:';
-            document.querySelector('label[for="kerbe-width"]').textContent = 'Breite:';
+            const depthLabel = document.querySelector('label[for="kerbe-depth"]');
+            const widthLabel = document.querySelector('label[for="kerbe-width"]');
+            if (depthLabel) depthLabel.textContent = 'Höhe:';
+            if (widthLabel) widthLabel.textContent = 'Breite:';
         } else {
             // Bei Dreieck: Breite anzeigen
-            this.kerbeWidthGroup.style.display = 'block';
+            if (this.kerbeWidthGroup) {
+                this.kerbeWidthGroup.classList.remove('hidden');
+                this.kerbeWidthGroup.classList.add('block');
+            }
             // Label ändern
-            document.querySelector('label[for="kerbe-depth"]').textContent = 'Tiefe:';
-            document.querySelector('label[for="kerbe-width"]').textContent = 'Breite:';
+            const depthLabel = document.querySelector('label[for="kerbe-depth"]');
+            const widthLabel = document.querySelector('label[for="kerbe-width"]');
+            if (depthLabel) depthLabel.textContent = 'Tiefe:';
+            if (widthLabel) widthLabel.textContent = 'Breite:';
         }
     }
     
@@ -5940,11 +7723,15 @@ class ProfilZeichner {
     
     // Nahtlinie Modal
     openNahtlinieModal() {
-        this.nahtlinieModal.style.display = 'block';
+        if (this.nahtlinieModal) {
+            this.nahtlinieModal.classList.remove('hidden');
+        }
     }
     
     closeNahtlinieModal() {
-        this.nahtlinieModal.style.display = 'none';
+        if (this.nahtlinieModal) {
+            this.nahtlinieModal.classList.add('hidden');
+        }
     }
     
     removeNahtlinie() {
@@ -5982,18 +7769,22 @@ class ProfilZeichner {
     openLochModal() {
         // Zeige Checkbox-Gruppe nur wenn Kerben vorhanden sind
         if (this.kerben && this.kerben.length > 0) {
-            this.lochKerbenCheckboxGroup.style.display = 'block';
+            this.lochKerbenCheckboxGroup.classList.remove('hidden');
         } else {
-            this.lochKerbenCheckboxGroup.style.display = 'none';
+            this.lochKerbenCheckboxGroup.classList.add('hidden');
             this.lochUseKerbenPositionsCheckbox.checked = false;
         }
         
-        this.lochModal.style.display = 'block';
+        if (this.lochModal) {
+            this.lochModal.classList.remove('hidden');
+        }
         this.refreshLochTable();
     }
     
     closeLochModal() {
-        this.lochModal.style.display = 'none';
+        if (this.lochModal) {
+            this.lochModal.classList.add('hidden');
+        }
     }
     
     refreshLochTable() {
@@ -6018,9 +7809,10 @@ class ProfilZeichner {
         
         this.loecher.forEach((loch, index) => {
             const row = document.createElement('tr');
+            row.className = 'border-b border-gray-100 hover:bg-gray-50';
             row.innerHTML = `
-                <td><input type="number" value="${loch.distance}" min="0" step="0.1" class="loch-distance-input"></td>
-                <td><button class="remove-loch-btn" onclick="profilZeichner.removeLochRow(${index})">Entfernen</button></td>
+                <td class="px-4 py-3"><input type="number" value="${loch.distance}" min="0" step="0.1" class="loch-distance-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"></td>
+                <td class="px-4 py-3"><button class="remove-loch-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="profilZeichner.removeLochRow(${index})">Entfernen</button></td>
             `;
             this.lochTbody.appendChild(row);
         });
@@ -6124,12 +7916,16 @@ class ProfilZeichner {
     
     // Ausschnitt-Funktionen
     openAusschnittModal() {
-        this.ausschnittModal.style.display = 'block';
+        if (this.ausschnittModal) {
+            this.ausschnittModal.classList.remove('hidden');
+        }
         this.refreshAusschnittTable();
     }
     
     closeAusschnittModal() {
-        this.ausschnittModal.style.display = 'none';
+        if (this.ausschnittModal) {
+            this.ausschnittModal.classList.add('hidden');
+        }
     }
     
     refreshAusschnittTable() {
@@ -6170,17 +7966,18 @@ class ProfilZeichner {
     
     addAusschnittRow() {
         const row = document.createElement('tr');
+        row.className = 'border-b border-gray-100 hover:bg-gray-50';
         row.innerHTML = `
-            <td><input type="number" class="ausschnitt-position-input" placeholder="0" step="0.1"></td>
-            <td><input type="number" class="ausschnitt-length-input" placeholder="0" step="0.1"></td>
-            <td><input type="number" class="ausschnitt-height-input" placeholder="0" step="0.1"></td>
-            <td>
-                <select class="ausschnitt-position-select">
+            <td class="px-4 py-3"><input type="number" class="ausschnitt-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" step="0.1"></td>
+            <td class="px-4 py-3"><input type="number" class="ausschnitt-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" step="0.1"></td>
+            <td class="px-4 py-3"><input type="number" class="ausschnitt-height-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" step="0.1"></td>
+            <td class="px-4 py-3">
+                <select class="ausschnitt-position-select w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="oben">Oben</option>
                     <option value="unten">Unten</option>
                 </select>
             </td>
-            <td><button class="remove-row-btn" onclick="removeAusschnittRow(this)">✕</button></td>
+            <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeAusschnittRow(this)">✕</button></td>
         `;
         this.ausschnittTbody.appendChild(row);
     }
@@ -6335,21 +8132,25 @@ class ProfilZeichner {
         if (!this.bohnen || this.bohnen.length === 0) {
             // Zeige Warnung
             if (this.crimpingNoBohneWarning) {
-                this.crimpingNoBohneWarning.style.display = 'block';
+                this.crimpingNoBohneWarning.classList.remove('hidden');
             }
             // Modal trotzdem öffnen, aber Button deaktivieren?
         } else {
             if (this.crimpingNoBohneWarning) {
-                this.crimpingNoBohneWarning.style.display = 'none';
+                this.crimpingNoBohneWarning.classList.add('hidden');
             }
         }
         
-        this.crimpingModal.style.display = 'block';
+        if (this.crimpingModal) {
+            this.crimpingModal.classList.remove('hidden');
+        }
         this.refreshCrimpingTable();
     }
     
     closeCrimpingModal() {
-        this.crimpingModal.style.display = 'none';
+        if (this.crimpingModal) {
+            this.crimpingModal.classList.add('hidden');
+        }
     }
     
     refreshCrimpingTable() {
@@ -6382,10 +8183,11 @@ class ProfilZeichner {
     
     addCrimpingRow() {
         const row = document.createElement('tr');
+        row.className = 'border-b border-gray-100 hover:bg-gray-50';
         row.innerHTML = `
-            <td><input type="number" class="crimping-position-input" placeholder="0" step="0.1"></td>
-            <td><input type="number" class="crimping-length-input" placeholder="0" step="0.1"></td>
-            <td><button class="remove-row-btn" onclick="removeCrimpingRow(this)">✕</button></td>
+            <td class="px-4 py-3"><input type="number" class="crimping-position-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" step="0.1"></td>
+            <td class="px-4 py-3"><input type="number" class="crimping-length-input w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0" step="0.1"></td>
+            <td class="px-4 py-3"><button class="remove-row-btn px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="removeCrimpingRow(this)">✕</button></td>
         `;
         this.crimpingTbody.appendChild(row);
     }
@@ -6571,11 +8373,15 @@ class ProfilZeichner {
     
     // Text Modal
     openTextModal() {
-        this.textModal.style.display = 'block';
+        if (this.textModal) {
+            this.textModal.classList.remove('hidden');
+        }
     }
     
     closeTextModal() {
-        this.textModal.style.display = 'none';
+        if (this.textModal) {
+            this.textModal.classList.add('hidden');
+        }
         this.selectedTextForEdit = null; // Zurücksetzen beim Schließen
         this.textContentInput.value = '';
         this.textSizeInput.value = '12';
@@ -6705,18 +8511,37 @@ class ProfilZeichner {
     }
     
     openDatabaseModal() {
-        this.databaseModal.style.display = 'block';
+        // Stelle sicher, dass Modal im normalen Zustand ist
+        this.restoreOriginalSize();
+        if (this.databaseModal) {
+            this.databaseModal.classList.remove('hidden');
+        }
+        // Warte kurz, damit das Modal gerendert wird
+        setTimeout(() => {
         this.refreshDatabaseTable();
+        }, 50);
+    }
+    
+    openZeichnungenDbModal() {
+        // Stelle sicher, dass Modal im normalen Zustand ist
+        this.restoreZeichnungenDbSize();
+        if (this.zeichnungsdbModal) {
+            this.zeichnungsdbModal.classList.remove('hidden');
+        }
     }
     
     closeDatabaseModal() {
-        this.databaseModal.style.display = 'none';
+        if (this.databaseModal) {
+            this.databaseModal.classList.add('hidden');
+        }
         // Stelle ursprüngliche Größe wieder her
         this.restoreOriginalSize();
     }
     
     minimizeDatabaseModal() {
-        this.databaseModal.style.display = 'none';
+        if (this.databaseModal) {
+            this.databaseModal.classList.add('hidden');
+        }
         // Minimiertes Modal als kleines Icon in der Ecke
         this.showMinimizedIcon();
     }
@@ -6730,128 +8555,77 @@ class ProfilZeichner {
     }
     
     maximizeDatabaseModal() {
-        const modalContent = this.databaseModal.querySelector('.modal-content');
+        const modalContent = this.databaseModal.querySelector('.bg-white');
         
-        // Speichere ursprüngliche Größe und Position
+        // Speichere ursprüngliche Größe beim ersten Mal
         if (!this.originalModalStyle) {
             this.originalModalStyle = {
-                modalWidth: this.databaseModal.style.width,
-                modalHeight: this.databaseModal.style.height,
-                modalTop: this.databaseModal.style.top,
-                modalLeft: this.databaseModal.style.left,
-                modalMargin: this.databaseModal.style.margin,
-                modalBorderRadius: this.databaseModal.style.borderRadius,
-                modalPosition: this.databaseModal.style.position,
-                contentWidth: modalContent ? modalContent.style.width : '',
-                contentMaxWidth: modalContent ? modalContent.style.maxWidth : '',
-                contentTransform: modalContent ? modalContent.style.transform : ''
+                modalContentClass: modalContent ? modalContent.className : ''
             };
         }
         
-        // Maximiere Modal - setze explizit alle Eigenschaften
-        this.databaseModal.style.position = 'fixed';
-        this.databaseModal.style.top = '0';
-        this.databaseModal.style.left = '0';
-        this.databaseModal.style.right = '0';
-        this.databaseModal.style.bottom = '0';
-        this.databaseModal.style.width = '100%';
-        this.databaseModal.style.height = '100%';
-        this.databaseModal.style.margin = '0';
-        this.databaseModal.style.padding = '0';
-        this.databaseModal.style.borderRadius = '0';
-        this.databaseModal.style.zIndex = '10000';
+        // Setze Modal auf volle Bildschirmgröße
+        this.databaseModal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]';
+        this.databaseModal.classList.remove('hidden');
         
-        // Setze auch modal-content Styles
+        // Setze Modal-Content auf volle Größe
         if (modalContent) {
-            modalContent.style.width = '100%';
-            modalContent.style.height = '100%';
-            modalContent.style.maxWidth = 'none';
-            modalContent.style.maxHeight = 'none';
-            modalContent.style.borderRadius = '0';
-            modalContent.style.margin = '0';
-            modalContent.style.position = 'absolute';
-            modalContent.style.top = '0';
-            modalContent.style.left = '0';
-            modalContent.style.right = '0';
-            modalContent.style.bottom = '0';
-            modalContent.style.transform = 'none'; // Wichtig: Transform zurücksetzen
-            modalContent.style.display = 'flex';
-            modalContent.style.flexDirection = 'column';
+            modalContent.className = 'bg-white rounded-none shadow-2xl w-full h-full flex flex-col overflow-hidden';
         }
         
-        // Füge maximized-Klasse hinzu
-        this.databaseModal.classList.add('maximized');
-        this.databaseModalMaximize.classList.add('maximized');
-        this.databaseModalMaximize.textContent = '⧉'; // Restore-Symbol
+        // Aktualisiere Button
+        if (this.databaseModalMaximize) {
+            this.databaseModalMaximize.textContent = '⧉';
+            this.databaseModalMaximize.classList.add('bg-green-500');
+            this.databaseModalMaximize.classList.remove('bg-gray-500');
+        }
+        
         this.isDatabaseMaximized = true;
         
-        // Passe Tabellen-Container an
-        const tableContainer = this.databaseModal.querySelector('.table-container');
+        // Passe Tabellen-Container an für maximierte Ansicht
+        const tableContainer = this.databaseModal.querySelector('.border.border-gray-200');
         if (tableContainer) {
-            tableContainer.style.maxHeight = 'calc(100vh - 250px)';
-            tableContainer.style.overflow = 'auto';
+            tableContainer.className = 'border border-gray-200 rounded-lg overflow-hidden max-h-[calc(100vh-250px)] overflow-y-auto';
         }
         
         // Stelle sicher, dass der Body scrollbar ist
         const modalBody = this.databaseModal.querySelector('.modal-body');
         if (modalBody) {
-            modalBody.style.overflow = 'auto';
-            modalBody.style.flex = '1';
+            modalBody.className = 'modal-body flex-1 overflow-y-auto p-6';
         }
     }
     
     restoreOriginalSize() {
-        // Entferne maximized-Klasse
-        this.databaseModal.classList.remove('maximized');
-        this.databaseModalMaximize.classList.remove('maximized');
-        this.databaseModalMaximize.textContent = '□'; // Maximize-Symbol
-        this.isDatabaseMaximized = false;
+        if (!this.databaseModal) return;
         
-        // Stelle ursprüngliche Styles wieder her
-        if (this.originalModalStyle) {
-            this.databaseModal.style.position = this.originalModalStyle.modalPosition || '';
-            this.databaseModal.style.width = this.originalModalStyle.modalWidth || '';
-            this.databaseModal.style.height = this.originalModalStyle.modalHeight || '';
-            this.databaseModal.style.top = this.originalModalStyle.modalTop || '';
-            this.databaseModal.style.left = this.originalModalStyle.modalLeft || '';
-            this.databaseModal.style.right = '';
-            this.databaseModal.style.bottom = '';
-            this.databaseModal.style.margin = this.originalModalStyle.modalMargin || '';
-            this.databaseModal.style.padding = '';
-            this.databaseModal.style.borderRadius = this.originalModalStyle.modalBorderRadius || '';
-            this.databaseModal.style.zIndex = '';
-            
-            // Stelle modal-content Styles wieder her
-            const modalContent = this.databaseModal.querySelector('.modal-content');
-            if (modalContent) {
-                modalContent.style.width = this.originalModalStyle.contentWidth || '90%';
-                modalContent.style.maxWidth = this.originalModalStyle.contentMaxWidth || '1200px';
-                modalContent.style.height = '';
-                modalContent.style.borderRadius = '';
-                modalContent.style.margin = '';
-                modalContent.style.position = '';
-                modalContent.style.top = '';
-                modalContent.style.left = '';
-                modalContent.style.right = '';
-                modalContent.style.bottom = '';
-                modalContent.style.transform = this.originalModalStyle.contentTransform || 'translateY(-50%)'; // Transform wiederherstellen
-                modalContent.style.display = '';
-                modalContent.style.flexDirection = '';
-            }
+        // Stelle ursprüngliche Modal-Klassen wieder her
+        this.databaseModal.className = 'modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+        
+        // Stelle Modal-Content wieder her
+        const modalContent = this.databaseModal.querySelector('.bg-white');
+        if (modalContent && this.originalModalStyle) {
+            modalContent.className = this.originalModalStyle.modalContentClass || 'bg-white rounded-2xl shadow-2xl w-[90%] max-w-6xl max-h-[90vh] flex flex-col overflow-hidden';
         }
         
+        // Aktualisiere Button
+        if (this.databaseModalMaximize) {
+            this.databaseModalMaximize.textContent = '□';
+            this.databaseModalMaximize.classList.remove('bg-green-500');
+            this.databaseModalMaximize.classList.add('bg-gray-500');
+        }
+        
+        this.isDatabaseMaximized = false;
+        
         // Stelle Tabellen-Container wieder her
-        const tableContainer = this.databaseModal.querySelector('.table-container');
+        const tableContainer = this.databaseModal.querySelector('.border.border-gray-200');
         if (tableContainer) {
-            tableContainer.style.maxHeight = '500px';
-            tableContainer.style.overflow = '';
+            tableContainer.className = 'border border-gray-200 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto';
         }
         
         // Stelle Modal-Body wieder her
         const modalBody = this.databaseModal.querySelector('.modal-body');
         if (modalBody) {
-            modalBody.style.overflow = '';
-            modalBody.style.flex = '';
+            modalBody.className = 'modal-body flex-1 overflow-y-auto p-6';
         }
     }
     
@@ -7162,11 +8936,11 @@ class ProfilZeichner {
     
     createSkizzePreview(skizzeData) {
         const container = document.createElement('div');
-        container.className = 'skizze-container';
+        container.className = 'relative w-full h-full flex items-center justify-center';
         
         if (skizzeData && skizzeData.startsWith('data:image')) {
             const img = document.createElement('img');
-            img.className = 'skizze-preview';
+            img.className = 'max-w-full max-h-full object-contain cursor-pointer hover:opacity-80 transition-opacity';
             img.src = skizzeData;
             img.title = 'Klicken für Vollansicht';
             
@@ -7178,11 +8952,11 @@ class ProfilZeichner {
             container.appendChild(img);
         } else {
             const uploadArea = document.createElement('div');
-            uploadArea.className = 'skizze-upload-area';
+            uploadArea.className = 'w-full h-full flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer';
             uploadArea.innerHTML = `
-                <div class="skizze-upload-placeholder">
-                    <div class="skizze-upload-text">📷</div>
-                    <div class="skizze-upload-hint">Skizze</div>
+                <div class="text-center">
+                    <div class="text-2xl mb-1">📷</div>
+                    <div class="text-xs text-gray-600">Skizze</div>
                 </div>
             `;
             container.appendChild(uploadArea);
@@ -7194,29 +8968,11 @@ class ProfilZeichner {
     showSkizzeFullscreen(skizzeData) {
         // Erstelle Vollbild-Modal für Skizze
         const fullscreenModal = document.createElement('div');
-        fullscreenModal.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: rgba(0, 0, 0, 0.9);
-            z-index: 10001;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-        `;
+        fullscreenModal.className = 'fixed inset-0 bg-black/90 z-[10001] flex items-center justify-center cursor-pointer';
         
         const img = document.createElement('img');
         img.src = skizzeData;
-        img.style.cssText = `
-            max-width: 90vw;
-            max-height: 90vh;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-        `;
+        img.className = 'max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl';
         
         fullscreenModal.appendChild(img);
         document.body.appendChild(fullscreenModal);
@@ -7246,45 +9002,45 @@ class ProfilZeichner {
             // Skizze-Zelle mit Upload-Funktionalität
             const skizzeCell = this.createSkizzeCell(profile);
             
+            row.className = 'border-b border-gray-100 hover:bg-gray-50';
             row.innerHTML = `
-                <td><input type="text" class="database-input" value="${profile.id}" readonly></td>
-                <td><input type="text" class="database-input" value="${profile.spsNummer}" data-field="spsNummer"></td>
-                <td><input type="text" class="database-input" value="${profile.lieferant}" data-field="lieferant"></td>
-                <td><input type="text" class="database-input" value="${profile.lieferantNummer}" data-field="lieferantNummer"></td>
-                <td><input type="number" class="database-input" value="${profile.hoehe}" data-field="hoehe" step="0.1"></td>
-                <td><input type="text" class="database-input" value="${profile.material}" data-field="material"></td>
-                <td>
-                    <select class="database-select" data-field="projekt">
+                <td class="px-2 py-2"><input type="text" class="w-full px-2 py-1 text-xs border border-gray-300 rounded bg-gray-50 cursor-default" value="${profile.id}" readonly></td>
+                <td class="px-2 py-2"><input type="text" class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${profile.spsNummer}" data-field="spsNummer"></td>
+                <td class="px-2 py-2"><input type="text" class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${profile.lieferant}" data-field="lieferant"></td>
+                <td class="px-2 py-2"><input type="text" class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${profile.lieferantNummer}" data-field="lieferantNummer"></td>
+                <td class="px-2 py-2"><input type="number" class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${profile.hoehe}" data-field="hoehe" step="0.1"></td>
+                <td class="px-2 py-2"><input type="text" class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" value="${profile.material}" data-field="material"></td>
+                <td class="px-2 py-2">
+                    <select class="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" data-field="projekt">
                         <option value="Van.Ea" ${profile.projekt === 'Van.Ea' ? 'selected' : ''}>Van.Ea</option>
                         <option value="Porsche" ${profile.projekt === 'Porsche' ? 'selected' : ''}>Porsche</option>
                         <option value="VW" ${profile.projekt === 'VW' ? 'selected' : ''}>VW</option>
                     </select>
                 </td>
-                <td>${skizzeCell}</td>
-                <td>
-                    <button class="btn-load-profile" onclick="profilZeichner.selectProfile(${profile.id})">Laden</button>
-                    <button class="btn-delete-profile" onclick="profilZeichner.deleteProfile(${profile.id})">Löschen</button>
+                <td class="px-2 py-2">${skizzeCell}</td>
+                <td class="px-2 py-2">
+                    <button class="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors mr-1" onclick="profilZeichner.selectProfile(${profile.id})">Laden</button>
+                    <button class="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors" onclick="profilZeichner.deleteProfile(${profile.id})">Löschen</button>
                 </td>
             `;
             
             // Event Listeners für Eingabefelder
-            const inputs = row.querySelectorAll('.database-input');
+            const inputs = row.querySelectorAll('input[data-field], select[data-field]');
             inputs.forEach(input => {
-                input.addEventListener('input', (e) => {
+                if (input.type === 'number' || input.tagName === 'SELECT') {
+                    const eventType = input.tagName === 'SELECT' ? 'change' : 'input';
+                    input.addEventListener(eventType, (e) => {
                     const field = e.target.dataset.field;
-                    const value = e.target.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
+                        const value = input.type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
                     profile[field] = value;
                 });
-            });
-            
-            // Event Listeners für Select-Felder
-            const selects = row.querySelectorAll('.database-select');
-            selects.forEach(select => {
-                select.addEventListener('change', (e) => {
+                } else {
+                    input.addEventListener('input', (e) => {
                     const field = e.target.dataset.field;
                     const value = e.target.value;
                     profile[field] = value;
                 });
+                }
             });
             
             // Skizze-Upload Event Listeners
@@ -7298,30 +9054,34 @@ class ProfilZeichner {
         const hasSkizze = profile.skizze && profile.skizze.startsWith('data:image');
         
         if (hasSkizze) {
+            // Escape quotes für onclick
+            const escapedSkizze = profile.skizze.replace(/'/g, "\\'");
             return `
-                <div class="skizze-container">
-                    <img src="${profile.skizze}" class="skizze-preview" alt="Skizze" title="Klicken für Vollansicht" onclick="profilZeichner.showSkizzeFullscreen('${profile.skizze}')">
-                    <div class="skizze-overlay">
-                        <button class="btn-skizze-upload" onclick="profilZeichner.openSkizzeUpload(${profile.id})">📁</button>
-                        <button class="btn-skizze-delete" onclick="profilZeichner.deleteSkizze(${profile.id})">🗑️</button>
+                <div class="relative w-[30px] h-[20px] flex items-center justify-center cursor-pointer group">
+                    <div class="w-6 h-[18px] flex items-center justify-center text-sm border border-gray-300 rounded bg-blue-50 hover:bg-blue-100 hover:border-blue-500 transition-all" title="Skizze vorhanden - Klicken für Vollansicht" onclick="profilZeichner.showSkizzeFullscreen('${escapedSkizze}')">
+                        📷
+                    </div>
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-1 z-[1000] hidden group-hover:block bg-white border-2 border-blue-500 rounded p-1 shadow-lg pointer-events-none">
+                        <img src="${profile.skizze}" alt="Skizze Vorschau" class="max-w-[200px] max-h-[200px] block">
+                    </div>
+                    <div class="absolute top-full left-0 mt-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="px-1.5 py-0.5 bg-gray-100 border border-gray-300 text-gray-700 rounded text-xs hover:bg-gray-200" onclick="profilZeichner.openSkizzeUpload(${profile.id}); event.stopPropagation();" title="Hochladen">📁</button>
+                        <button class="px-1.5 py-0.5 bg-red-100 border border-red-300 text-red-700 rounded text-xs hover:bg-red-200" onclick="profilZeichner.deleteSkizze(${profile.id}); event.stopPropagation();" title="Löschen">🗑️</button>
                     </div>
                 </div>
             `;
         } else {
             return `
-                <div class="skizze-upload-area" data-profile-id="${profile.id}">
-                    <div class="skizze-upload-placeholder">
-                        <span class="skizze-upload-text">📁 Skizze hochladen</span>
-                        <span class="skizze-upload-hint">Drag & Drop oder klicken</span>
-                    </div>
-                    <input type="file" class="skizze-file-input" accept="image/*" style="display: none;">
+                <div class="w-[30px] h-[20px] flex items-center justify-center border border-gray-300 rounded bg-gray-50 hover:bg-gray-100 cursor-pointer" data-profile-id="${profile.id}" title="Klicken zum Hochladen">
+                    <span class="text-sm">📷</span>
+                    <input type="file" class="skizze-file-input hidden" accept="image/*">
                 </div>
             `;
         }
     }
     
     setupSkizzeUpload(row, profile) {
-        const skizzeContainer = row.querySelector('.skizze-container, .skizze-upload-area');
+        const skizzeContainer = row.querySelector('[data-profile-id], .group');
         const fileInput = row.querySelector('.skizze-file-input');
         
         if (skizzeContainer) {
@@ -7338,7 +9098,7 @@ class ProfilZeichner {
             
             skizzeContainer.addEventListener('drop', (e) => {
                 e.preventDefault();
-                skizzeContainer.classList.remove('drag-over');
+                skizzeContainer.classList.remove('border-blue-500', 'bg-blue-50');
                 
                 const files = e.dataTransfer.files;
                 if (files.length > 0) {
@@ -7745,6 +9505,422 @@ class ProfilZeichner {
         alert(`KI-Analyse erfolgreich! ${this.aiDetectedData.elements.length} Elemente wurden erkannt und hinzugefügt.`);
     }
     */
+    
+    // ============================================================================
+    // ORDER SYSTEM - CAD-ZEICHNER BESTELLUNG
+    // ============================================================================
+    
+    // Order-Funktion entfernt - wird in Version 2.0 wieder implementiert
+    // Die folgenden Funktionen sind vorbereitet, aber aktuell nicht aktiv:
+    // - openCustomRequestModal()
+    // - closeCustomRequestModal()
+    // - createFiverrRequest()
+    // - generateEmailText()
+    // - showEmailConfirmation()
+    // - saveCustomRequestForTracking()
+    // - downloadSVGAndOpenEmail()
+    
+    handleAttachmentPreview(event) {
+        const files = event.target.files;
+        const preview = document.getElementById('attachment-preview');
+        if (!preview) return;
+        
+        preview.innerHTML = '';
+        
+        Array.from(files).forEach((file, index) => {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.objectFit = 'cover';
+                    img.style.borderRadius = '4px';
+                    img.style.border = '1px solid #ddd';
+                    img.title = file.name;
+                    preview.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+    
+    getRequirements() {
+        const requirementInputs = document.querySelectorAll('.requirement-input');
+        const requirements = [];
+        requirementInputs.forEach(input => {
+            const value = input.value.trim();
+            if (value) requirements.push(value);
+        });
+        return requirements;
+    }
+    
+    validateRequest(request) {
+        // Prüfe ob Zeichnung vorhanden
+        if (!this.currentRect) {
+            alert('Bitte erstellen Sie zuerst eine Zeichnung, die als SVG- und PDF-Anhang gesendet werden soll.');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    createFiverrRequest() {
+        // Sammle Formular-Daten
+        const plmCheckbox = document.getElementById('plm-upload-checkbox');
+        const plmUpload = plmCheckbox ? plmCheckbox.checked : false;
+        
+        const request = {
+            plmUpload: plmUpload
+        };
+        
+        // Validiere
+        if (!this.validateRequest(request)) {
+            return;
+        }
+        
+        // Generiere E-Mail-Text
+        const emailText = this.generateEmailText(request);
+        
+        // Zeige Bestätigungs-Modal
+        this.showEmailConfirmation(request, emailText);
+    }
+    
+    generateEmailText(request) {
+        let text = `Hallo,\n\n`;
+        text += `bitte dieses Profil zeichnen und zur Kontrolle zurückschicken.\n\n`;
+        text += `Ergänze einen Kontroll-Kasten "im PLM hochladen".\n\n`;
+        
+        // Wenn PLM-Upload aktiviert ist, ergänze den Text
+        if (request.plmUpload) {
+            text += `Die Zeichnung soll auch im System hochgeladen werden.\n\n`;
+        }
+        
+        text += `Das Profil ist als SVG- und PDF-Datei angehängt.\n\n`;
+        text += `Vielen Dank!`;
+        
+        return text;
+    }
+    
+    showEmailConfirmation(request, emailText) {
+        // Speichere Request für Tracking
+        this.saveCustomRequestForTracking(request);
+        
+        // Zeige Bestätigungs-Modal
+        if (this.emailTextPreview) {
+            this.emailTextPreview.value = emailText;
+        }
+        
+        if (this.emailConfirmationModal) {
+            this.emailConfirmationModal.classList.remove('hidden');
+        }
+        
+        // Schließe Request-Modal
+        this.closeCustomRequestModal();
+    }
+    
+    closeEmailConfirmationModal() {
+        if (this.emailConfirmationModal) this.emailConfirmationModal.classList.add('hidden');
+    }
+    
+    saveCustomRequestForTracking(request) {
+        const tracking = {
+            id: this.generateId ? this.generateId() : 'req_' + Date.now(),
+            request: request,
+            status: 'created',
+            createdAt: new Date().toISOString()
+        };
+        
+        // In localStorage speichern
+        try {
+            const existing = JSON.parse(localStorage.getItem('customRequests') || '[]');
+            existing.push(tracking);
+            localStorage.setItem('customRequests', JSON.stringify(existing));
+        } catch (e) {
+            console.warn('Konnte Custom-Request nicht speichern:', e);
+        }
+    }
+    
+    generateSVGForEmail() {
+        if (!this.currentRect) return null;
+        
+        // Berechne Bounding Box (wie in exportToSVG)
+        let minX = this.currentRect.x;
+        let maxX = this.currentRect.x + this.currentRect.width;
+        let minY = this.currentRect.y;
+        let maxY = this.currentRect.y + this.currentRect.height;
+        
+        // Bohne berücksichtigen
+        if (this.bohnen.length > 0) {
+            const bohne = this.bohnen[0];
+            const bohneHeight = bohne.height * this.mmToPx;
+            minY = Math.min(minY, this.currentRect.y - bohneHeight);
+        }
+        
+        // Bemaßungen berücksichtigen
+        if (this.showDimensions) {
+            const dimensionOffset = 60 * this.mmToPx;
+            minY -= dimensionOffset;
+            maxY += dimensionOffset;
+            minX -= dimensionOffset;
+            maxX += dimensionOffset;
+        }
+        
+        // Detailzeichnungen berücksichtigen
+        if (this.kerben.length > 0 || this.loecher.length > 0) {
+            const detailHeight = 80 * this.mmToPx;
+            maxY += detailHeight;
+        }
+        
+        // Titelblock berücksichtigen
+        if (this.titleBlock && this.titleBlock.x != null) {
+            maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width);
+            maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height);
+        }
+        
+        // Sicherheitsabstand
+        const padding = 20 * this.mmToPx;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        const totalWidth = maxX - minX;
+        const totalHeight = maxY - minY;
+        
+        // Erstelle SVG-Element
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+        svg.setAttribute('width', `${totalWidth}px`);
+        svg.setAttribute('height', `${totalHeight}px`);
+        svg.setAttribute('viewBox', `${minX} ${minY} ${totalWidth} ${totalHeight}`);
+        
+        // Defs für Pfeile
+        const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+        const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+        arrowMarker.setAttribute('id', 'arrowhead');
+        arrowMarker.setAttribute('markerWidth', '10');
+        arrowMarker.setAttribute('markerHeight', '10');
+        arrowMarker.setAttribute('refX', '9');
+        arrowMarker.setAttribute('refY', '3');
+        arrowMarker.setAttribute('orient', 'auto');
+        const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        arrowPath.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+        arrowPath.setAttribute('fill', '#333');
+        arrowMarker.appendChild(arrowPath);
+        defs.appendChild(arrowMarker);
+        svg.appendChild(defs);
+        
+        // Erstelle Gruppe für Zeichnung
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        
+        // Zeichne Elemente als SVG
+        this.drawToSVG(g);
+        
+        svg.appendChild(g);
+        
+        // Konvertiere zu String
+        const serializer = new XMLSerializer();
+        return serializer.serializeToString(svg);
+    }
+    
+    async downloadSVGAndOpenEmail() {
+        // Generiere SVG
+        const svgString = this.generateSVGForEmail();
+        if (!svgString) {
+            alert('Fehler beim Generieren der SVG-Datei.');
+            return;
+        }
+        
+        // Download SVG
+        const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
+        const svgUrl = URL.createObjectURL(svgBlob);
+        const svgLink = document.createElement('a');
+        svgLink.href = svgUrl;
+        const dateStr = new Date().toISOString().slice(0,10);
+        svgLink.download = `ProfilZeichner_${dateStr}.svg`;
+        svgLink.click();
+        URL.revokeObjectURL(svgUrl);
+        
+        // Warte kurz und generiere dann PDF
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Generiere und Download PDF
+        try {
+            await this.generatePDFForEmail(dateStr);
+        } catch (error) {
+            console.warn('PDF-Generierung fehlgeschlagen:', error);
+            // Weiter mit E-Mail auch wenn PDF fehlschlägt
+        }
+        
+        // Warte kurz damit Downloads starten
+        setTimeout(() => {
+            this.openEmail();
+        }, 500);
+    }
+    
+    async generatePDFForEmail(dateStr) {
+        // Nutze die bestehende exportToPDF Logik, aber mit angepasstem Dateinamen
+        if (!this.currentRect) return;
+        
+        // Speichere aktuelle Canvas-Einstellungen
+        const originalZoom = this.zoom;
+        const originalOffsetX = this.offsetX;
+        const originalOffsetY = this.offsetY;
+        
+        // Berechne Bounding Box (wie in exportToPDF)
+        let minX = this.currentRect.x;
+        let maxX = this.currentRect.x + this.currentRect.width;
+        let minY = this.currentRect.y;
+        let maxY = this.currentRect.y + this.currentRect.height;
+        
+        // Bohne berücksichtigen
+        if (this.bohnen.length > 0) {
+            const bohne = this.bohnen[0];
+            const bohneHeight = bohne.height * this.mmToPx;
+            minY = Math.min(minY, this.currentRect.y - bohneHeight);
+        }
+        
+        // Bemaßungen berücksichtigen
+        if (this.showDimensions) {
+            const dimensionOffset = 60 * this.mmToPx;
+            minY -= dimensionOffset;
+            maxY += dimensionOffset;
+            minX -= dimensionOffset;
+            maxX += dimensionOffset;
+        }
+        
+        // Detailzeichnungen berücksichtigen
+        if (this.kerben.length > 0 || this.loecher.length > 0) {
+            const rect = this.currentRect;
+            const corner4Y = rect.y + rect.height;
+            let detailStartY = corner4Y;
+            
+            if (this.showDimensions) {
+                const dimensionOffset = 7 * this.mmToPx;
+                let currentYOffset = 10 * this.mmToPx;
+                
+                const elementsUnten = [];
+                this.kerben.forEach(kerbe => {
+                    if (kerbe.position === 'unten') elementsUnten.push({ position: kerbe.distance });
+                });
+                this.ausschnitte.forEach(ausschnitt => {
+                    if (ausschnitt.positionType === 'unten') elementsUnten.push({ position: ausschnitt.position });
+                });
+                
+                currentYOffset += elementsUnten.length * dimensionOffset;
+                detailStartY = corner4Y + currentYOffset + (10 * this.mmToPx);
+            } else {
+                detailStartY = corner4Y + (50 * this.mmToPx);
+            }
+            
+            const detailHeight = 80 * this.mmToPx;
+            maxY = Math.max(maxY, detailStartY + detailHeight);
+        }
+        
+        // Titelblock berücksichtigen
+        if (this.titleBlock && this.titleBlock.x != null) {
+            maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width);
+            maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height);
+        }
+        
+        // Sicherheitsabstand
+        const padding = 20 * this.mmToPx;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        const totalWidth = maxX - minX;
+        const totalHeight = maxY - minY;
+        
+        // Berechne Zoom für PDF
+        const zoomX = (this.canvasWidth * 0.8) / totalWidth;
+        const zoomY = (this.canvasHeight * 0.8) / totalHeight;
+        this.zoom = Math.min(zoomX, zoomY);
+        
+        // Zentriere die Ansicht
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+        
+        this.offsetX = this.canvasWidth / 2 - centerX * this.zoom;
+        this.offsetY = this.canvasHeight / 2 - centerY * this.zoom;
+        
+        // Zeichne für Screenshot
+        this.draw();
+        
+        // Warte kurz damit alles gerendert ist
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        // Erstelle Screenshot vom Canvas
+        const imgData = this.canvas.toDataURL('image/png', 1.0);
+        
+        // Stelle ursprünglichen Zustand wieder her
+        this.zoom = originalZoom;
+        this.offsetX = originalOffsetX;
+        this.offsetY = originalOffsetY;
+        this.draw();
+        
+        // Erstelle PDF mit jsPDF
+        if (typeof window.jspdf !== 'undefined') {
+            const { jsPDF } = window.jspdf;
+            
+            // Berechne PDF-Dimensionen in mm
+            const contentWidthMm = totalWidth / this.mmToPx;
+            const contentHeightMm = totalHeight / this.mmToPx;
+            
+            // A4 Dimensionen
+            const a4Width = 210; // mm
+            const a4Height = 297; // mm
+            
+            // Berechne Skalierung für A4
+            const scale = Math.min(a4Width / contentWidthMm, a4Height / contentHeightMm);
+            const pdfWidth = contentWidthMm * scale;
+            const pdfHeight = contentHeightMm * scale;
+            
+            // Erstelle PDF
+            const pdf = new jsPDF({
+                orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+                unit: 'mm',
+                format: [pdfWidth, pdfHeight]
+            });
+            
+            // Füge Bild hinzu (skaliert)
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            
+            // Download PDF
+            pdf.save(`ProfilZeichner_${dateStr}.pdf`);
+        } else {
+            // Fallback: Nutze bestehende exportToPDF Funktion
+            this.exportToPDF();
+        }
+    }
+    
+    openEmail() {
+        // Sammle E-Mail-Daten
+        const emailText = this.emailTextPreview ? this.emailTextPreview.value : '';
+        const freelancerEmail = this.freelancerEmail ? this.freelancerEmail.value.trim() : '';
+        
+        // E-Mail-Text
+        const subject = encodeURIComponent('Custom-Anforderung für ProfilZeichner Tool');
+        const body = encodeURIComponent(emailText);
+        
+        // Mailto-Link
+        let mailtoLink = `mailto:${freelancerEmail || ''}?subject=${subject}&body=${body}`;
+        
+        // Öffne E-Mail
+        window.location.href = mailtoLink;
+        
+        // Schließe Modal nach kurzer Verzögerung
+        setTimeout(() => {
+            this.closeEmailConfirmationModal();
+        }, 1000);
+    }
+    
+    generateId() {
+        return 'req_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    }
 }
 
 // Globale Funktionen für HTML onclick
@@ -7754,52 +9930,49 @@ function removeAusschnittRow(element) {
     }
 }
 
+function addRequirement() {
+    const requirementsList = document.getElementById('requirements-list');
+    if (!requirementsList) return;
+    
+    const count = requirementsList.querySelectorAll('.requirement-item').length + 1;
+    const item = document.createElement('div');
+    item.className = 'requirement-item flex gap-2 mb-2';
+    item.innerHTML = `
+        <input type="text" class="requirement-input flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Anforderung ${count}">
+        <button type="button" class="btn-remove-requirement px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors" onclick="removeRequirement(this)">✕</button>
+    `;
+    requirementsList.appendChild(item);
+}
+
+function removeRequirement(button) {
+    const item = button.closest('.requirement-item');
+    if (item) {
+        const requirementsList = document.getElementById('requirements-list');
+        if (requirementsList && requirementsList.querySelectorAll('.requirement-item').length > 1) {
+            item.remove();
+        } else {
+            alert('Mindestens eine Anforderung muss vorhanden sein.');
+        }
+    }
+}
+
+function downloadSVGAndOpenEmail() {
+    if (profilZeichner) {
+        profilZeichner.downloadSVGAndOpenEmail();
+    }
+}
+
 function removeCrimpingRow(element) {
     if (profilZeichner) {
         profilZeichner.removeCrimpingRow(element);
     }
 }
 
-// App-Start nach Authentifizierung
-function startProfilZeichnerApp() {
+// App-Start
+document.addEventListener('DOMContentLoaded', () => {
     const app = new ProfilZeichner();
     if (typeof app.initDatabase === 'function') {
         app.initDatabase();
     }
     window.profilZeichner = app;
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-    const overlay = document.getElementById('auth-overlay');
-    const pwdInput = document.getElementById('auth-password');
-    const btn = document.getElementById('auth-login-btn');
-    const err = document.getElementById('auth-error');
-    const REQUIRED_PW = 'TrimShop002=';
-
-    const authenticated = sessionStorage.getItem('pz.auth') === 'ok';
-    if (authenticated) {
-        if (overlay) overlay.style.display = 'none';
-        startProfilZeichnerApp();
-        return;
-    }
-    if (overlay) overlay.style.display = 'flex';
-    if (pwdInput) pwdInput.focus();
-
-    function tryLogin() {
-        const val = (pwdInput && pwdInput.value) || '';
-        if (val === REQUIRED_PW) {
-            sessionStorage.setItem('pz.auth', 'ok');
-            if (err) err.style.display = 'none';
-            if (overlay) overlay.style.display = 'none';
-            startProfilZeichnerApp();
-        } else {
-            if (err) err.style.display = 'block';
-            if (pwdInput) pwdInput.select();
-        }
-    }
-
-    if (btn) btn.addEventListener('click', tryLogin);
-    if (pwdInput) pwdInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') tryLogin();
-    });
 });
