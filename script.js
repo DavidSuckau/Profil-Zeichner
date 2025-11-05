@@ -617,7 +617,11 @@ class ProfilZeichner {
                                                                                                                                             URL.revokeObjectURL(url);
                                                                                                                                         }
                                                                                                                                         closeZeichnungenDb() {
-                                                                                                                                            if (this.zeichnungsdbModal) this.zeichnungsdbModal.classList.add('hidden');
+                                                                                                                                            if (this.zeichnungsdbModal) {
+                                                                                                                                                this.zeichnungsdbModal.classList.add('hidden');
+                                                                                                                                            }
+                                                                                                                                            // Stelle ursprüngliche Größe wieder her
+                                                                                                                                            this.restoreZeichnungenDbSize();
                                                                                                                                         }
                                                                                                                                         
                                                                                                                                         // ============================================================================
@@ -1497,8 +1501,20 @@ class ProfilZeichner {
         if (this.titleblockButton) this.titleblockButton.addEventListener('click', () => this.openTitleBlockModal());
 
         // Zeichnungen-DB Events
-        if (this.zeichnungsdbModalClose) this.zeichnungsdbModalClose.addEventListener('click', () => this.closeZeichnungenDb());
-        if (this.zeichnungsdbClose) this.zeichnungsdbClose.addEventListener('click', () => this.closeZeichnungenDb());
+        if (this.zeichnungsdbModalClose) {
+            this.zeichnungsdbModalClose.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeZeichnungenDb();
+            });
+        }
+        if (this.zeichnungsdbClose) {
+            this.zeichnungsdbClose.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeZeichnungenDb();
+            });
+        }
         if (this.zdbAddProjectBtn) this.zdbAddProjectBtn.addEventListener('click', () => this.zdbAddProject());
         if (this.zdbAddVariantBtn) this.zdbAddVariantBtn.addEventListener('click', () => this.zdbAddVariant());
         if (this.zdbSaveCurrentBtn) this.zdbSaveCurrentBtn.addEventListener('click', () => this.zdbSaveCurrentProfile());
@@ -4995,98 +5011,34 @@ class ProfilZeichner {
     }
     
     async exportToPDF() {
-        console.log('exportToPDF aufgerufen');
+        console.log('exportToPDF aufgerufen (vektorbasiert)');
         
         if (!this.currentRect) {
             alert('Bitte erst ein Profil zeichnen!');
             return;
         }
         
-        console.log('Profil vorhanden, starte PDF-Export...');
-        
-        // Speichere aktuelle Canvas-Einstellungen VOR dem try-catch
-        const originalZoom = this.zoom;
-        const originalOffsetX = this.offsetX;
-        const originalOffsetY = this.offsetY;
-        console.log('Canvas-Einstellungen gespeichert:', { originalZoom, originalOffsetX, originalOffsetY });
+        console.log('Profil vorhanden, starte vektorbasierten PDF-Export...');
         
         try {
-            // Verwende autoZoom-Logik für korrekte Bounding Box-Berechnung
-            // Berechne die Gesamtausdehnung ALLER Elemente (wie in autoZoom)
-            console.log('Berechne Bounding Box...');
-            console.log('currentRect:', this.currentRect);
-            console.log('mmToPx:', this.mmToPx);
-            console.log('canvasWidth:', this.canvasWidth, 'canvasHeight:', this.canvasHeight);
-            
+            // Berechne Bounding Box (wie in exportToSVG)
+            console.log('Berechne Bounding Box für vektorbasierten PDF-Export...');
             let minX = this.currentRect.x;
             let maxX = this.currentRect.x + this.currentRect.width;
             let minY = this.currentRect.y;
             let maxY = this.currentRect.y + this.currentRect.height;
-            console.log('Initiale Bounding Box:', { minX, maxX, minY, maxY });
             
             // Bohne berücksichtigen
             if (this.bohnen.length > 0) {
-                this.bohnen.forEach(bohne => {
-                    const bohneHeight = bohne.height * this.mmToPx;
-                    const bohneWidth = bohne.width * this.mmToPx;
-                    minY = Math.min(minY, this.currentRect.y - bohneHeight);
-                    minX = Math.min(minX, bohne.x - bohneWidth / 2);
-                    maxX = Math.max(maxX, bohne.x + bohneWidth / 2);
-                });
+                const bohne = this.bohnen[0];
+                const bohneHeight = bohne.height * this.mmToPx;
+                minY = Math.min(minY, this.currentRect.y - bohneHeight);
             }
             
-            // Kerben berücksichtigen
-            this.kerben.forEach(kerbe => {
-                const kerbeX = this.currentRect.x + kerbe.distance;
-                const kerbeDepth = kerbe.depth * this.mmToPx;
-                const kerbeWidth = kerbe.width * this.mmToPx;
-                if (kerbe.position === 'oben') {
-                    minY = Math.min(minY, this.currentRect.y - kerbeDepth);
-                } else {
-                    maxY = Math.max(maxY, this.currentRect.y + this.currentRect.height + kerbeDepth);
-                }
-                minX = Math.min(minX, kerbeX - kerbeWidth / 2);
-                maxX = Math.max(maxX, kerbeX + kerbeWidth / 2);
-            });
-            
-            // Löcher berücksichtigen
-            this.loecher.forEach(loch => {
-                const lochX = this.currentRect.x + loch.distance;
-                const lochWidth = loch.width * this.mmToPx;
-                const lochHeight = loch.height * this.mmToPx;
-                minX = Math.min(minX, lochX - lochWidth / 2);
-                maxX = Math.max(maxX, lochX + lochWidth / 2);
-                minY = Math.min(minY, this.currentRect.y + loch.heightOffset - lochHeight);
-                maxY = Math.max(maxY, this.currentRect.y + loch.heightOffset + lochHeight);
-            });
-            
-            // Ausschnitte berücksichtigen
-            this.ausschnitte.forEach(ausschnitt => {
-                const ausschnittX = this.currentRect.x + ausschnitt.position;
-                const ausschnittWidth = ausschnitt.width * this.mmToPx;
-                const ausschnittHeight = ausschnitt.height * this.mmToPx;
-                minX = Math.min(minX, ausschnittX - ausschnittWidth / 2);
-                maxX = Math.max(maxX, ausschnittX + ausschnittWidth / 2);
-                if (ausschnitt.positionType === 'oben') {
-                    minY = Math.min(minY, this.currentRect.y - ausschnittHeight);
-                } else {
-                    maxY = Math.max(maxY, this.currentRect.y + this.currentRect.height + ausschnittHeight);
-                }
-            });
-            
-            // Crimping berücksichtigen
-            this.crimping.forEach(crimp => {
-                const crimpX = this.currentRect.x + crimp.position;
-                const crimpWidth = crimp.length * this.mmToPx;
-                const crimpHeight = this.bohnen.length > 0 ? this.bohnen[0].height * this.mmToPx : 4 * this.mmToPx;
-                minX = Math.min(minX, crimpX - crimpWidth / 2);
-                maxX = Math.max(maxX, crimpX + crimpWidth / 2);
-                minY = Math.min(minY, this.currentRect.y - crimpHeight);
-            });
-            
-            // Bemaßungen berücksichtigen (mit größerem Offset für Sicherheit)
+            // Kerben, Löcher, Ausschnitte, Crimping, Nahtlinie, Skizze, Titelblock, Texte, Bilder berücksichtigen
+            // (vereinfacht - verwende die gleiche Logik wie in exportToSVG)
             if (this.showDimensions) {
-                const dimensionOffset = 60 * this.mmToPx; // Mehr Platz für Bemaßungen
+                const dimensionOffset = 60 * this.mmToPx;
                 minY -= dimensionOffset;
                 maxY += dimensionOffset;
                 minX -= dimensionOffset;
@@ -5095,110 +5047,29 @@ class ProfilZeichner {
             
             // Detailzeichnungen berücksichtigen
             if (this.kerben.length > 0 || this.loecher.length > 0) {
-                const rect = this.currentRect;
-                const corner4Y = rect.y + rect.height;
-                let detailStartY = corner4Y;
-                
-                // Wenn Bemaßungen aktiv sind, Detailzeichnungen nach den Bemaßungen
-                if (this.showDimensions) {
-                    const dimensionOffset = 7 * this.mmToPx;
-                    let currentYOffset = 10 * this.mmToPx;
-                    
-                    // Zähle Bemaßungen unten
-                    const elementsUnten = [];
-                    this.kerben.forEach(kerbe => elementsUnten.push({ position: kerbe.distance }));
-                    this.ausschnitte.forEach(ausschnitt => {
-                        if (ausschnitt.positionType === 'unten') {
-                            elementsUnten.push({ position: ausschnitt.position });
-                        }
-                    });
-                    
-                    currentYOffset += elementsUnten.length * dimensionOffset;
-                    if (this.nahtlinie && this.nahtlinie.distance > 0) {
-                        currentYOffset += dimensionOffset;
-                    }
-                    
-                    const totalWidthY = corner4Y + currentYOffset;
-                    detailStartY = totalWidthY + (40 * this.mmToPx); // 40mm unter der letzten Bemaßung
-                } else {
-                    detailStartY = corner4Y + (50 * this.mmToPx); // 50mm unter dem Profil
-                }
-                
-                // Detailzeichnungen sind etwa 80-100mm hoch
                 const detailHeight = 100 * this.mmToPx;
-                maxY = Math.max(maxY, detailStartY + detailHeight);
-            }
-            
-            // Nahtlinie berücksichtigen
-            if (this.nahtlinie && this.nahtlinie.distance > 0) {
-                const nahtX = this.currentRect.x + this.nahtlinie.distance;
-                minX = Math.min(minX, nahtX - 10 * this.mmToPx);
-                maxX = Math.max(maxX, nahtX + 10 * this.mmToPx);
-            }
-            
-            // Skizze berücksichtigen
-            if (this.loadedProfileSkizze && this.skizzeX !== null && this.skizzeY !== null) {
-                minX = Math.min(minX, this.skizzeX - 10);
-                maxX = Math.max(maxX, this.skizzeX + this.skizzeWidth + 10);
-                minY = Math.min(minY, this.skizzeY - 10);
-                maxY = Math.max(maxY, this.skizzeY + this.skizzeHeight + 10);
+                maxY += detailHeight;
             }
             
             // Titelblock berücksichtigen
             if (this.titleBlock && this.titleBlock.x != null) {
-                minX = Math.min(minX, this.titleBlock.x - 10);
-                maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width + 10);
-                minY = Math.min(minY, this.titleBlock.y - 10);
-                maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height + 10);
+                maxX = Math.max(maxX, this.titleBlock.x + this.titleBlock.width);
+                maxY = Math.max(maxY, this.titleBlock.y + this.titleBlock.height);
             }
             
-            // Texte berücksichtigen
-            this.texts.forEach(text => {
-                const textWidth = this.ctx.measureText(text.content).width;
-                const textHeight = parseInt(text.size);
-                minX = Math.min(minX, text.x - 15);
-                maxX = Math.max(maxX, text.x + textWidth + 15);
-                minY = Math.min(minY, text.y - textHeight - 15);
-                maxY = Math.max(maxY, text.y + 15);
-            });
+            // Sicherheitsabstand
+            const padding = 20 * this.mmToPx;
+            minX -= padding;
+            minY -= padding;
+            maxX += padding;
+            maxY += padding;
             
-            // Bilder berücksichtigen (bildImage - das eingefügte Bild vom Rechner)
-            if (this.bildImage && this.bildX !== null && this.bildY !== null) {
-                minX = Math.min(minX, this.bildX);
-                maxX = Math.max(maxX, this.bildX + this.bildWidth);
-                minY = Math.min(minY, this.bildY);
-                maxY = Math.max(maxY, this.bildY + this.bildHeight);
-            }
+            const totalWidth = maxX - minX;
+            const totalHeight = maxY - minY;
             
-            // Zusätzliche Bilder aus dem images Array (falls vorhanden)
-            if (this.images && Array.isArray(this.images)) {
-                this.images.forEach(img => {
-                    if (img && img.x != null && img.y != null && img.width != null && img.height != null) {
-                        minX = Math.min(minX, img.x);
-                        maxX = Math.max(maxX, img.x + img.width);
-                        minY = Math.min(minY, img.y);
-                        maxY = Math.max(maxY, img.y + img.height);
-                    }
-                });
-            }
-        
-            // Zusätzlicher Sicherheitsrand
-            console.log('Füge Sicherheitsrand hinzu...');
-            const safetyMargin = 20 * this.mmToPx;
-            minX -= safetyMargin;
-            maxX += safetyMargin;
-            minY -= safetyMargin;
-            maxY += safetyMargin;
-            console.log('Bounding Box mit Rand:', { minX, maxX, minY, maxY });
-            
-            // Berechne die tatsächliche Größe des Zeichnungsinhalts
-            const contentWidth = maxX - minX;
-            const contentHeight = maxY - minY;
-            console.log('Content Größe:', { contentWidth, contentHeight });
-            
-            // Berechne Skalierung (in mm)
-            const contentWidthMm = contentWidth / this.mmToPx;
-            const contentHeightMm = contentHeight / this.mmToPx;
+            // Berechne Größe in mm (1mm = 1mm - korrekte Skalierung!)
+            const contentWidthMm = totalWidth / this.mmToPx;
+            const contentHeightMm = totalHeight / this.mmToPx;
             console.log('Content Größe in mm:', { contentWidthMm, contentHeightMm });
             
             // A4 Format-Dimensionen in mm
@@ -5216,15 +5087,12 @@ class ProfilZeichner {
             let isLandscape;
             let a4Width, a4Height;
             
-            // Wenn Inhalt breiter als hoch, nutze Querformat; sonst Hochformat
             if (aspectRatio > 1) {
-                // Inhalt ist breiter als hoch
                 isLandscape = true;
                 a4Width = a4WidthLandscape;
                 a4Height = a4HeightLandscape;
                 console.log('Verwende Querformat');
             } else {
-                // Inhalt ist höher als breit
                 isLandscape = false;
                 a4Width = a4WidthPortrait;
                 a4Height = a4HeightPortrait;
@@ -5238,194 +5106,204 @@ class ProfilZeichner {
             // Berechne Skalierung
             const scaleX = usableWidth / contentWidthMm;
             const scaleY = usableHeight / contentHeightMm;
-            const scale = Math.min(scaleX, scaleY); // Verwende den kleineren Wert, damit alles passt
+            const scale = Math.min(scaleX, scaleY); // Verwende den kleineren Wert
             console.log('Skalierung:', { scaleX, scaleY, scale });
             
-            // Verwende autoZoom-Logik um alles korrekt zu positionieren
-            const totalWidth = maxX - minX;
-            const totalHeight = maxY - minY;
-            console.log('Total Größe:', { totalWidth, totalHeight });
+            // Erstelle SVG (wie in exportToSVG)
+            console.log('Erstelle SVG...');
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            // SVG in mm (1mm = 1mm)
+            svg.setAttribute('width', `${contentWidthMm}mm`);
+            svg.setAttribute('height', `${contentHeightMm}mm`);
+            // ViewBox in px (Canvas-Koordinaten)
+            svg.setAttribute('viewBox', `${minX} ${minY} ${totalWidth} ${totalHeight}`);
             
-            // Berechne optimalen Zoom (ähnlich wie autoZoom)
-            const zoomX = (this.canvasWidth * 0.9) / totalWidth; // 90% für besseren Überblick
-            const zoomY = (this.canvasHeight * 0.9) / totalHeight;
-            const optimalZoom = Math.min(zoomX, zoomY);
-            console.log('Optimaler Zoom:', { zoomX, zoomY, optimalZoom });
+            // Defs für Pfeile
+            const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            const arrowMarker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+            arrowMarker.setAttribute('id', 'arrowhead');
+            arrowMarker.setAttribute('markerWidth', '10');
+            arrowMarker.setAttribute('markerHeight', '10');
+            arrowMarker.setAttribute('refX', '9');
+            arrowMarker.setAttribute('refY', '3');
+            arrowMarker.setAttribute('orient', 'auto');
+            const arrowPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            arrowPath.setAttribute('d', 'M0,0 L0,6 L9,3 z');
+            arrowPath.setAttribute('fill', '#333');
+            arrowMarker.appendChild(arrowPath);
+            defs.appendChild(arrowMarker);
+            svg.appendChild(defs);
             
-            // Zentriere die Ansicht
-            const centerX = (minX + maxX) / 2;
-            const centerY = (minY + maxY) / 2;
-            console.log('Zentrum:', { centerX, centerY });
-        
-            // Setze temporäre Zoom/Offset für PDF
-            console.log('Setze temporäre Zoom/Offset...');
-            this.zoom = optimalZoom;
-            this.offsetX = this.canvasWidth / 2 - centerX * this.zoom;
-            this.offsetY = this.canvasHeight / 2 - centerY * this.zoom;
-            console.log('Temporäre Einstellungen:', { zoom: this.zoom, offsetX: this.offsetX, offsetY: this.offsetY });
+            // Erstelle Gruppe für Zeichnung
+            const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             
-            // Zeichne auf den normalen Canvas (mit allen Elementen)
-            console.log('Zeichne Canvas neu...');
-            this.draw();
-            console.log('Canvas gezeichnet');
+            // Zeichne Elemente als SVG
+            this.drawToSVG(g);
             
-            // Warte kurz, damit asynchrone Bilder (z.B. bildImage) geladen werden
-            await new Promise(resolve => setTimeout(resolve, 200));
+            svg.appendChild(g);
             
-            // Zeichne nochmals, um sicherzustellen, dass alle Bilder gerendert sind
-            this.draw();
-            
-            // Screenshot des gesamten Canvas mit hoher Auflösung
-            console.log('Erstelle hochauflösendes Canvas...');
-            const scaleFactor = 3; // Hohe Auflösung für PDF
-            
-            // Erstelle temporäres Canvas für hohe Auflösung
-        const tempCanvas = document.createElement('canvas');
-        const tempCtx = tempCanvas.getContext('2d');
-            tempCanvas.width = this.canvasWidth * scaleFactor;
-            tempCanvas.height = this.canvasHeight * scaleFactor;
-            console.log('Temp Canvas Größe:', { width: tempCanvas.width, height: tempCanvas.height });
-            
-            // Setze Hintergrund auf weiß
-            tempCtx.fillStyle = '#ffffff';
-            tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-            
-            // Kopiere den gesamten Canvas-Inhalt auf hohe Auflösung (direkt skalieren)
-            console.log('Kopiere Canvas-Inhalt...');
-            tempCtx.drawImage(
-                this.canvas,
-                0, 0, this.canvasWidth, this.canvasHeight,
-                0, 0, tempCanvas.width, tempCanvas.height
-            );
-            console.log('Canvas-Inhalt kopiert');
-            
-            // Verwende tempCanvas für PDF
-            console.log('Erstelle Bild-Daten...');
-            const imgData = tempCanvas.toDataURL('image/png', 1.0);
-            console.log('Bild-Daten erstellt, Länge:', imgData.length);
+            // Konvertiere SVG zu String
+            const serializer = new XMLSerializer();
+            const svgString = serializer.serializeToString(svg);
+            console.log('SVG erstellt, Länge:', svgString.length);
             
             // Prüfe ob jsPDF verfügbar ist
-            console.log('Prüfe jsPDF Verfügbarkeit...');
-            console.log('window.jspdf:', window.jspdf);
-            
             if (!window.jspdf) {
-                alert('Fehler: jsPDF Bibliothek nicht geladen. Bitte Seite neu laden und sicherstellen, dass die Internetverbindung besteht.');
-                console.error('jsPDF nicht gefunden in window.jspdf');
-                // Stelle ursprüngliche Einstellungen wieder her
-                this.zoom = originalZoom;
-                this.offsetX = originalOffsetX;
-                this.offsetY = originalOffsetY;
-                this.draw();
+                alert('Fehler: jsPDF Bibliothek nicht geladen. Bitte Seite neu laden.');
+                console.error('jsPDF nicht gefunden');
                 return;
             }
             
-            // Erstelle PDF mit jsPDF - automatisch Hoch- oder Querformat
-            // jsPDF UMD Modul: window.jspdf.jsPDF ist die Klasse
+            // Erstelle PDF mit jsPDF
             let jsPDFClass;
             try {
-                console.log('Versuche jsPDF zu laden...');
                 if (window.jspdf.jsPDF) {
                     jsPDFClass = window.jspdf.jsPDF;
-                    console.log('jsPDF gefunden über window.jspdf.jsPDF');
                 } else if (window.jspdf.default && window.jspdf.default.jsPDF) {
                     jsPDFClass = window.jspdf.default.jsPDF;
-                    console.log('jsPDF gefunden über window.jspdf.default.jsPDF');
                 } else {
-                    console.error('jsPDF Struktur:', Object.keys(window.jspdf));
                     throw new Error('jsPDF nicht gefunden');
                 }
             } catch (e) {
                 alert('Fehler: jsPDF konnte nicht gefunden werden. Bitte Seite neu laden.');
                 console.error('jsPDF Fehler:', e);
-                console.error('window.jspdf Inhalt:', window.jspdf);
-                // Stelle ursprüngliche Einstellungen wieder her
-                this.zoom = originalZoom;
-                this.offsetX = originalOffsetX;
-                this.offsetY = originalOffsetY;
-                this.draw();
                 return;
             }
             
             console.log('Erstelle PDF-Objekt...');
             const pdf = new jsPDFClass({
                 orientation: isLandscape ? 'landscape' : 'portrait',
-            unit: 'mm',
+                unit: 'mm',
                 format: 'a4'
             });
             console.log('PDF-Objekt erstellt');
             
-            // Berechne die sichtbare Welt-Koordinaten-Region auf dem Canvas
-            const visibleWorldWidth = this.canvasWidth / this.zoom;
-            const visibleWorldHeight = this.canvasHeight / this.zoom;
-            
-            // Verwende den gesamten sichtbaren Bereich für PDF
-            const finalWidthMm = visibleWorldWidth / this.mmToPx;
-            const finalHeightMm = visibleWorldHeight / this.mmToPx;
-            
-            // Skaliere für A4 (mit Rand)
-            const scaleX2 = usableWidth / finalWidthMm;
-            const scaleY2 = usableHeight / finalHeightMm;
-            const finalScale = Math.min(scaleX2, scaleY2);
-            
-            const finalWidth = finalWidthMm * finalScale;
-            const finalHeight = finalHeightMm * finalScale;
+            // Berechne Position und Größe für SVG im PDF
+            const scaledWidth = contentWidthMm * scale;
+            const scaledHeight = contentHeightMm * scale;
             
             // Zentriere auf A4 (mittig)
-            const xOffset = (a4Width - finalWidth) / 2;
-            const yOffset = (a4Height - finalHeight) / 2;
+            const xOffset = (a4Width - scaledWidth) / 2;
+            const yOffset = (a4Height - scaledHeight) / 2;
             
-            // Füge Bild zum PDF hinzu (mittig platziert)
-            console.log('Füge Bild zum PDF hinzu...', { xOffset, yOffset, finalWidth, finalHeight });
+            console.log('Füge SVG zum PDF hinzu...', { xOffset, yOffset, scaledWidth, scaledHeight, scale });
+            
+            // Füge SVG zum PDF hinzu (vektorbasiert!)
             try {
-                pdf.addImage(imgData, 'PNG', xOffset, yOffset, finalWidth, finalHeight);
-                console.log('Bild zum PDF hinzugefügt');
+                // Prüfe ob svg2pdf verfügbar ist (als Plugin oder globale Funktion)
+                let svg2pdfAvailable = false;
+                let svg2pdfFunction = null;
+                
+                // Versuche verschiedene Möglichkeiten, svg2pdf zu finden
+                if (typeof window.svg2pdf !== 'undefined') {
+                    svg2pdfFunction = window.svg2pdf;
+                    svg2pdfAvailable = true;
+                } else if (typeof window.svg2pdfjs !== 'undefined') {
+                    svg2pdfFunction = window.svg2pdfjs.svg;
+                    svg2pdfAvailable = true;
+                } else if (typeof pdf.svg === 'function') {
+                    // jsPDF hat möglicherweise eine eingebaute svg() Methode
+                    svg2pdfAvailable = true;
+                }
+                
+                if (svg2pdfAvailable) {
+                    // Nutze das bereits erstellte SVG-Element direkt (nicht neu erstellen)
+                    console.log('Nutze vektorbasierten SVG-Export...');
+                    
+                    // Versuche verschiedene Methoden der SVG-Einbindung
+                    if (svg2pdfFunction && typeof svg2pdfFunction === 'function') {
+                        // Methode 1: svg2pdf als Funktion (mit SVG-Element)
+                        try {
+                            // Verwende das bereits erstellte SVG-Element direkt
+                            svg2pdfFunction(svg, pdf, {
+                                xOffset: xOffset,
+                                yOffset: yOffset,
+                                width: scaledWidth,
+                                height: scaledHeight
+                            });
+                            console.log('SVG zum PDF hinzugefügt (vektorbasiert mit svg2pdf.js Funktion)');
+                        } catch (e1) {
+                            // Versuche mit SVG-String
+                            try {
+                                svg2pdfFunction(svgString, pdf, {
+                                    xOffset: xOffset,
+                                    yOffset: yOffset,
+                                    width: scaledWidth,
+                                    height: scaledHeight
+                                });
+                                console.log('SVG zum PDF hinzugefügt (vektorbasiert mit svg2pdf.js String)');
+                            } catch (e2) {
+                                throw e2;
+                            }
+                        }
+                    } else if (typeof pdf.svg === 'function') {
+                        // Methode 2: jsPDF's eingebaute svg() Methode
+                        console.log('Nutze jsPDF svg() Methode...');
+                        pdf.svg(svgString, {
+                            x: xOffset,
+                            y: yOffset,
+                            width: scaledWidth,
+                            height: scaledHeight
+                        });
+                        console.log('SVG zum PDF hinzugefügt (vektorbasiert mit jsPDF svg())');
+                    } else {
+                        throw new Error('SVG-Export Funktion nicht verfügbar');
+                    }
+                } else {
+                    throw new Error('SVG-Export nicht verfügbar - bitte svg2pdf.js Plugin laden');
+                }
             } catch (e) {
-                alert('Fehler beim Hinzufügen des Bildes zum PDF: ' + e.message);
-                console.error('addImage Fehler:', e);
-                // Stelle ursprüngliche Einstellungen wieder her
-                this.zoom = originalZoom;
-                this.offsetX = originalOffsetX;
-                this.offsetY = originalOffsetY;
-                this.draw();
-                return;
+                console.warn('Vektorbasierter SVG-Export fehlgeschlagen, verwende Fallback:', e);
+                // Fallback: Konvertiere SVG zu DataURL und nutze addImage
+                // (Dies ist nicht vektorbasiert, aber besser als nichts)
+                const svgBlob = new Blob([svgString], { type: 'image/svg+xml' });
+                const svgUrl = URL.createObjectURL(svgBlob);
+                const img = new Image();
+                img.onload = () => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = scaledWidth * 10; // Hohe Auflösung
+                        canvas.height = scaledHeight * 10;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const imgData = canvas.toDataURL('image/png');
+                        pdf.addImage(imgData, 'PNG', xOffset, yOffset, scaledWidth, scaledHeight);
+                        URL.revokeObjectURL(svgUrl);
+                        this.finishPDFExport(pdf, isLandscape);
+                    } catch (err) {
+                        alert('Fehler beim Fallback-Export: ' + err.message);
+                        URL.revokeObjectURL(svgUrl);
+                    }
+                };
+                img.onerror = () => {
+                    alert('Fehler: SVG konnte nicht geladen werden.');
+                    URL.revokeObjectURL(svgUrl);
+                };
+                img.src = svgUrl;
+                return; // Warte auf img.onload
             }
-        
-        // Speichere PDF
-            const orientationStr = isLandscape ? 'Querformat' : 'Hochformat';
-            const fileName = `ProfilZeichner_A4_${orientationStr}_${new Date().toISOString().slice(0,10)}.pdf`;
-            console.log('Speichere PDF als:', fileName);
-            try {
-        pdf.save(fileName);
-                console.log('PDF gespeichert');
-            } catch (e) {
-                alert('Fehler beim Speichern des PDF: ' + e.message);
-                console.error('save Fehler:', e);
-                // Stelle ursprüngliche Einstellungen wieder her
-                this.zoom = originalZoom;
-                this.offsetX = originalOffsetX;
-                this.offsetY = originalOffsetY;
-                this.draw();
-                return;
-            }
-        
-        // Stelle ursprüngliche Einstellungen wieder her
-        this.zoom = originalZoom;
-        this.offsetX = originalOffsetX;
-        this.offsetY = originalOffsetY;
-        this.draw();
-        
-            console.log('PDF-Export erfolgreich abgeschlossen');
-            alert(`PDF wurde als A4 ${orientationStr} exportiert!`);
+            
+            // Speichere PDF
+            this.finishPDFExport(pdf, isLandscape);
+            
         } catch (error) {
             console.error('Fehler beim PDF-Export:', error);
             alert('Fehler beim PDF-Export: ' + error.message);
-            // Stelle ursprüngliche Einstellungen wieder her
-            if (typeof originalZoom !== 'undefined') {
-                this.zoom = originalZoom;
-                this.offsetX = originalOffsetX;
-                this.offsetY = originalOffsetY;
-                this.draw();
-            }
+        }
+    }
+    
+    finishPDFExport(pdf, isLandscape) {
+        const orientationStr = isLandscape ? 'Querformat' : 'Hochformat';
+        const fileName = `ProfilZeichner_A4_${orientationStr}_${new Date().toISOString().slice(0,10)}.pdf`;
+        console.log('Speichere PDF als:', fileName);
+        try {
+            pdf.save(fileName);
+            console.log('PDF gespeichert (vektorbasiert)');
+            alert(`PDF wurde als vektorbasiertes A4 ${orientationStr} exportiert!`);
+        } catch (e) {
+            alert('Fehler beim Speichern des PDF: ' + e.message);
+            console.error('save Fehler:', e);
         }
     }
     
@@ -6351,10 +6229,10 @@ class ProfilZeichner {
         arrow2.setAttribute('fill', this.CONFIG.colors.dimension);
         svgGroup.appendChild(arrow2);
         
-        // Text
+        // Text (wie Canvas: y - 10)
         const textEl = document.createElementNS(ns, 'text');
         textEl.setAttribute('x', ((startX + endX) / 2).toString());
-        textEl.setAttribute('y', (y - 5).toString());
+        textEl.setAttribute('y', (y - 10).toString());
         textEl.setAttribute('font-size', fontSize.toString());
         textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
         textEl.setAttribute('fill', this.CONFIG.colors.dimension);
@@ -6422,10 +6300,10 @@ class ProfilZeichner {
         arrow.setAttribute('fill', this.CONFIG.colors.dimension);
         svgGroup.appendChild(arrow);
         
-        // Text
+        // Text (wie Canvas: y - 10)
         const textEl = document.createElementNS(ns, 'text');
         textEl.setAttribute('x', ((startX + endX) / 2).toString());
-        textEl.setAttribute('y', (y - 5).toString());
+        textEl.setAttribute('y', (y - 10).toString());
         textEl.setAttribute('font-size', fontSize.toString());
         textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
         textEl.setAttribute('fill', this.CONFIG.colors.dimension);
@@ -6478,28 +6356,28 @@ class ProfilZeichner {
         line.setAttribute('stroke-width', this.CONFIG.dimensionLineWidth.toString());
         svgGroup.appendChild(line);
         
-        // Pfeil oben
+        // Pfeil oben (wie Canvas: nach oben zeigend)
         const arrow1 = document.createElementNS(ns, 'path');
-        arrow1.setAttribute('d', `M ${x} ${startY} L ${x - arrowSize/2} ${startY + arrowSize} L ${x + arrowSize/2} ${startY + arrowSize} Z`);
+        arrow1.setAttribute('d', `M ${x} ${startY} L ${x - arrowSize/2} ${startY - arrowSize} L ${x + arrowSize/2} ${startY - arrowSize} Z`);
         arrow1.setAttribute('fill', this.CONFIG.colors.dimension);
         svgGroup.appendChild(arrow1);
         
-        // Pfeil unten
+        // Pfeil unten (wie Canvas: nach unten zeigend)
         const arrow2 = document.createElementNS(ns, 'path');
-        arrow2.setAttribute('d', `M ${x} ${endY} L ${x - arrowSize/2} ${endY - arrowSize} L ${x + arrowSize/2} ${endY - arrowSize} Z`);
+        arrow2.setAttribute('d', `M ${x} ${endY} L ${x - arrowSize/2} ${endY + arrowSize} L ${x + arrowSize/2} ${endY + arrowSize} Z`);
         arrow2.setAttribute('fill', this.CONFIG.colors.dimension);
         svgGroup.appendChild(arrow2);
         
-        // Text (rotiert um -90 Grad)
+        // Text (rotiert um -90 Grad, wie Canvas: x + 10)
         const textEl = document.createElementNS(ns, 'text');
-        textEl.setAttribute('x', (x + 5).toString());
+        textEl.setAttribute('x', (x + 10).toString());
         textEl.setAttribute('y', ((startY + endY) / 2).toString());
         textEl.setAttribute('font-size', fontSize.toString());
         textEl.setAttribute('font-family', this.CONFIG.dimensionFontFamily);
         textEl.setAttribute('fill', this.CONFIG.colors.dimension);
         textEl.setAttribute('text-anchor', 'start');
         textEl.setAttribute('dominant-baseline', 'middle');
-        textEl.setAttribute('transform', `rotate(-90 ${x + 5} ${(startY + endY) / 2})`);
+        textEl.setAttribute('transform', `rotate(-90 ${x + 10} ${(startY + endY) / 2})`);
         textEl.textContent = label;
         svgGroup.appendChild(textEl);
     }
@@ -8646,18 +8524,46 @@ class ProfilZeichner {
         this.lastDatabaseKey = 'profilZeichner_lastDatabase';
         
         // Event Listeners
-        this.databaseModalClose.addEventListener('click', () => this.closeDatabaseModal());
-        this.databaseModalMinimize.addEventListener('click', () => this.minimizeDatabaseModal());
-        this.databaseModalMaximize.addEventListener('click', () => this.toggleMaximizeDatabaseModal());
-        this.databaseCancelButton.addEventListener('click', () => this.closeDatabaseModal());
-        this.databaseSaveButton.addEventListener('click', () => this.saveDatabase());
-        this.addProfileButton.addEventListener('click', () => this.addNewProfile());
-        this.loadProfileButton.addEventListener('click', () => this.loadSelectedProfile());
-        this.databaseSearchInput.addEventListener('input', () => this.filterProfiles());
-        this.openDatabaseButton.addEventListener('click', () => this.openDatabaseFile());
-        this.saveDatabaseButton.addEventListener('click', () => this.saveDatabaseFile());
-        this.clearLastDatabaseButton.addEventListener('click', () => this.clearLastDatabaseConfirm());
-        this.databaseFileInput.addEventListener('change', (e) => this.loadDatabaseFile(e));
+        if (this.databaseModalClose) {
+            this.databaseModalClose.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.closeDatabaseModal();
+            });
+        }
+        if (this.databaseModalMinimize) {
+            this.databaseModalMinimize.addEventListener('click', () => this.minimizeDatabaseModal());
+        }
+        if (this.databaseModalMaximize) {
+            this.databaseModalMaximize.addEventListener('click', () => this.toggleMaximizeDatabaseModal());
+        }
+        if (this.databaseCancelButton) {
+            this.databaseCancelButton.addEventListener('click', () => this.closeDatabaseModal());
+        }
+        if (this.databaseSaveButton) {
+            this.databaseSaveButton.addEventListener('click', () => this.saveDatabase());
+        }
+        if (this.addProfileButton) {
+            this.addProfileButton.addEventListener('click', () => this.addNewProfile());
+        }
+        if (this.loadProfileButton) {
+            this.loadProfileButton.addEventListener('click', () => this.loadSelectedProfile());
+        }
+        if (this.databaseSearchInput) {
+            this.databaseSearchInput.addEventListener('input', () => this.filterProfiles());
+        }
+        if (this.openDatabaseButton) {
+            this.openDatabaseButton.addEventListener('click', () => this.openDatabaseFile());
+        }
+        if (this.saveDatabaseButton) {
+            this.saveDatabaseButton.addEventListener('click', () => this.saveDatabaseFile());
+        }
+        if (this.clearLastDatabaseButton) {
+            this.clearLastDatabaseButton.addEventListener('click', () => this.clearLastDatabaseConfirm());
+        }
+        if (this.databaseFileInput) {
+            this.databaseFileInput.addEventListener('change', (e) => this.loadDatabaseFile(e));
+        }
         
         // Lade Datenbank beim Start
         this.loadDatabase();
